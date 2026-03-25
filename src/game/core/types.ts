@@ -1,4 +1,22 @@
-import type { DoorKeyId } from "../content/types";
+import type { PickupKind, SpriteAnimationStateName } from "../content/types";
+
+export type AppMode =
+  | "boot"
+  | "main_menu"
+  | "starting_run"
+  | "in_game"
+  | "death_transition"
+  | "paused";
+
+export type EnemyFsmState =
+  | "idle"
+  | "alert"
+  | "chase"
+  | "windup"
+  | "attack"
+  | "cooldown"
+  | "hurt"
+  | "dead";
 
 export interface SettingsState {
   masterVolume: number;
@@ -6,10 +24,12 @@ export interface SettingsState {
   pixelScale: number;
 }
 
-export interface WeaponState {
+export interface WeaponRuntimeState {
   currentId: string;
   unlocked: string[];
   cooldownRemaining: number;
+  viewAnimation: SpriteAnimationStateName;
+  viewAnimationTime: number;
 }
 
 export interface PlayerState {
@@ -21,8 +41,7 @@ export interface PlayerState {
   radius: number;
   moveSpeed: number;
   bobPhase: number;
-  keys: DoorKeyId[];
-  ammoShards: number;
+  ammo: number;
   alive: boolean;
 }
 
@@ -31,17 +50,25 @@ export interface EnemyState {
   typeId: string;
   x: number;
   y: number;
-  angle: number;
+  spawnX: number;
+  spawnY: number;
   health: number;
   alive: boolean;
-  cooldownRemaining: number;
-  wakeTime: number;
+  fsmState: EnemyFsmState;
+  stateTime: number;
+  lastKnownPlayerX: number;
+  lastKnownPlayerY: number;
+  hasLineOfSight: boolean;
+  facingAngle: number;
+  memoryTime: number;
+  attackApplied: boolean;
 }
 
 export interface ProjectileState {
   id: number;
   source: "player" | "enemy";
   ownerId: string;
+  weaponId: string;
   x: number;
   y: number;
   dx: number;
@@ -50,33 +77,15 @@ export interface ProjectileState {
   radius: number;
   damage: number;
   ttl: number;
-  color: string;
 }
 
 export interface PickupState {
   id: string;
-  kind: "health" | "ammo" | "key" | "weapon";
+  kind: PickupKind;
   x: number;
   y: number;
   amount: number;
-  keyId?: DoorKeyId;
-  weaponId?: string;
   collected: boolean;
-}
-
-export interface DoorState {
-  id: string;
-  x: number;
-  y: number;
-  keyId?: DoorKeyId;
-  secret: boolean;
-  open: boolean;
-}
-
-export interface ExitState {
-  id: string;
-  x: number;
-  y: number;
 }
 
 export interface SimulationMessage {
@@ -91,29 +100,42 @@ export interface LevelState {
   grid: string[];
   width: number;
   height: number;
-  doors: DoorState[];
-  exits: ExitState[];
-  secretsTotal: number;
 }
 
-export interface GameState {
+export interface GameSessionState {
   level: LevelState;
   player: PlayerState;
-  weapon: WeaponState;
+  weapon: WeaponRuntimeState;
   enemies: EnemyState[];
   projectiles: ProjectileState[];
   pickups: PickupState[];
   messages: SimulationMessage[];
-  levelComplete: boolean;
+  elapsedTime: number;
   killCount: number;
   totalKills: number;
-  secretsFound: number;
-  totalSecrets: number;
-  elapsedTime: number;
 }
+
+export type GameState = GameSessionState;
 
 export interface SaveGameData {
   version: 1;
   savedAt: string;
-  state: GameState;
+  state: GameSessionState;
+}
+
+export interface HudViewModel {
+  visible: boolean;
+  health: number;
+  ammo: number;
+  weaponName: string;
+  enemiesRemaining: number;
+  message: string;
+  backend: "webgpu" | "webgl";
+}
+
+export interface SpriteRuntimeState {
+  animationState: SpriteAnimationStateName;
+  animationTime: number;
+  directionIndex: number;
+  finished: boolean;
 }

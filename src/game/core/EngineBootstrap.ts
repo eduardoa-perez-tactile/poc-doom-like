@@ -8,19 +8,25 @@ export interface EngineBootstrapResult {
 export async function createBabylonEngine(
   canvas: HTMLCanvasElement
 ): Promise<EngineBootstrapResult> {
+  const explicitBackend = new URLSearchParams(window.location.search).get("backend");
   const canTryWebGpu =
+    explicitBackend === "webgpu" &&
     window.isSecureContext &&
     typeof navigator !== "undefined" &&
     "gpu" in navigator &&
     (await WebGPUEngine.IsSupportedAsync);
 
   if (canTryWebGpu) {
-    const engine = new WebGPUEngine(canvas, {
-      antialias: false,
-      adaptToDeviceRatio: false
-    });
-    await engine.initAsync();
-    return { engine, backend: "webgpu" };
+    try {
+      const engine = new WebGPUEngine(canvas, {
+        antialias: false,
+        adaptToDeviceRatio: false
+      });
+      await engine.initAsync();
+      return { engine, backend: "webgpu" };
+    } catch {
+      // Fall through to the stable WebGL path.
+    }
   }
 
   const engine = new Engine(canvas, true, {

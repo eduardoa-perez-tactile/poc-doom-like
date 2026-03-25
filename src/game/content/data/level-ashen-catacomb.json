@@ -6,83 +6,44 @@
   "fogColor": "#100908",
   "ambientColor": "#4c2c1a",
   "playerStart": {
-    "x": 2,
-    "y": 2,
+    "x": 1,
+    "y": 1,
     "angleDeg": 0
   },
   "grid": [
-    "###############",
-    "#........#....#",
-    "#.###.##.#.##.#",
-    "#.#...##.#....#",
-    "#.#.####.####.#",
-    "#.#..........##",
-    "#.######.###..#",
-    "#......#...#..#",
-    "###.##.###.#.##",
-    "#...##.....#..#",
-    "#.####.#####..#",
-    "#....#....#...#",
-    "#.##.####.#.#.#",
-    "#...........#.#",
-    "###############"
-  ],
-  "doors": [
-    {
-      "id": "ember_gate",
-      "x": 12,
-      "y": 3,
-      "keyId": "ember_key"
-    },
-    {
-      "id": "secret_ossuary",
-      "x": 11,
-      "y": 11,
-      "secret": true
-    }
+    "#############",
+    "#...........#",
+    "#.###.###.#.#",
+    "#.#.....#.#.#",
+    "#.#.###.#.#.#",
+    "#...#...#...#",
+    "###.#.###.#.#",
+    "#...#.....#.#",
+    "#.#####.###.#",
+    "#...........#",
+    "#############"
   ],
   "pickups": [
     {
-      "id": "p_health_1",
-      "kind": "health",
-      "amount": 20,
-      "x": 5,
-      "y": 1
-    },
-    {
       "id": "p_ammo_1",
       "kind": "ammo",
-      "amount": 6,
+      "amount": 12,
       "x": 9,
-      "y": 5
-    },
-    {
-      "id": "p_health_2",
-      "kind": "health",
-      "amount": 25,
-      "x": 2,
-      "y": 11
-    },
-    {
-      "id": "p_key_1",
-      "kind": "key",
-      "keyId": "ember_key",
-      "x": 5,
-      "y": 7
-    },
-    {
-      "id": "p_weapon_1",
-      "kind": "weapon",
-      "weaponId": "shard_caster",
-      "x": 7,
-      "y": 13
+      "y": 2
     },
     {
       "id": "p_ammo_2",
       "kind": "ammo",
-      "amount": 12,
-      "x": 12,
-      "y": 11
+      "amount": 10,
+      "x": 3,
+      "y": 7
+    },
+    {
+      "id": "p_health_1",
+      "kind": "health",
+      "amount": 25,
+      "x": 9,
+      "y": 8
     }
   ],
   "enemies": [
@@ -90,39 +51,30 @@
       "id": "e_thrall_1",
       "type": "grave_thrall",
       "x": 4,
-      "y": 3
+      "y": 3,
+      "facingDeg": 180
     },
     {
       "id": "e_thrall_2",
       "type": "grave_thrall",
-      "x": 8,
-      "y": 5
+      "x": 7,
+      "y": 5,
+      "facingDeg": 180
     },
     {
-      "id": "e_acolyte_1",
-      "type": "cinder_acolyte",
+      "id": "e_thrall_3",
+      "type": "grave_thrall",
       "x": 10,
-      "y": 7
+      "y": 7,
+      "facingDeg": 180
     },
     {
-      "id": "e_acolyte_2",
-      "type": "cinder_acolyte",
-      "x": 6,
-      "y": 9
-    },
-    {
-      "id": "e_sentinel_1",
-      "type": "vault_sentinel",
-      "x": 12,
-      "y": 12
+      "id": "e_thrall_4",
+      "type": "grave_thrall",
+      "x": 2,
+      "y": 8,
+      "facingDeg": 0
     }
   ],
-  "exits": [
-    {
-      "id": "stairs_out",
-      "x": 13,
-      "y": 13
-    }
-  ],
-  "briefing": "Recover the ember seal, breach the vault gate, and escape through the lower reliquary."
+  "briefing": "Break into the catacomb, keep moving, and survive the grave thralls."
 }

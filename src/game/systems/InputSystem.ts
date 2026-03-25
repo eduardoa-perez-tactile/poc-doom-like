@@ -1,11 +1,10 @@
-const USE_KEYS = new Set(["KeyE"]);
 const MENU_KEYS = new Set(["Escape"]);
 
 export interface InputFrame {
   moveX: number;
   moveY: number;
   lookDeltaX: number;
-  firePressed: boolean;
+  fireDown: boolean;
   usePressed: boolean;
   menuPressed: boolean;
   weaponSlot?: number;
@@ -14,18 +13,21 @@ export interface InputFrame {
 export class InputSystem {
   private readonly heldKeys = new Set<string>();
   private lookDeltaX = 0;
-  private frameFirePressed = false;
   private frameUsePressed = false;
   private frameMenuPressed = false;
   private frameWeaponSlot?: number;
   private pointerLocked = false;
+  private pointerLockLost = false;
+  private fireDown = false;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("keyup", this.onKeyUp);
     window.addEventListener("mousemove", this.onMouseMove);
     window.addEventListener("pointerdown", this.onPointerDown);
+    window.addEventListener("pointerup", this.onPointerUp);
     document.addEventListener("pointerlockchange", this.onPointerLockChange);
+    window.addEventListener("blur", this.onBlur);
   }
 
   dispose(): void {
@@ -33,15 +35,34 @@ export class InputSystem {
     window.removeEventListener("keyup", this.onKeyUp);
     window.removeEventListener("mousemove", this.onMouseMove);
     window.removeEventListener("pointerdown", this.onPointerDown);
+    window.removeEventListener("pointerup", this.onPointerUp);
     document.removeEventListener("pointerlockchange", this.onPointerLockChange);
+    window.removeEventListener("blur", this.onBlur);
   }
 
   isPointerLocked(): boolean {
     return this.pointerLocked;
   }
 
-  requestPointerLock(): void {
-    void this.canvas.requestPointerLock();
+  consumePointerLockLost(): boolean {
+    const lost = this.pointerLockLost;
+    this.pointerLockLost = false;
+    return lost;
+  }
+
+  async requestPointerLock(): Promise<void> {
+    try {
+      await this.canvas.requestPointerLock();
+    } catch {
+      // Browsers can reject immediate reacquire after an ESC unlock.
+      // The game can continue waiting for the next explicit canvas click.
+    }
+  }
+
+  releasePointerLock(): void {
+    if (document.pointerLockElement === this.canvas) {
+      void document.exitPointerLock();
+    }
   }
 
   sampleFrame(): InputFrame {
@@ -49,14 +70,13 @@ export class InputSystem {
       moveX: (this.heldKeys.has("KeyD") ? 1 : 0) - (this.heldKeys.has("KeyA") ? 1 : 0),
       moveY: (this.heldKeys.has("KeyW") ? 1 : 0) - (this.heldKeys.has("KeyS") ? 1 : 0),
       lookDeltaX: this.lookDeltaX,
-      firePressed: this.frameFirePressed,
+      fireDown: this.fireDown,
       usePressed: this.frameUsePressed,
       menuPressed: this.frameMenuPressed,
       weaponSlot: this.frameWeaponSlot
     };
 
     this.lookDeltaX = 0;
-    this.frameFirePressed = false;
     this.frameUsePressed = false;
     this.frameMenuPressed = false;
     this.frameWeaponSlot = undefined;
@@ -67,7 +87,7 @@ export class InputSystem {
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     this.heldKeys.add(event.code);
 
-    if (USE_KEYS.has(event.code)) {
+    if (event.code === "KeyE") {
       this.frameUsePressed = true;
     } else if (MENU_KEYS.has(event.code)) {
       this.frameMenuPressed = true;
@@ -92,14 +112,28 @@ export class InputSystem {
 
   private readonly onPointerDown = (event: PointerEvent): void => {
     if (event.button === 0) {
-      this.frameFirePressed = true;
+      this.fireDown = true;
     }
     if (!this.pointerLocked && event.target === this.canvas) {
       this.requestPointerLock();
     }
   };
 
+  private readonly onPointerUp = (event: PointerEvent): void => {
+    if (event.button === 0) {
+      this.fireDown = false;
+    }
+  };
+
   private readonly onPointerLockChange = (): void => {
-    this.pointerLocked = document.pointerLockElement === this.canvas;
+    const nextLocked = document.pointerLockElement === this.canvas;
+    this.pointerLockLost = this.pointerLocked && !nextLocked;
+    this.pointerLocked = nextLocked;
+  };
+
+  private readonly onBlur = (): void => {
+    this.fireDown = false;
+    this.lookDeltaX = 0;
+    this.heldKeys.clear();
   };
 }

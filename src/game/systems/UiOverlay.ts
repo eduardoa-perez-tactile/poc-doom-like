@@ -1,20 +1,27 @@
-import type { GameState, SettingsState } from "../core/types";
+import type { AppMode, HudViewModel, SettingsState } from "../core/types";
 
 export interface UiOverlayCallbacks {
+  onStartRun(): void;
   onResume(): void;
-  onSave(): void;
-  onLoad(): void;
   onRestart(): void;
+  onMainMenu(): void;
   onApplySettings(settings: SettingsState): void;
 }
 
 export class UiOverlay {
   private readonly root: HTMLDivElement;
   private readonly statusBanner: HTMLDivElement;
+  private readonly crosshair: HTMLDivElement;
+  private readonly hud: HTMLDivElement;
   private readonly hudStats: HTMLDivElement;
   private readonly hudWeapon: HTMLDivElement;
   private readonly menuBackdrop: HTMLDivElement;
+  private readonly menuTitle: HTMLHeadingElement;
   private readonly menuBody: HTMLParagraphElement;
+  private readonly startButton: HTMLButtonElement;
+  private readonly resumeButton: HTMLButtonElement;
+  private readonly restartButton: HTMLButtonElement;
+  private readonly mainMenuButton: HTMLButtonElement;
   private readonly sensitivityInput: HTMLInputElement;
   private readonly volumeInput: HTMLInputElement;
   private readonly pixelScaleInput: HTMLInputElement;
@@ -30,15 +37,15 @@ export class UiOverlay {
     this.root = document.createElement("div");
     this.root.className = "ui-root";
     this.root.innerHTML = `
-      <div class="status-banner" data-role="status-banner">Click into the viewport to bind the ritual sight.</div>
-      <div class="crosshair"></div>
-      <div class="hud">
+      <div class="status-banner" data-role="status-banner"></div>
+      <div class="crosshair" data-role="crosshair"></div>
+      <div class="hud" data-role="hud">
         <div class="panel" data-role="hud-stats"></div>
         <div class="panel" data-role="hud-weapon"></div>
       </div>
-      <div class="menu-backdrop hidden">
+      <div class="menu-backdrop" data-role="menu-backdrop">
         <div class="menu-panel">
-          <h1>Wyrmwake</h1>
+          <h1 data-role="menu-title">Wyrmwake</h1>
           <p data-role="menu-body"></p>
           <div class="menu-grid">
             <div class="menu-row">
@@ -58,10 +65,10 @@ export class UiOverlay {
             </div>
           </div>
           <div class="menu-actions">
+            <button data-action="start">Start Run</button>
             <button data-action="resume">Resume</button>
-            <button data-action="save">Save</button>
-            <button data-action="load">Load</button>
-            <button data-action="restart">Restart</button>
+            <button data-action="restart">Restart Run</button>
+            <button data-action="main-menu">Main Menu</button>
           </div>
         </div>
       </div>
@@ -69,27 +76,29 @@ export class UiOverlay {
 
     parent.appendChild(this.root);
 
-    this.statusBanner = this.requireElement<HTMLDivElement>('[data-role="status-banner"]', false);
+    this.statusBanner = this.requireElement<HTMLDivElement>('[data-role="status-banner"]');
+    this.crosshair = this.requireElement<HTMLDivElement>('[data-role="crosshair"]');
+    this.hud = this.requireElement<HTMLDivElement>('[data-role="hud"]');
     this.hudStats = this.requireElement<HTMLDivElement>('[data-role="hud-stats"]');
     this.hudWeapon = this.requireElement<HTMLDivElement>('[data-role="hud-weapon"]');
-    this.menuBackdrop = this.requireElement<HTMLDivElement>(".menu-backdrop", false);
+    this.menuBackdrop = this.requireElement<HTMLDivElement>('[data-role="menu-backdrop"]');
+    this.menuTitle = this.requireElement<HTMLHeadingElement>('[data-role="menu-title"]');
     this.menuBody = this.requireElement<HTMLParagraphElement>('[data-role="menu-body"]');
-    this.sensitivityInput = this.requireElement<HTMLInputElement>("#mouse-sensitivity", false);
-    this.volumeInput = this.requireElement<HTMLInputElement>("#master-volume", false);
-    this.pixelScaleInput = this.requireElement<HTMLInputElement>("#pixel-scale", false);
+    this.startButton = this.requireElement<HTMLButtonElement>('[data-action="start"]');
+    this.resumeButton = this.requireElement<HTMLButtonElement>('[data-action="resume"]');
+    this.restartButton = this.requireElement<HTMLButtonElement>('[data-action="restart"]');
+    this.mainMenuButton = this.requireElement<HTMLButtonElement>('[data-action="main-menu"]');
+    this.sensitivityInput = this.requireElement<HTMLInputElement>("#mouse-sensitivity");
+    this.volumeInput = this.requireElement<HTMLInputElement>("#master-volume");
+    this.pixelScaleInput = this.requireElement<HTMLInputElement>("#pixel-scale");
     this.sensitivityValue = this.requireElement<HTMLSpanElement>('[data-role="mouse-value"]');
     this.volumeValue = this.requireElement<HTMLSpanElement>('[data-role="volume-value"]');
     this.pixelScaleValue = this.requireElement<HTMLSpanElement>('[data-role="pixel-value"]');
 
-    const resumeButton = this.requireElement<HTMLButtonElement>('[data-action="resume"]');
-    const saveButton = this.requireElement<HTMLButtonElement>('[data-action="save"]');
-    const loadButton = this.requireElement<HTMLButtonElement>('[data-action="load"]');
-    const restartButton = this.requireElement<HTMLButtonElement>('[data-action="restart"]');
-
-    resumeButton.addEventListener("click", () => callbacks.onResume());
-    saveButton.addEventListener("click", () => callbacks.onSave());
-    loadButton.addEventListener("click", () => callbacks.onLoad());
-    restartButton.addEventListener("click", () => callbacks.onRestart());
+    this.startButton.addEventListener("click", () => callbacks.onStartRun());
+    this.resumeButton.addEventListener("click", () => callbacks.onResume());
+    this.restartButton.addEventListener("click", () => callbacks.onRestart());
+    this.mainMenuButton.addEventListener("click", () => callbacks.onMainMenu());
 
     const onSettingsChange = (): void => {
       const settings: SettingsState = {
@@ -107,23 +116,53 @@ export class UiOverlay {
     this.applySettings(initialSettings);
   }
 
-  updateHud(state: GameState, backend: string): void {
-    const currentMessage = state.messages[0]?.text ?? state.level.name;
-    this.statusBanner.textContent = currentMessage;
+  updateHud(viewModel: HudViewModel): void {
+    this.hud.classList.toggle("hidden", !viewModel.visible);
+    this.crosshair.classList.toggle("hidden", !viewModel.visible);
+    this.statusBanner.classList.toggle("hidden", !viewModel.visible && viewModel.message.length === 0);
+    this.statusBanner.textContent = viewModel.message;
     this.hudStats.innerHTML = `
-      <div><strong>Health</strong> ${Math.max(0, Math.ceil(state.player.health))}</div>
-      <div><strong>Shards</strong> ${state.player.ammoShards}</div>
-      <div><strong>Kills</strong> ${state.killCount}/${state.totalKills}</div>
-      <div><strong>Secrets</strong> ${state.secretsFound}/${state.totalSecrets}</div>
-      <div><strong>Backend</strong> ${backend.toUpperCase()}</div>
+      <div><strong>Health</strong> ${viewModel.health}</div>
+      <div><strong>Ammo</strong> ${viewModel.ammo}</div>
+      <div><strong>Enemies</strong> ${viewModel.enemiesRemaining}</div>
+      <div><strong>Backend</strong> ${viewModel.backend.toUpperCase()}</div>
     `;
-
     this.hudWeapon.innerHTML = `
-      <div><strong>Weapon</strong> ${titleFromId(state.weapon.currentId)}</div>
-      <div><strong>Keys</strong> ${state.player.keys.length > 0 ? state.player.keys.join(", ") : "none"}</div>
-      <div><strong>Objective</strong> ${state.levelComplete ? "exit reached" : "find the seal"}</div>
-      <div><strong>Time</strong> ${formatTime(state.elapsedTime)}</div>
+      <div><strong>Weapon</strong> ${viewModel.weaponName}</div>
+      <div><strong>Status</strong> ${viewModel.message}</div>
     `;
+  }
+
+  renderMenu(mode: AppMode, message: string): void {
+    const isMenuVisible = mode === "main_menu" || mode === "paused" || mode === "boot";
+    this.menuBackdrop.classList.toggle("hidden", !isMenuVisible);
+
+    if (!isMenuVisible) {
+      return;
+    }
+
+    if (mode === "paused") {
+      this.menuTitle.textContent = "Paused";
+      this.startButton.classList.add("hidden");
+      this.resumeButton.classList.remove("hidden");
+      this.restartButton.classList.remove("hidden");
+      this.mainMenuButton.classList.remove("hidden");
+    } else {
+      this.menuTitle.textContent = "Wyrmwake";
+      this.startButton.classList.remove("hidden");
+      this.resumeButton.classList.add("hidden");
+      this.restartButton.classList.add("hidden");
+      this.mainMenuButton.classList.add("hidden");
+    }
+
+    if (mode === "boot") {
+      this.menuTitle.textContent = "Loading";
+      this.startButton.disabled = true;
+    } else {
+      this.startButton.disabled = false;
+    }
+
+    this.menuBody.textContent = message;
   }
 
   applySettings(settings: SettingsState): void {
@@ -133,38 +172,17 @@ export class UiOverlay {
     this.setSettingsValues(settings);
   }
 
-  setMenuState(open: boolean, canLoad: boolean, text: string): void {
-    this.menuBackdrop.classList.toggle("hidden", !open);
-    this.menuBody.textContent = text;
-    const loadButton = this.requireElement<HTMLButtonElement>('[data-action="load"]');
-    loadButton.disabled = !canLoad;
-  }
-
   private setSettingsValues(settings: SettingsState): void {
     this.sensitivityValue.textContent = settings.mouseSensitivity.toFixed(4);
     this.volumeValue.textContent = `${Math.round(settings.masterVolume * 100)}%`;
     this.pixelScaleValue.textContent = `${settings.pixelScale.toFixed(0)}x`;
   }
 
-  private requireElement<T extends HTMLElement>(selector: string, scoped = true): T {
-    const root = scoped ? this.root : document;
-    const element = root.querySelector<T>(selector);
+  private requireElement<T extends HTMLElement>(selector: string): T {
+    const element = this.root.querySelector<T>(selector);
     if (!element) {
       throw new Error(`Missing UI element: ${selector}`);
     }
     return element;
   }
-}
-
-function formatTime(elapsed: number): string {
-  const minutes = Math.floor(elapsed / 60);
-  const seconds = Math.floor(elapsed % 60);
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
-function titleFromId(id: string): string {
-  return id
-    .split("_")
-    .map((part) => part[0].toUpperCase() + part.slice(1))
-    .join(" ");
 }

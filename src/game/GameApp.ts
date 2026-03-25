@@ -1,30 +1,31 @@
 import { createContentDb } from "./content/ContentDb";
 import { FixedStepLoop } from "./core/FixedStepLoop";
 import { createBabylonEngine } from "./core/EngineBootstrap";
-import type { SettingsState } from "./core/types";
+import type { AppMode, HudViewModel, SettingsState } from "./core/types";
 import { RetroRenderer } from "./render/RetroRenderer";
-import { GameSimulation } from "./simulation/GameSimulation";
+import { GameSession } from "./simulation/GameSession";
 import { AudioSystem } from "./systems/AudioSystem";
-import { InputSystem } from "./systems/InputSystem";
-import { SaveStore } from "./systems/SaveStore";
+import { InputSystem, type InputFrame } from "./systems/InputSystem";
 import { SettingsStore } from "./systems/SettingsStore";
 import { UiOverlay } from "./systems/UiOverlay";
+
+const DEATH_TO_MENU_DELAY = 0.75;
 
 export class GameApp {
   private readonly shell: HTMLDivElement;
   private readonly canvas: HTMLCanvasElement;
   private readonly settingsStore = new SettingsStore();
-  private readonly saveStore = new SaveStore();
   private readonly audio = new AudioSystem();
   private readonly content = createContentDb();
-  private readonly simulation = new GameSimulation(this.content);
   private readonly settings: SettingsState;
   private readonly input: InputSystem;
   private readonly ui: UiOverlay;
   private loop: FixedStepLoop | null = null;
   private renderer: RetroRenderer | null = null;
   private backend: "webgpu" | "webgl" = "webgl";
-  private menuOpen = true;
+  private appMode: AppMode = "boot";
+  private session: GameSession | null = null;
+  private deathTimer = 0;
 
   constructor(parent: HTMLElement) {
     this.settings = this.settingsStore.load();
@@ -37,10 +38,16 @@ export class GameApp {
 
     this.input = new InputSystem(this.canvas);
     this.ui = new UiOverlay(this.shell, this.settings, {
-      onResume: () => this.closeMenuAndLock(),
-      onSave: () => this.saveGame(),
-      onLoad: () => this.loadGame(),
-      onRestart: () => this.restartGame(),
+      onStartRun: () => {
+        void this.startRun();
+      },
+      onResume: () => {
+        void this.resumeGame();
+      },
+      onRestart: () => {
+        void this.restartRun();
+      },
+      onMainMenu: () => this.returnToMainMenu(),
       onApplySettings: (settings) => this.applySettings(settings)
     });
 
@@ -52,16 +59,8 @@ export class GameApp {
     this.backend = bootstrap.backend;
     this.renderer = new RetroRenderer(bootstrap.engine, this.content);
     this.renderer.setPixelScale(this.settings.pixelScale);
-    this.renderer.sync(this.simulation.state);
-
-    this.ui.setMenuState(
-      true,
-      this.saveStore.hasSave(),
-      "A one-level vertical slice is live: recover the ember seal, unlock the vault gate, raid the secret ossuary, and reach the exit."
-    );
-    this.ui.updateHud(this.simulation.state, this.backend);
     this.audio.setMasterVolume(this.settings.masterVolume);
-
+    this.setMode("main_menu");
     this.loop = new FixedStepLoop({
       update: (dt) => this.update(dt),
       render: () => this.render()
@@ -75,62 +74,135 @@ export class GameApp {
     }
 
     const input = this.input.sampleFrame();
-    if (input.menuPressed || (!this.input.isPointerLocked() && !this.menuOpen)) {
-      this.toggleMenu();
-    }
-
     input.lookDeltaX *= this.settings.mouseSensitivity / 0.0022;
 
-    if (!this.menuOpen) {
-      const events = this.simulation.update(dt, input);
-      if (events.shot) {
-        this.audio.playShot(events.shot.kind);
-      }
-      if (events.pickup) {
-        this.audio.playPickup();
-      }
-      if (events.damageTaken) {
-        this.audio.playDamage();
-      }
-      if (events.doorOpened) {
-        this.audio.playDoor();
-      }
-      if (events.secretOpened) {
-        this.audio.playSecret();
-      }
+    switch (this.appMode) {
+      case "main_menu":
+        this.ui.updateHud(this.createEmptyHud());
+        break;
+      case "starting_run":
+        break;
+      case "in_game":
+        this.updateInGame(dt, input);
+        break;
+      case "paused":
+        this.updatePaused(input);
+        break;
+      case "death_transition":
+        this.updateDeathTransition(dt);
+        break;
+      case "boot":
+        break;
+    }
+  }
+
+  private updateInGame(dt: number, input: InputFrame): void {
+    if (!this.session || !this.renderer) {
+      return;
     }
 
-    this.renderer.sync(this.simulation.state);
-    this.ui.updateHud(this.simulation.state, this.backend);
+    if (input.menuPressed || this.input.consumePointerLockLost()) {
+      this.pauseGame();
+      return;
+    }
+
+    const canControl = this.input.isPointerLocked();
+    const simInput = canControl ? input : createNeutralInput();
+    const events = this.session.update(dt, simInput);
+    this.renderer.sync(this.session.state, dt);
+    this.ui.updateHud(
+      this.createHudViewModel(
+        canControl ? undefined : "Click the viewport to capture the mouse."
+      )
+    );
+
+    if (events.shot) {
+      this.audio.playShot(events.shot.kind);
+    }
+    if (events.pickup) {
+      this.audio.playPickup();
+    }
+    if (events.damageTaken) {
+      this.audio.playDamage();
+    }
+    if (events.enemyAttack) {
+      this.audio.playEnemyAttack();
+    }
+    if (events.playerDied) {
+      this.audio.playDeath();
+      this.deathTimer = DEATH_TO_MENU_DELAY;
+      this.input.releasePointerLock();
+      this.setMode("death_transition");
+    }
+  }
+
+  private updatePaused(input: InputFrame): void {
+    if (input.menuPressed) {
+      void this.resumeGame();
+    }
+    this.ui.updateHud(this.createEmptyHud());
+  }
+
+  private updateDeathTransition(dt: number): void {
+    if (this.session && this.renderer) {
+      this.renderer.sync(this.session.state, dt);
+      this.ui.updateHud(this.createHudViewModel("You have fallen."));
+    }
+
+    this.deathTimer -= dt;
+    if (this.deathTimer <= 0) {
+      this.returnToMainMenu();
+      this.session = null;
+      this.renderer?.setAttractCamera();
+    }
   }
 
   private render(): void {
     this.renderer?.render();
   }
 
-  private saveGame(): void {
-    this.saveStore.save(this.simulation.createSaveState());
-    this.ui.setMenuState(true, true, "Game saved to the local browser slot.");
+  private async startRun(): Promise<void> {
+    this.session = new GameSession(this.content);
+    this.deathTimer = 0;
+    if (this.renderer) {
+      this.renderer.sync(this.session.state, 1 / 60);
+    }
+    this.setMode("starting_run");
+    await this.audio.unlock();
+    this.setMode("in_game");
   }
 
-  private loadGame(): void {
-    const save = this.saveStore.load();
-    if (!save) {
-      this.ui.setMenuState(true, false, "No local save exists yet.");
+  private async restartRun(): Promise<void> {
+    this.session = new GameSession(this.content);
+    this.deathTimer = 0;
+    if (this.renderer) {
+      this.renderer.sync(this.session.state, 1 / 60);
+    }
+    await this.audio.unlock();
+    this.setMode("in_game");
+  }
+
+  private async resumeGame(): Promise<void> {
+    if (!this.session) {
       return;
     }
 
-    this.simulation.applySavedState(save.state);
-    this.renderer?.sync(this.simulation.state);
-    this.ui.updateHud(this.simulation.state, this.backend);
-    this.ui.setMenuState(true, true, "Save loaded.");
+    await this.audio.unlock();
+    this.setMode("in_game");
   }
 
-  private restartGame(): void {
-    this.simulation.restart();
-    this.renderer?.sync(this.simulation.state);
-    this.ui.updateHud(this.simulation.state, this.backend);
-    this.ui.setMenuState(true, this.saveStore.hasSave(), "The catacomb has been reset.");
+  private pauseGame(): void {
+    if (this.appMode !== "in_game") {
+      return;
+    }
+    this.input.releasePointerLock();
+    this.setMode("paused");
+  }
+
+  private returnToMainMenu(): void {
+    this.input.releasePointerLock();
+    this.setMode("main_menu");
+    this.ui.updateHud(this.createEmptyHud());
   }
 
   private applySettings(settings: SettingsState): void {
@@ -142,34 +214,74 @@ export class GameApp {
     this.renderer?.setPixelScale(this.settings.pixelScale);
   }
 
-  private toggleMenu(): void {
-    if (this.menuOpen) {
-      this.closeMenuAndLock();
-    } else {
-      this.openMenu();
+  private setMode(mode: AppMode): void {
+    this.appMode = mode;
+    this.ui.applySettings(this.settings);
+    this.ui.renderMenu(mode, this.menuMessageForMode(mode));
+    if (mode === "main_menu") {
+      this.ui.updateHud(this.createEmptyHud());
+    } else if ((mode === "in_game" || mode === "death_transition") && this.session) {
+      this.ui.updateHud(this.createHudViewModel());
     }
   }
 
-  private async closeMenuAndLock(): Promise<void> {
-    this.menuOpen = false;
-    this.ui.setMenuState(false, this.saveStore.hasSave(), "");
-    await this.audio.unlock();
-    this.input.requestPointerLock();
+  private menuMessageForMode(mode: AppMode): string {
+    switch (mode) {
+      case "boot":
+        return "Preparing the catacomb.";
+      case "main_menu":
+        return "Enter a single-level prototype: move fast, manage ammo, and survive the grave thralls.";
+      case "paused":
+        return "Resume the run, restart it, or retreat to the main menu. Options stay live here.";
+      default:
+        return "";
+    }
   }
 
-  private openMenu(): void {
-    this.menuOpen = true;
-    this.ui.applySettings(this.settings);
-    this.ui.setMenuState(
-      true,
-      this.saveStore.hasSave(),
-      this.simulation.state.player.alive
-        ? "Resume the run, save progress, or adjust sensitivity, volume, and pixel scale."
-        : "You fell in the catacomb. Restart or load the last save."
-    );
+  private createHudViewModel(messageOverride?: string): HudViewModel {
+    if (!this.session) {
+      return this.createEmptyHud();
+    }
+
+    const state = this.session.state;
+    const weapon = this.content.weapons.get(state.weapon.currentId);
+    const enemiesRemaining = state.enemies.filter((enemy) => enemy.fsmState !== "dead").length;
+
+    return {
+      visible: this.appMode === "in_game" || this.appMode === "death_transition",
+      health: Math.ceil(state.player.health),
+      ammo: state.player.ammo,
+      weaponName: weapon?.name ?? state.weapon.currentId,
+      enemiesRemaining,
+      message: messageOverride ?? state.messages[0]?.text ?? state.level.name,
+      backend: this.backend
+    };
+  }
+
+  private createEmptyHud(): HudViewModel {
+    return {
+      visible: false,
+      health: 0,
+      ammo: 0,
+      weaponName: "",
+      enemiesRemaining: 0,
+      message: "",
+      backend: this.backend
+    };
   }
 
   private readonly onResize = (): void => {
     this.renderer?.resize();
+  };
+}
+
+function createNeutralInput(): InputFrame {
+  return {
+    moveX: 0,
+    moveY: 0,
+    lookDeltaX: 0,
+    fireDown: false,
+    usePressed: false,
+    menuPressed: false
   };
 }

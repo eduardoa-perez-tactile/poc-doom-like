@@ -1,20 +1,24 @@
-import type { ContentDatabase, DoorSpawn, PickupSpawn } from "../content/types";
+import type { ContentDatabase, EnemySpawn, PickupSpawn } from "../content/types";
 import { clamp, distance2, length2, normalizeAngle } from "../core/math";
 import type {
-  DoorState,
+  EnemyFsmState,
   EnemyState,
-  ExitState,
-  GameState,
+  GameSessionState,
   LevelState,
   PickupState,
-  PlayerState
+  PlayerState,
+  ProjectileState
 } from "../core/types";
 import type { InputFrame } from "../systems/InputSystem";
 
+const ALERT_TIME = 0.12;
+const ATTACK_RESOLVE_TIME = 0.1;
+const WEAPON_ATTACK_ANIM_TIME = 0.14;
+
 export class GameSimulation {
-  private readonly initialState: GameState;
+  private readonly initialState: GameSessionState;
   private projectileId = 1;
-  state: GameState;
+  state: GameSessionState;
 
   constructor(private readonly content: ContentDatabase) {
     this.initialState = this.buildInitialState();
@@ -24,15 +28,13 @@ export class GameSimulation {
   restart(): void {
     this.projectileId = 1;
     this.state = structuredClone(this.initialState);
-    this.pushMessage("The catacomb reforms around you.", 3);
   }
 
-  applySavedState(state: GameState): void {
+  applySavedState(state: GameSessionState): void {
     this.state = structuredClone(state);
-    this.pushMessage("Save restored.", 2);
   }
 
-  createSaveState(): GameState {
+  createSaveState(): GameSessionState {
     return structuredClone(this.state);
   }
 
@@ -41,46 +43,47 @@ export class GameSimulation {
       shot: null,
       pickup: false,
       damageTaken: false,
-      doorOpened: false,
-      secretOpened: false
+      enemyAttack: false,
+      playerDied: false
     };
 
     this.updateMessages(dt);
+    this.updateWeaponView(dt);
+
+    if (!this.state.player.alive) {
+      this.updateDeadEnemies(dt);
+      return events;
+    }
 
     if (input.weaponSlot !== undefined) {
       this.trySwitchWeapon(input.weaponSlot);
-    }
-
-    if (this.state.levelComplete || !this.state.player.alive) {
-      return events;
     }
 
     this.state.elapsedTime += dt;
     this.state.player.angle = normalizeAngle(
       this.state.player.angle - input.lookDeltaX * 0.0022 * 60 * dt
     );
+
     this.updatePlayerMovement(dt, input);
     this.updateWeaponCooldown(dt);
 
-    if (input.usePressed) {
-      const interactionResult = this.useInFront();
-      events.doorOpened = interactionResult.doorOpened;
-      events.secretOpened = interactionResult.secretOpened;
-    }
-
-    if (input.firePressed) {
+    if (input.fireDown) {
       events.shot = this.fireCurrentWeapon();
     }
 
     this.updateEnemies(dt, events);
-    this.updateProjectiles(dt, events);
+    this.updateProjectiles(dt);
     this.collectPickups(events);
-    this.checkExitReached();
+    this.updateDeadEnemies(dt);
+
+    if (!this.state.player.alive) {
+      events.playerDied = true;
+    }
 
     return events;
   }
 
-  private buildInitialState(): GameState {
+  private buildInitialState(): GameSessionState {
     const levelDef = this.content.level;
     const level: LevelState = {
       id: levelDef.id,
@@ -88,10 +91,7 @@ export class GameSimulation {
       cellSize: levelDef.cellSize,
       grid: levelDef.grid,
       width: levelDef.grid[0]?.length ?? 0,
-      height: levelDef.grid.length,
-      doors: levelDef.doors.map((door) => createDoorState(door)),
-      exits: levelDef.exits.map((exit): ExitState => ({ ...exit })),
-      secretsTotal: levelDef.doors.filter((door) => door.secret).length
+      height: levelDef.grid.length
     };
 
     const playerStart = this.cellCenter(levelDef.playerStart.x, levelDef.playerStart.y);
@@ -104,55 +104,69 @@ export class GameSimulation {
       radius: 0.28 * level.cellSize,
       moveSpeed: 5.8,
       bobPhase: 0,
-      keys: [],
-      ammoShards: 0,
+      ammo: 30,
       alive: true
     };
 
-    const enemies: EnemyState[] = levelDef.enemies.map((spawn) => {
-      const definition = this.content.enemies.get(spawn.type);
-      if (!definition) {
-        throw new Error(`Unknown enemy type: ${spawn.type}`);
-      }
-      const position = this.cellCenter(spawn.x, spawn.y);
-      return {
-        id: spawn.id,
-        typeId: spawn.type,
-        x: position.x,
-        y: position.y,
-        angle: ((spawn.facingDeg ?? 0) * Math.PI) / 180,
-        health: definition.health,
-        alive: true,
-        cooldownRemaining: 0,
-        wakeTime: 0
-      };
-    });
-
-    const pickups = levelDef.pickups.map((spawn) => createPickupState(spawn, this.cellCenter(spawn.x, spawn.y)));
+    const enemies = levelDef.enemies.map((spawn) => this.createEnemyState(spawn));
+    const pickups = levelDef.pickups.map((spawn) =>
+      this.createPickupState(spawn, this.cellCenter(spawn.x, spawn.y))
+    );
 
     return {
       level,
       player,
       weapon: {
-        currentId: "ember_wand",
-        unlocked: ["ember_wand"],
-        cooldownRemaining: 0
+        currentId: "shard_caster",
+        unlocked: ["ember_wand", "shard_caster"],
+        cooldownRemaining: 0,
+        viewAnimation: "idle",
+        viewAnimationTime: 0
       },
       enemies,
       projectiles: [],
       pickups,
-      messages: [
-        {
-          text: levelDef.briefing,
-          ttl: 6
-        }
-      ],
-      levelComplete: false,
+      messages: [{ text: levelDef.briefing, ttl: 6 }],
+      elapsedTime: 0,
       killCount: 0,
-      totalKills: enemies.length,
-      secretsFound: 0,
-      totalSecrets: level.secretsTotal,
-      elapsedTime: 0
+      totalKills: enemies.length
+    };
+  }
+
+  private createEnemyState(spawn: EnemySpawn): EnemyState {
+    const definition = this.requireEnemyDefinition(spawn.type);
+    const position = this.cellCenter(spawn.x, spawn.y);
+    return {
+      id: spawn.id,
+      typeId: spawn.type,
+      x: position.x,
+      y: position.y,
+      spawnX: position.x,
+      spawnY: position.y,
+      health: definition.health,
+      alive: true,
+      fsmState: "idle",
+      stateTime: 0,
+      lastKnownPlayerX: position.x,
+      lastKnownPlayerY: position.y,
+      hasLineOfSight: false,
+      facingAngle: ((spawn.facingDeg ?? 180) * Math.PI) / 180,
+      memoryTime: 0,
+      attackApplied: false
+    };
+  }
+
+  private createPickupState(
+    spawn: PickupSpawn,
+    position: { x: number; y: number }
+  ): PickupState {
+    return {
+      id: spawn.id,
+      kind: spawn.kind,
+      x: position.x,
+      y: position.y,
+      amount: spawn.amount,
+      collected: false
     };
   }
 
@@ -165,8 +179,16 @@ export class GameSimulation {
     }
   }
 
+  private updateWeaponView(dt: number): void {
+    const weapon = this.state.weapon;
+    weapon.viewAnimationTime += dt;
+    if (weapon.viewAnimation === "attack" && weapon.viewAnimationTime >= WEAPON_ATTACK_ANIM_TIME) {
+      weapon.viewAnimation = "idle";
+      weapon.viewAnimationTime = 0;
+    }
+  }
+
   private updatePlayerMovement(dt: number, input: InputFrame): void {
-    const settingsSpeed = 1;
     const forwardX = Math.cos(this.state.player.angle);
     const forwardY = Math.sin(this.state.player.angle);
     const rightX = -forwardY;
@@ -179,14 +201,14 @@ export class GameSimulation {
       return;
     }
 
-    const velocity = (this.state.player.moveSpeed * settingsSpeed) / length;
+    const velocity = this.state.player.moveSpeed / length;
     const nextX = this.state.player.x + rawX * velocity * dt;
     const nextY = this.state.player.y + rawY * velocity * dt;
     const radius = this.state.player.radius;
-    const separated = this.resolveMotion(this.state.player.x, this.state.player.y, nextX, nextY, radius);
-    this.state.player.x = separated.x;
-    this.state.player.y = separated.y;
-    this.state.player.bobPhase += dt * 9;
+    const resolved = this.resolveMotion(this.state.player.x, this.state.player.y, nextX, nextY, radius);
+    this.state.player.x = resolved.x;
+    this.state.player.y = resolved.y;
+    this.state.player.bobPhase += dt * 10;
   }
 
   private updateWeaponCooldown(dt: number): void {
@@ -198,9 +220,10 @@ export class GameSimulation {
     if (!definition || !this.state.weapon.unlocked.includes(definition.id)) {
       return;
     }
-
-    this.state.weapon.currentId = definition.id;
-    this.pushMessage(`${definition.name} ready.`, 1.5);
+    if (this.state.weapon.currentId !== definition.id) {
+      this.state.weapon.currentId = definition.id;
+      this.pushMessage(`${definition.name} readied.`, 1.2);
+    }
   }
 
   private fireCurrentWeapon(): ShotEvent | null {
@@ -208,49 +231,47 @@ export class GameSimulation {
       return null;
     }
 
-    const weapon = this.content.weapons.get(this.state.weapon.currentId);
-    if (!weapon) {
-      return null;
-    }
-
-    if (weapon.ammoType === "shards" && this.state.player.ammoShards < weapon.ammoPerShot) {
-      this.pushMessage("Shard Caster is dry.", 1.2);
+    const weapon = this.requireWeaponDefinition(this.state.weapon.currentId);
+    if (weapon.ammoType === "bullets" && this.state.player.ammo < weapon.ammoPerShot) {
+      this.pushMessage("Out of ammo.", 0.7);
+      this.trySwitchWeapon(1);
       return null;
     }
 
     this.state.weapon.cooldownRemaining = weapon.cooldown;
-    if (weapon.ammoType === "shards") {
-      this.state.player.ammoShards -= weapon.ammoPerShot;
+    this.state.weapon.viewAnimation = "attack";
+    this.state.weapon.viewAnimationTime = 0;
+
+    if (weapon.ammoType === "bullets") {
+      this.state.player.ammo -= weapon.ammoPerShot;
     }
 
     if (weapon.fireMode === "hitscan") {
-      const didHit = this.fireHitscan(weapon.range, weapon.damage);
-      if (didHit) {
-        this.pushMessage("Ember bolt burns true.", 0.7);
-      }
+      this.fireHitscan(weapon.range, weapon.damage);
       return { kind: "ember" };
     }
 
     const dx = Math.cos(this.state.player.angle);
     const dy = Math.sin(this.state.player.angle);
-    this.state.projectiles.push({
+    const projectile: ProjectileState = {
       id: this.projectileId++,
       source: "player",
       ownerId: "player",
-      x: this.state.player.x + dx * 0.55,
-      y: this.state.player.y + dy * 0.55,
+      weaponId: weapon.id,
+      x: this.state.player.x + dx * 0.58,
+      y: this.state.player.y + dy * 0.58,
       dx,
       dy,
       speed: weapon.projectileSpeed,
       radius: 0.16,
       damage: weapon.damage,
-      ttl: weapon.projectileLife,
-      color: "#9ddaff"
-    });
+      ttl: weapon.projectileLife
+    };
+    this.state.projectiles.push(projectile);
     return { kind: "shard" };
   }
 
-  private fireHitscan(range: number, damage: number): boolean {
+  private fireHitscan(range: number, damage: number): void {
     const step = 0.18;
     const dx = Math.cos(this.state.player.angle);
     const dy = Math.sin(this.state.player.angle);
@@ -258,98 +279,144 @@ export class GameSimulation {
       const sampleX = this.state.player.x + dx * distance;
       const sampleY = this.state.player.y + dy * distance;
       if (this.isWallAtWorld(sampleX, sampleY)) {
-        return false;
+        return;
       }
 
       for (const enemy of this.state.enemies) {
-        if (!enemy.alive) {
+        if (enemy.fsmState === "dead") {
           continue;
         }
-        const definition = this.content.enemies.get(enemy.typeId);
-        if (!definition) {
-          continue;
-        }
+
+        const definition = this.requireEnemyDefinition(enemy.typeId);
         if (distance2(sampleX, sampleY, enemy.x, enemy.y) <= definition.radius) {
           this.damageEnemy(enemy, damage);
-          return true;
+          return;
         }
       }
     }
-    return false;
   }
 
   private updateEnemies(dt: number, events: SimulationEvents): void {
     for (const enemy of this.state.enemies) {
-      if (!enemy.alive) {
+      const definition = this.requireEnemyDefinition(enemy.typeId);
+
+      if (enemy.fsmState === "dead") {
+        enemy.stateTime += dt;
         continue;
       }
 
-      const definition = this.content.enemies.get(enemy.typeId);
-      if (!definition) {
-        continue;
-      }
+      enemy.stateTime += dt;
 
-      enemy.cooldownRemaining = Math.max(0, enemy.cooldownRemaining - dt);
-      enemy.wakeTime = Math.max(0, enemy.wakeTime - dt);
-
-      const dx = this.state.player.x - enemy.x;
-      const dy = this.state.player.y - enemy.y;
-      const distance = Math.hypot(dx, dy);
-      const hasLos = distance < definition.aggroRange && this.hasLineOfSight(enemy.x, enemy.y, this.state.player.x, this.state.player.y);
+      const toPlayerX = this.state.player.x - enemy.x;
+      const toPlayerY = this.state.player.y - enemy.y;
+      const distanceToPlayer = Math.hypot(toPlayerX, toPlayerY);
+      const hasLos =
+        distanceToPlayer <= definition.aggroRange &&
+        this.hasLineOfSight(enemy.x, enemy.y, this.state.player.x, this.state.player.y);
+      enemy.hasLineOfSight = hasLos;
 
       if (hasLos) {
-        enemy.wakeTime = 2.5;
+        enemy.lastKnownPlayerX = this.state.player.x;
+        enemy.lastKnownPlayerY = this.state.player.y;
+        enemy.memoryTime = definition.loseSightGrace;
+      } else {
+        enemy.memoryTime = Math.max(0, enemy.memoryTime - dt);
       }
 
-      if (enemy.wakeTime <= 0) {
-        continue;
+      if (distanceToPlayer > 0.001) {
+        enemy.facingAngle = Math.atan2(toPlayerY, toPlayerX);
       }
 
-      enemy.angle = Math.atan2(dy, dx);
+      switch (enemy.fsmState) {
+        case "idle":
+          if (hasLos) {
+            this.transitionEnemy(enemy, "alert");
+          }
+          break;
+        case "alert":
+          if (enemy.stateTime >= ALERT_TIME) {
+            this.transitionEnemy(enemy, "chase");
+          }
+          break;
+        case "chase":
+          if (hasLos && distanceToPlayer <= definition.meleeRange) {
+            this.transitionEnemy(enemy, "windup");
+            break;
+          }
 
-      if (definition.attackType === "melee" && distance <= definition.attackRange && enemy.cooldownRemaining <= 0) {
-        enemy.cooldownRemaining = definition.attackCooldown;
-        this.damagePlayer(definition.attackDamage, events);
-        continue;
-      }
+          if (hasLos || enemy.memoryTime > 0) {
+            this.moveEnemyToward(enemy, enemy.lastKnownPlayerX, enemy.lastKnownPlayerY, definition.moveSpeed, dt);
+          } else if (distance2(enemy.x, enemy.y, enemy.spawnX, enemy.spawnY) > 0.2) {
+            this.moveEnemyToward(enemy, enemy.spawnX, enemy.spawnY, definition.moveSpeed * 0.8, dt);
+          } else {
+            this.transitionEnemy(enemy, "idle");
+          }
+          break;
+        case "windup":
+          if (enemy.stateTime >= definition.windupTime) {
+            this.transitionEnemy(enemy, "attack");
+          }
+          break;
+        case "attack":
+          if (!enemy.attackApplied) {
+            enemy.attackApplied = true;
+            if (hasLos && distanceToPlayer <= definition.meleeRange) {
+              this.damagePlayer(definition.attackDamage, events);
+              events.enemyAttack = true;
+            }
+          }
 
-      if (
-        definition.attackType === "projectile" &&
-        distance <= definition.attackRange &&
-        hasLos &&
-        enemy.cooldownRemaining <= 0
-      ) {
-        enemy.cooldownRemaining = definition.attackCooldown;
-        const norm = distance > 0.0001 ? 1 / distance : 0;
-        this.state.projectiles.push({
-          id: this.projectileId++,
-          source: "enemy",
-          ownerId: enemy.id,
-          x: enemy.x + dx * norm * 0.5,
-          y: enemy.y + dy * norm * 0.5,
-          dx: dx * norm,
-          dy: dy * norm,
-          speed: definition.projectileSpeed,
-          radius: 0.14,
-          damage: definition.attackDamage,
-          ttl: 2.6,
-          color: enemy.typeId === "cinder_acolyte" ? "#ff8b57" : "#dadf8d"
-        });
-        continue;
-      }
-
-      const stopDistance = definition.attackType === "melee" ? definition.attackRange * 0.8 : definition.attackRange * 0.6;
-      if (distance > stopDistance) {
-        const stepX = (dx / Math.max(distance, 0.0001)) * definition.moveSpeed * dt;
-        const stepY = (dy / Math.max(distance, 0.0001)) * definition.moveSpeed * dt;
-        const next = this.resolveMotion(enemy.x, enemy.y, enemy.x + stepX, enemy.y + stepY, definition.radius * 0.75);
-        enemy.x = next.x;
-        enemy.y = next.y;
+          if (enemy.stateTime >= ATTACK_RESOLVE_TIME) {
+            this.transitionEnemy(enemy, "cooldown");
+          }
+          break;
+        case "cooldown":
+          if (enemy.stateTime >= definition.cooldownTime) {
+            if (hasLos || enemy.memoryTime > 0) {
+              this.transitionEnemy(enemy, "chase");
+            } else {
+              this.transitionEnemy(enemy, "idle");
+            }
+          }
+          break;
+        case "hurt":
+          if (enemy.stateTime >= definition.hurtTime) {
+            if (enemy.health <= 0) {
+              this.transitionEnemy(enemy, "dead");
+            } else if (hasLos || enemy.memoryTime > 0) {
+              this.transitionEnemy(enemy, "chase");
+            } else {
+              this.transitionEnemy(enemy, "idle");
+            }
+          }
+          break;
       }
     }
   }
 
-  private updateProjectiles(dt: number, events: SimulationEvents): void {
+  private moveEnemyToward(
+    enemy: EnemyState,
+    targetX: number,
+    targetY: number,
+    speed: number,
+    dt: number
+  ): void {
+    const dx = targetX - enemy.x;
+    const dy = targetY - enemy.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance < 0.001) {
+      return;
+    }
+    enemy.facingAngle = Math.atan2(dy, dx);
+    const stepX = (dx / distance) * speed * dt;
+    const stepY = (dy / distance) * speed * dt;
+    const radius = this.requireEnemyDefinition(enemy.typeId).radius * 0.8;
+    const resolved = this.resolveMotion(enemy.x, enemy.y, enemy.x + stepX, enemy.y + stepY, radius);
+    enemy.x = resolved.x;
+    enemy.y = resolved.y;
+  }
+
+  private updateProjectiles(dt: number): void {
     for (let index = this.state.projectiles.length - 1; index >= 0; index -= 1) {
       const projectile = this.state.projectiles[index];
       projectile.ttl -= dt;
@@ -368,32 +435,16 @@ export class GameSimulation {
       projectile.x = nextX;
       projectile.y = nextY;
 
-      if (projectile.source === "player") {
-        let hit = false;
-        for (const enemy of this.state.enemies) {
-          if (!enemy.alive) {
-            continue;
-          }
-          const definition = this.content.enemies.get(enemy.typeId);
-          if (!definition) {
-            continue;
-          }
-          if (distance2(projectile.x, projectile.y, enemy.x, enemy.y) <= definition.radius + projectile.radius) {
-            this.damageEnemy(enemy, projectile.damage);
-            hit = true;
-            break;
-          }
+      for (const enemy of this.state.enemies) {
+        if (enemy.fsmState === "dead") {
+          continue;
         }
-
-        if (hit) {
+        const definition = this.requireEnemyDefinition(enemy.typeId);
+        if (distance2(projectile.x, projectile.y, enemy.x, enemy.y) <= definition.radius + projectile.radius) {
+          this.damageEnemy(enemy, projectile.damage);
           this.state.projectiles.splice(index, 1);
+          break;
         }
-      } else if (
-        distance2(projectile.x, projectile.y, this.state.player.x, this.state.player.y) <=
-        this.state.player.radius + projectile.radius
-      ) {
-        this.damagePlayer(projectile.damage, events);
-        this.state.projectiles.splice(index, 1);
       }
     }
   }
@@ -411,92 +462,73 @@ export class GameSimulation {
       pickup.collected = true;
       events.pickup = true;
 
-      switch (pickup.kind) {
-        case "health":
-          this.state.player.health = clamp(
-            this.state.player.health + pickup.amount,
-            0,
-            this.state.player.maxHealth
-          );
-          this.pushMessage(`Recovered ${pickup.amount} health.`, 1.5);
-          break;
-        case "ammo":
-          this.state.player.ammoShards += pickup.amount;
-          this.pushMessage(`Recovered ${pickup.amount} shards.`, 1.5);
-          break;
-        case "key":
-          if (pickup.keyId && !this.state.player.keys.includes(pickup.keyId)) {
-            this.state.player.keys.push(pickup.keyId);
-            this.pushMessage("Ember seal claimed.", 2);
-          }
-          break;
-        case "weapon":
-          if (pickup.weaponId && !this.state.weapon.unlocked.includes(pickup.weaponId)) {
-            this.state.weapon.unlocked.push(pickup.weaponId);
-            this.state.weapon.currentId = pickup.weaponId;
-            this.state.player.ammoShards += 6;
-            this.pushMessage("Shard Caster unearthed.", 2);
-          }
-          break;
+      if (pickup.kind === "health") {
+        this.state.player.health = clamp(
+          this.state.player.health + pickup.amount,
+          0,
+          this.state.player.maxHealth
+        );
+        this.pushMessage(`Recovered ${pickup.amount} health.`, 1.2);
+      } else if (pickup.kind === "ammo") {
+        this.state.player.ammo += pickup.amount;
+        this.pushMessage(`Recovered ${pickup.amount} ammo.`, 1.2);
       }
     }
   }
 
-  private checkExitReached(): void {
-    for (const exit of this.state.level.exits) {
-      const center = this.cellCenter(exit.x, exit.y);
-      if (distance2(this.state.player.x, this.state.player.y, center.x, center.y) <= 0.9) {
-        this.state.levelComplete = true;
-        this.pushMessage("Relic secured. Vertical slice complete.", 12);
-        return;
+  private updateDeadEnemies(dt: number): void {
+    for (const enemy of this.state.enemies) {
+      if (enemy.fsmState === "dead") {
+        enemy.stateTime += dt;
       }
     }
-  }
-
-  private useInFront(): { doorOpened: boolean; secretOpened: boolean } {
-    const useDistance = this.state.level.cellSize * 0.6;
-    const sampleX = this.state.player.x + Math.cos(this.state.player.angle) * useDistance;
-    const sampleY = this.state.player.y + Math.sin(this.state.player.angle) * useDistance;
-    const cell = this.worldToCell(sampleX, sampleY);
-    const door = this.state.level.doors.find((entry) => entry.x === cell.x && entry.y === cell.y && !entry.open);
-
-    if (!door) {
-      return { doorOpened: false, secretOpened: false };
-    }
-
-    if (door.keyId && !this.state.player.keys.includes(door.keyId)) {
-      this.pushMessage("The ember seal is required.", 1.5);
-      return { doorOpened: false, secretOpened: false };
-    }
-
-    door.open = true;
-    if (door.secret) {
-      this.state.secretsFound += 1;
-      this.pushMessage("A hidden ossuary opens.", 2.2);
-      return { doorOpened: true, secretOpened: true };
-    }
-
-    this.pushMessage("The gate grinds open.", 1.5);
-    return { doorOpened: true, secretOpened: false };
   }
 
   private damageEnemy(enemy: EnemyState, damage: number): void {
+    if (enemy.fsmState === "dead") {
+      return;
+    }
+
     enemy.health -= damage;
-    enemy.wakeTime = 3;
-    if (enemy.health <= 0 && enemy.alive) {
+    enemy.lastKnownPlayerX = this.state.player.x;
+    enemy.lastKnownPlayerY = this.state.player.y;
+    enemy.memoryTime = this.requireEnemyDefinition(enemy.typeId).loseSightGrace;
+
+    if (enemy.health <= 0) {
+      enemy.health = 0;
       enemy.alive = false;
       this.state.killCount += 1;
-      this.pushMessage("An enemy falls.", 0.8);
+      this.transitionEnemy(enemy, "dead");
+      this.pushMessage("A grave thrall collapses.", 0.8);
+      if (this.state.killCount >= this.state.totalKills) {
+        this.pushMessage("The catacomb falls silent.", 4);
+      }
+      return;
     }
+
+    this.transitionEnemy(enemy, "hurt");
   }
 
   private damagePlayer(amount: number, events: SimulationEvents): void {
+    if (!this.state.player.alive) {
+      return;
+    }
+
     this.state.player.health -= amount;
     events.damageTaken = true;
-    if (this.state.player.health <= 0 && this.state.player.alive) {
+    if (this.state.player.health <= 0) {
       this.state.player.health = 0;
       this.state.player.alive = false;
-      this.pushMessage("You have fallen. Restart the rite.", 8);
+      this.pushMessage("You have fallen.", 3);
+    }
+  }
+
+  private transitionEnemy(enemy: EnemyState, nextState: EnemyFsmState): void {
+    enemy.fsmState = nextState;
+    enemy.stateTime = 0;
+    enemy.attackApplied = false;
+    if (nextState === "dead") {
+      enemy.alive = false;
     }
   }
 
@@ -545,7 +577,7 @@ export class GameSimulation {
 
   private hasLineOfSight(startX: number, startY: number, endX: number, endY: number): boolean {
     const distance = distance2(startX, startY, endX, endY);
-    const steps = Math.ceil(distance / 0.4);
+    const steps = Math.ceil(distance / 0.35);
     for (let step = 1; step < steps; step += 1) {
       const t = step / steps;
       const sampleX = startX + (endX - startX) * t;
@@ -572,12 +604,7 @@ export class GameSimulation {
       return true;
     }
 
-    if (this.state.level.grid[cellY][cellX] === "#") {
-      return true;
-    }
-
-    const door = this.state.level.doors.find((entry) => entry.x === cellX && entry.y === cellY);
-    return door ? !door.open : false;
+    return this.state.level.grid[cellY][cellX] === "#";
   }
 
   private worldToCell(worldX: number, worldY: number): { x: number; y: number } {
@@ -601,33 +628,22 @@ export class GameSimulation {
       this.state.messages.length = 5;
     }
   }
-}
 
-function createDoorState(spawn: DoorSpawn): DoorState {
-  return {
-    id: spawn.id,
-    x: spawn.x,
-    y: spawn.y,
-    keyId: spawn.keyId,
-    secret: Boolean(spawn.secret),
-    open: Boolean(spawn.initiallyOpen)
-  };
-}
+  private requireEnemyDefinition(id: string) {
+    const definition = this.content.enemies.get(id);
+    if (!definition) {
+      throw new Error(`Unknown enemy definition: ${id}`);
+    }
+    return definition;
+  }
 
-function createPickupState(
-  spawn: PickupSpawn,
-  position: { x: number; y: number }
-): PickupState {
-  return {
-    id: spawn.id,
-    kind: spawn.kind,
-    x: position.x,
-    y: position.y,
-    amount: spawn.amount ?? 0,
-    keyId: spawn.keyId,
-    weaponId: spawn.weaponId,
-    collected: false
-  };
+  private requireWeaponDefinition(id: string) {
+    const definition = this.content.weapons.get(id);
+    if (!definition) {
+      throw new Error(`Unknown weapon definition: ${id}`);
+    }
+    return definition;
+  }
 }
 
 export interface ShotEvent {
@@ -638,6 +654,6 @@ export interface SimulationEvents {
   shot: ShotEvent | null;
   pickup: boolean;
   damageTaken: boolean;
-  doorOpened: boolean;
-  secretOpened: boolean;
+  enemyAttack: boolean;
+  playerDied: boolean;
 }

@@ -32,12 +32,12 @@ export class AudioSystem {
     this.beep(120, 0.1, 0.06, "sawtooth");
   }
 
-  playDoor(): void {
-    this.beep(180, 0.14, 0.04, "square");
+  playEnemyAttack(): void {
+    this.beep(150, 0.08, 0.05, "square");
   }
 
-  playSecret(): void {
-    this.beep(440, 0.2, 0.05, "triangle");
+  playDeath(): void {
+    this.beep(90, 0.22, 0.08, "sawtooth");
   }
 
   private beep(

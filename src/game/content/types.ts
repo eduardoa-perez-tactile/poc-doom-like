@@ -1,7 +1,7 @@
-export type WeaponAmmoType = "none" | "shards";
+export type WeaponAmmoType = "none" | "bullets";
 export type EnemyAttackType = "melee" | "projectile";
-export type PickupKind = "health" | "ammo" | "key" | "weapon";
-export type DoorKeyId = "ember_key";
+export type PickupKind = "health" | "ammo";
+export type SpriteAnimationStateName = "idle" | "move" | "attack" | "hurt" | "death";
 
 export interface WeaponDefinition {
   id: string;
@@ -27,12 +27,13 @@ export interface EnemyDefinition {
   height: number;
   attackType: EnemyAttackType;
   attackDamage: number;
-  attackRange: number;
-  attackCooldown: number;
-  projectileSpeed: number;
   aggroRange: number;
-  colorA: string;
-  colorB: string;
+  meleeRange: number;
+  windupTime: number;
+  cooldownTime: number;
+  loseSightGrace: number;
+  hurtTime: number;
+  projectileSpeed: number;
 }
 
 export interface GridPoint {
@@ -46,29 +47,16 @@ export interface PlayerStart {
   angleDeg: number;
 }
 
-export interface DoorSpawn extends GridPoint {
-  id: string;
-  keyId?: DoorKeyId;
-  secret?: boolean;
-  initiallyOpen?: boolean;
-}
-
 export interface PickupSpawn extends GridPoint {
   id: string;
   kind: PickupKind;
-  amount?: number;
-  keyId?: DoorKeyId;
-  weaponId?: string;
+  amount: number;
 }
 
 export interface EnemySpawn extends GridPoint {
   id: string;
   type: string;
   facingDeg?: number;
-}
-
-export interface ExitSpawn extends GridPoint {
-  id: string;
 }
 
 export interface LevelDefinition {
@@ -80,15 +68,58 @@ export interface LevelDefinition {
   ambientColor: string;
   playerStart: PlayerStart;
   grid: string[];
-  doors: DoorSpawn[];
   pickups: PickupSpawn[];
   enemies: EnemySpawn[];
-  exits: ExitSpawn[];
   briefing: string;
+}
+
+export interface SpriteAtlasDefinition {
+  id: string;
+  frameWidth: number;
+  frameHeight: number;
+  columns: number;
+  rows: number;
+  generatorId: string;
+}
+
+export interface SpriteClipDefinition {
+  id: string;
+  startFrame: number;
+  length: number;
+  fps: number;
+  loop: boolean;
+}
+
+export interface SpriteAnimationDefinition {
+  state: SpriteAnimationStateName;
+  directionalClips: string[];
+}
+
+export interface SpriteSetDefinition {
+  id: string;
+  atlasId: string;
+  defaultState: SpriteAnimationStateName;
+  worldWidth: number;
+  worldHeight: number;
+  anchorOffsetY: number;
+  clips: SpriteClipDefinition[];
+  animations: SpriteAnimationDefinition[];
+}
+
+export interface EntityVisualDefinition {
+  entityId: string;
+  spriteSetId: string;
+}
+
+export interface VisualDatabaseDefinition {
+  atlases: SpriteAtlasDefinition[];
+  spriteSets: SpriteSetDefinition[];
+  entities: EntityVisualDefinition[];
 }
 
 export interface ContentDatabase {
   weapons: Map<string, WeaponDefinition>;
   enemies: Map<string, EnemyDefinition>;
   level: LevelDefinition;
+  visuals: VisualDatabaseDefinition;
 }

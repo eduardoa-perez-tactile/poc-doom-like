@@ -1,0 +1,230 @@
+{
+  "atlases": [
+    {
+      "id": "grave_thrall_atlas",
+      "frameWidth": 48,
+      "frameHeight": 64,
+      "columns": 4,
+      "rows": 20,
+      "generatorId": "grave_thrall"
+    },
+    {
+      "id": "health_pickup_atlas",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "columns": 4,
+      "rows": 2,
+      "generatorId": "health_pickup"
+    },
+    {
+      "id": "ammo_pickup_atlas",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "columns": 4,
+      "rows": 2,
+      "generatorId": "ammo_pickup"
+    },
+    {
+      "id": "ember_wand_atlas",
+      "frameWidth": 96,
+      "frameHeight": 64,
+      "columns": 3,
+      "rows": 1,
+      "generatorId": "ember_wand"
+    },
+    {
+      "id": "shard_caster_atlas",
+      "frameWidth": 96,
+      "frameHeight": 64,
+      "columns": 3,
+      "rows": 1,
+      "generatorId": "shard_caster"
+    },
+    {
+      "id": "ember_projectile_atlas",
+      "frameWidth": 24,
+      "frameHeight": 24,
+      "columns": 2,
+      "rows": 1,
+      "generatorId": "ember_projectile"
+    },
+    {
+      "id": "shard_projectile_atlas",
+      "frameWidth": 24,
+      "frameHeight": 24,
+      "columns": 2,
+      "rows": 1,
+      "generatorId": "shard_projectile"
+    }
+  ],
+  "spriteSets": [
+    {
+      "id": "grave_thrall_set",
+      "atlasId": "grave_thrall_atlas",
+      "defaultState": "idle",
+      "worldWidth": 1.55,
+      "worldHeight": 1.8,
+      "anchorOffsetY": 0.9,
+      "clips": [
+        { "id": "idle_d0", "startFrame": 0, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d1", "startFrame": 1, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d2", "startFrame": 2, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d3", "startFrame": 3, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d4", "startFrame": 4, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d5", "startFrame": 5, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d6", "startFrame": 6, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d7", "startFrame": 7, "length": 1, "fps": 1, "loop": true },
+        { "id": "move_d0", "startFrame": 8, "length": 2, "fps": 6, "loop": true },
+        { "id": "move_d1", "startFrame": 10, "length": 2, "fps": 6, "loop": true },
+        { "id": "move_d2", "startFrame": 12, "length": 2, "fps": 6, "loop": true },
+        { "id": "move_d3", "startFrame": 14, "length": 2, "fps": 6, "loop": true },
+        { "id": "move_d4", "startFrame": 16, "length": 2, "fps": 6, "loop": true },
+        { "id": "move_d5", "startFrame": 18, "length": 2, "fps": 6, "loop": true },
+        { "id": "move_d6", "startFrame": 20, "length": 2, "fps": 6, "loop": true },
+        { "id": "move_d7", "startFrame": 22, "length": 2, "fps": 6, "loop": true },
+        { "id": "attack_d0", "startFrame": 24, "length": 2, "fps": 8, "loop": false },
+        { "id": "attack_d1", "startFrame": 26, "length": 2, "fps": 8, "loop": false },
+        { "id": "attack_d2", "startFrame": 28, "length": 2, "fps": 8, "loop": false },
+        { "id": "attack_d3", "startFrame": 30, "length": 2, "fps": 8, "loop": false },
+        { "id": "attack_d4", "startFrame": 32, "length": 2, "fps": 8, "loop": false },
+        { "id": "attack_d5", "startFrame": 34, "length": 2, "fps": 8, "loop": false },
+        { "id": "attack_d6", "startFrame": 36, "length": 2, "fps": 8, "loop": false },
+        { "id": "attack_d7", "startFrame": 38, "length": 2, "fps": 8, "loop": false },
+        { "id": "hurt_d0", "startFrame": 40, "length": 1, "fps": 1, "loop": false },
+        { "id": "hurt_d1", "startFrame": 41, "length": 1, "fps": 1, "loop": false },
+        { "id": "hurt_d2", "startFrame": 42, "length": 1, "fps": 1, "loop": false },
+        { "id": "hurt_d3", "startFrame": 43, "length": 1, "fps": 1, "loop": false },
+        { "id": "hurt_d4", "startFrame": 44, "length": 1, "fps": 1, "loop": false },
+        { "id": "hurt_d5", "startFrame": 45, "length": 1, "fps": 1, "loop": false },
+        { "id": "hurt_d6", "startFrame": 46, "length": 1, "fps": 1, "loop": false },
+        { "id": "hurt_d7", "startFrame": 47, "length": 1, "fps": 1, "loop": false },
+        { "id": "death_d0", "startFrame": 48, "length": 4, "fps": 7, "loop": false },
+        { "id": "death_d1", "startFrame": 52, "length": 4, "fps": 7, "loop": false },
+        { "id": "death_d2", "startFrame": 56, "length": 4, "fps": 7, "loop": false },
+        { "id": "death_d3", "startFrame": 60, "length": 4, "fps": 7, "loop": false },
+        { "id": "death_d4", "startFrame": 64, "length": 4, "fps": 7, "loop": false },
+        { "id": "death_d5", "startFrame": 68, "length": 4, "fps": 7, "loop": false },
+        { "id": "death_d6", "startFrame": 72, "length": 4, "fps": 7, "loop": false },
+        { "id": "death_d7", "startFrame": 76, "length": 4, "fps": 7, "loop": false }
+      ],
+      "animations": [
+        { "state": "idle", "directionalClips": ["idle_d0", "idle_d1", "idle_d2", "idle_d3", "idle_d4", "idle_d5", "idle_d6", "idle_d7"] },
+        { "state": "move", "directionalClips": ["move_d0", "move_d1", "move_d2", "move_d3", "move_d4", "move_d5", "move_d6", "move_d7"] },
+        { "state": "attack", "directionalClips": ["attack_d0", "attack_d1", "attack_d2", "attack_d3", "attack_d4", "attack_d5", "attack_d6", "attack_d7"] },
+        { "state": "hurt", "directionalClips": ["hurt_d0", "hurt_d1", "hurt_d2", "hurt_d3", "hurt_d4", "hurt_d5", "hurt_d6", "hurt_d7"] },
+        { "state": "death", "directionalClips": ["death_d0", "death_d1", "death_d2", "death_d3", "death_d4", "death_d5", "death_d6", "death_d7"] }
+      ]
+    },
+    {
+      "id": "health_pickup_set",
+      "atlasId": "health_pickup_atlas",
+      "defaultState": "idle",
+      "worldWidth": 0.8,
+      "worldHeight": 0.8,
+      "anchorOffsetY": 0.45,
+      "clips": [
+        { "id": "idle_d0", "startFrame": 0, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d1", "startFrame": 1, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d2", "startFrame": 2, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d3", "startFrame": 3, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d4", "startFrame": 4, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d5", "startFrame": 5, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d6", "startFrame": 6, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d7", "startFrame": 7, "length": 1, "fps": 1, "loop": true }
+      ],
+      "animations": [
+        { "state": "idle", "directionalClips": ["idle_d0", "idle_d1", "idle_d2", "idle_d3", "idle_d4", "idle_d5", "idle_d6", "idle_d7"] }
+      ]
+    },
+    {
+      "id": "ammo_pickup_set",
+      "atlasId": "ammo_pickup_atlas",
+      "defaultState": "idle",
+      "worldWidth": 0.8,
+      "worldHeight": 0.8,
+      "anchorOffsetY": 0.45,
+      "clips": [
+        { "id": "idle_d0", "startFrame": 0, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d1", "startFrame": 1, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d2", "startFrame": 2, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d3", "startFrame": 3, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d4", "startFrame": 4, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d5", "startFrame": 5, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d6", "startFrame": 6, "length": 1, "fps": 1, "loop": true },
+        { "id": "idle_d7", "startFrame": 7, "length": 1, "fps": 1, "loop": true }
+      ],
+      "animations": [
+        { "state": "idle", "directionalClips": ["idle_d0", "idle_d1", "idle_d2", "idle_d3", "idle_d4", "idle_d5", "idle_d6", "idle_d7"] }
+      ]
+    },
+    {
+      "id": "ember_wand_set",
+      "atlasId": "ember_wand_atlas",
+      "defaultState": "idle",
+      "worldWidth": 0.96,
+      "worldHeight": 0.64,
+      "anchorOffsetY": 0,
+      "clips": [
+        { "id": "idle_front", "startFrame": 0, "length": 1, "fps": 1, "loop": true },
+        { "id": "attack_front", "startFrame": 1, "length": 2, "fps": 18, "loop": false }
+      ],
+      "animations": [
+        { "state": "idle", "directionalClips": ["idle_front"] },
+        { "state": "attack", "directionalClips": ["attack_front"] }
+      ]
+    },
+    {
+      "id": "shard_caster_set",
+      "atlasId": "shard_caster_atlas",
+      "defaultState": "idle",
+      "worldWidth": 0.96,
+      "worldHeight": 0.64,
+      "anchorOffsetY": 0,
+      "clips": [
+        { "id": "idle_front", "startFrame": 0, "length": 1, "fps": 1, "loop": true },
+        { "id": "attack_front", "startFrame": 1, "length": 2, "fps": 20, "loop": false }
+      ],
+      "animations": [
+        { "state": "idle", "directionalClips": ["idle_front"] },
+        { "state": "attack", "directionalClips": ["attack_front"] }
+      ]
+    },
+    {
+      "id": "ember_projectile_set",
+      "atlasId": "ember_projectile_atlas",
+      "defaultState": "idle",
+      "worldWidth": 0.3,
+      "worldHeight": 0.3,
+      "anchorOffsetY": 0.16,
+      "clips": [
+        { "id": "idle_front", "startFrame": 0, "length": 2, "fps": 12, "loop": true }
+      ],
+      "animations": [
+        { "state": "idle", "directionalClips": ["idle_front"] }
+      ]
+    },
+    {
+      "id": "shard_projectile_set",
+      "atlasId": "shard_projectile_atlas",
+      "defaultState": "idle",
+      "worldWidth": 0.3,
+      "worldHeight": 0.3,
+      "anchorOffsetY": 0.16,
+      "clips": [
+        { "id": "idle_front", "startFrame": 0, "length": 2, "fps": 14, "loop": true }
+      ],
+      "animations": [
+        { "state": "idle", "directionalClips": ["idle_front"] }
+      ]
+    }
+  ],
+  "entities": [
+    { "entityId": "grave_thrall", "spriteSetId": "grave_thrall_set" },
+    { "entityId": "pickup:health", "spriteSetId": "health_pickup_set" },
+    { "entityId": "pickup:ammo", "spriteSetId": "ammo_pickup_set" },
+    { "entityId": "weapon:ember_wand", "spriteSetId": "ember_wand_set" },
+    { "entityId": "weapon:shard_caster", "spriteSetId": "shard_caster_set" },
+    { "entityId": "projectile:ember_wand", "spriteSetId": "ember_projectile_set" },
+    { "entityId": "projectile:shard_caster", "spriteSetId": "shard_projectile_set" }
+  ]
+}
