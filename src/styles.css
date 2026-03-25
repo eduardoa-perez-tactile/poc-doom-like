@@ -1,0 +1,208 @@
+:root {
+  color-scheme: dark;
+  font-family: "Trebuchet MS", "Verdana", sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(121, 31, 17, 0.35), transparent 40%),
+    linear-gradient(180deg, #110d0a, #050404 65%);
+  color: #f1dec3;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(207, 91, 42, 0.18), transparent 30%),
+    radial-gradient(circle at 80% 10%, rgba(74, 102, 24, 0.12), transparent 24%),
+    linear-gradient(180deg, #16100c, #080707 70%);
+}
+
+.game-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.game-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+}
+
+.ui-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hud {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.panel {
+  min-width: 200px;
+  padding: 12px 14px;
+  border: 1px solid rgba(219, 180, 124, 0.45);
+  background: rgba(16, 10, 8, 0.82);
+  box-shadow:
+    0 0 0 1px rgba(255, 231, 189, 0.08) inset,
+    0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.panel strong {
+  color: #f7c576;
+}
+
+.crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  margin-top: -10px;
+}
+
+.crosshair::before,
+.crosshair::after {
+  content: "";
+  position: absolute;
+  background: rgba(255, 217, 167, 0.92);
+}
+
+.crosshair::before {
+  left: 9px;
+  top: 2px;
+  width: 2px;
+  height: 16px;
+}
+
+.crosshair::after {
+  top: 9px;
+  left: 2px;
+  width: 16px;
+  height: 2px;
+}
+
+.status-banner {
+  position: absolute;
+  left: 50%;
+  top: 24px;
+  transform: translateX(-50%);
+  min-width: 280px;
+  max-width: min(720px, calc(100vw - 32px));
+  padding: 10px 14px;
+  border: 1px solid rgba(219, 180, 124, 0.4);
+  background: rgba(20, 8, 6, 0.75);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+}
+
+.menu-backdrop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(7, 4, 4, 0.74);
+  pointer-events: auto;
+}
+
+.menu-panel {
+  width: min(560px, calc(100vw - 32px));
+  padding: 24px;
+  border: 1px solid rgba(219, 180, 124, 0.45);
+  background:
+    linear-gradient(180deg, rgba(42, 17, 12, 0.97), rgba(14, 8, 7, 0.97));
+  box-shadow:
+    0 0 0 1px rgba(255, 214, 154, 0.08) inset,
+    0 24px 50px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+}
+
+.menu-panel h1 {
+  margin: 0 0 16px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.menu-panel p {
+  margin: 0 0 18px;
+  line-height: 1.45;
+  color: #dbc8b0;
+}
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.menu-row {
+  display: grid;
+  grid-template-columns: 150px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.menu-row label {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.menu-row input[type="range"] {
+  width: 100%;
+}
+
+.menu-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.menu-actions button {
+  appearance: none;
+  border: 1px solid rgba(243, 194, 123, 0.45);
+  padding: 11px 14px;
+  color: #f5e5c6;
+  background: rgba(58, 25, 17, 0.92);
+  font: inherit;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.menu-actions button:hover {
+  background: rgba(83, 35, 20, 0.98);
+}
+
+.hidden {
+  display: none;
+}

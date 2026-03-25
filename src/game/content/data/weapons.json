@@ -1,0 +1,30 @@
+[
+  {
+    "id": "ember_wand",
+    "name": "Ember Wand",
+    "slot": 1,
+    "ammoType": "none",
+    "ammoPerShot": 0,
+    "cooldown": 0.28,
+    "damage": 16,
+    "projectileSpeed": 0,
+    "range": 18,
+    "projectileLife": 0,
+    "fireMode": "hitscan",
+    "uiColor": "#f3985a"
+  },
+  {
+    "id": "shard_caster",
+    "name": "Shard Caster",
+    "slot": 2,
+    "ammoType": "shards",
+    "ammoPerShot": 1,
+    "cooldown": 0.55,
+    "damage": 34,
+    "projectileSpeed": 15,
+    "range": 22,
+    "projectileLife": 1.4,
+    "fireMode": "projectile",
+    "uiColor": "#93d9ff"
+  }
+]

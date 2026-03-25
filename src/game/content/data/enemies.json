@@ -1,0 +1,50 @@
+[
+  {
+    "id": "grave_thrall",
+    "name": "Grave Thrall",
+    "health": 34,
+    "moveSpeed": 2.4,
+    "radius": 0.38,
+    "height": 1.55,
+    "attackType": "melee",
+    "attackDamage": 12,
+    "attackRange": 1.3,
+    "attackCooldown": 1.1,
+    "projectileSpeed": 0,
+    "aggroRange": 10,
+    "colorA": "#8db08d",
+    "colorB": "#263926"
+  },
+  {
+    "id": "cinder_acolyte",
+    "name": "Cinder Acolyte",
+    "health": 44,
+    "moveSpeed": 1.9,
+    "radius": 0.4,
+    "height": 1.7,
+    "attackType": "projectile",
+    "attackDamage": 10,
+    "attackRange": 11,
+    "attackCooldown": 1.45,
+    "projectileSpeed": 9,
+    "aggroRange": 13,
+    "colorA": "#d17b4e",
+    "colorB": "#441b12"
+  },
+  {
+    "id": "vault_sentinel",
+    "name": "Vault Sentinel",
+    "health": 60,
+    "moveSpeed": 1.4,
+    "radius": 0.48,
+    "height": 1.9,
+    "attackType": "projectile",
+    "attackDamage": 16,
+    "attackRange": 13,
+    "attackCooldown": 1.9,
+    "projectileSpeed": 11,
+    "aggroRange": 14,
+    "colorA": "#b9c07a",
+    "colorB": "#3c4021"
+  }
+]
