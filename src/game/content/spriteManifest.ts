@@ -378,6 +378,35 @@ function buildWandPuffSet(): SpriteSetDefinition {
   };
 }
 
+function buildCrossbowBoltSet(): SpriteSetDefinition {
+  const frames = [
+    rectFrame("crossbow_bolt_0", 13, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 2, y: 88, width: 26, height: 14 }),
+    rectFrame("crossbow_bolt_1", 13, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 30, y: 84, width: 46, height: 18 }),
+    rectFrame("crossbow_bolt_2", 13, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 79, y: 81, width: 68, height: 24 }),
+    rectFrame("crossbow_bolt_3", 13, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 151, y: 87, width: 40, height: 16 })
+  ];
+
+  return {
+    id: "crossbow_bolt_set",
+    sheetId: "weapons_sheet",
+    defaultState: "idle",
+    worldWidth: 0.62,
+    worldHeight: 0.22,
+    anchorOffsetY: 0.16,
+    flipY: true,
+    frames,
+    clips: [
+      {
+        id: "crossbow_bolt_clip",
+        frames: ["crossbow_bolt_0", "crossbow_bolt_1", "crossbow_bolt_2", "crossbow_bolt_3"],
+        fps: 14,
+        loop: true
+      }
+    ],
+    animations: [{ state: "idle", directionalClips: [{ clipId: "crossbow_bolt_clip" }] }]
+  };
+}
+
 function buildArcBoltSet(): SpriteSetDefinition {
   const frames = [
     rectFrame("dragon_bolt_0", 4, 1, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 1, y: 42, width: 29, height: 29 }),
@@ -404,6 +433,176 @@ function buildArcBoltSet(): SpriteSetDefinition {
       }
     ],
     animations: [{ state: "idle", directionalClips: [{ clipId: "dragon_bolt_clip" }] }]
+  };
+}
+
+function buildHellstaffProjectileSet(): SpriteSetDefinition {
+  const frames = [
+    rectFrame("hellstaff_proj_0", 13, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 2, y: 16, width: 28, height: 20 }),
+    rectFrame("hellstaff_proj_1", 13, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 31, y: 13, width: 36, height: 26 }),
+    rectFrame("hellstaff_proj_2", 13, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 69, y: 9, width: 43, height: 34 }),
+    rectFrame("hellstaff_proj_3", 13, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 113, y: 5, width: 56, height: 43 })
+  ];
+
+  return {
+    id: "hellstaff_projectile_set",
+    sheetId: "weapons_sheet",
+    defaultState: "idle",
+    worldWidth: 0.52,
+    worldHeight: 0.52,
+    anchorOffsetY: 0.18,
+    flipY: true,
+    frames,
+    clips: [
+      {
+        id: "hellstaff_projectile_clip",
+        frames: ["hellstaff_proj_0", "hellstaff_proj_1", "hellstaff_proj_2", "hellstaff_proj_3"],
+        fps: 12,
+        loop: true
+      }
+    ],
+    animations: [{ state: "idle", directionalClips: [{ clipId: "hellstaff_projectile_clip" }] }]
+  };
+}
+
+function buildHellstaffCloudSet(): SpriteSetDefinition {
+  const frames = [
+    rectFrame("hellstaff_cloud_0", 13, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 1, y: 73, width: 73, height: 62 }),
+    rectFrame("hellstaff_cloud_1", 13, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 80, y: 73, width: 73, height: 62 }),
+    rectFrame("hellstaff_cloud_2", 13, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 159, y: 73, width: 73, height: 62 })
+  ];
+
+  return {
+    id: "hellstaff_cloud_set",
+    sheetId: "weapons_sheet",
+    defaultState: "idle",
+    worldWidth: 1.1,
+    worldHeight: 0.92,
+    anchorOffsetY: 0.3,
+    flipY: true,
+    frames,
+    clips: [
+      {
+        id: "hellstaff_cloud_clip",
+        frames: ["hellstaff_cloud_0", "hellstaff_cloud_1", "hellstaff_cloud_2"],
+        fps: 8,
+        loop: true
+      }
+    ],
+    animations: [{ state: "idle", directionalClips: [{ clipId: "hellstaff_cloud_clip" }] }]
+  };
+}
+
+function buildPhoenixProjectileSet(): SpriteSetDefinition {
+  const frames = [
+    rectFrame("phoenix_proj_0", 4, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 2, y: 16, width: 26, height: 18 }),
+    rectFrame("phoenix_proj_1", 4, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 32, y: 12, width: 41, height: 20 }),
+    rectFrame("phoenix_proj_2", 4, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 78, y: 9, width: 62, height: 24 }),
+    rectFrame("phoenix_proj_3", 4, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 145, y: 13, width: 42, height: 18 })
+  ];
+
+  return {
+    id: "phoenix_projectile_set",
+    sheetId: "weapons_sheet",
+    defaultState: "idle",
+    worldWidth: 0.7,
+    worldHeight: 0.26,
+    anchorOffsetY: 0.16,
+    flipY: true,
+    frames,
+    clips: [
+      {
+        id: "phoenix_projectile_clip",
+        frames: ["phoenix_proj_0", "phoenix_proj_1", "phoenix_proj_2", "phoenix_proj_3"],
+        fps: 12,
+        loop: true
+      }
+    ],
+    animations: [{ state: "idle", directionalClips: [{ clipId: "phoenix_projectile_clip" }] }]
+  };
+}
+
+function buildPhoenixFlameSet(): SpriteSetDefinition {
+  const frames = [
+    rectFrame("phoenix_flame_0", 5, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 0, y: 85, width: 52, height: 28 }),
+    rectFrame("phoenix_flame_1", 5, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 53, y: 89, width: 44, height: 23 }),
+    rectFrame("phoenix_flame_2", 5, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 98, y: 93, width: 31, height: 16 }),
+    rectFrame("phoenix_flame_3", 5, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 130, y: 95, width: 22, height: 12 })
+  ];
+
+  return {
+    id: "phoenix_flame_set",
+    sheetId: "weapons_sheet",
+    defaultState: "idle",
+    worldWidth: 0.58,
+    worldHeight: 0.22,
+    anchorOffsetY: 0.14,
+    flipY: true,
+    frames,
+    clips: [
+      {
+        id: "phoenix_flame_clip",
+        frames: ["phoenix_flame_0", "phoenix_flame_1", "phoenix_flame_2", "phoenix_flame_3"],
+        fps: 16,
+        loop: true
+      }
+    ],
+    animations: [{ state: "idle", directionalClips: [{ clipId: "phoenix_flame_clip" }] }]
+  };
+}
+
+function buildFiremaceBallSet(): SpriteSetDefinition {
+  const frames = [
+    rectFrame("firemace_ball_0", 12, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 31, y: 15, width: 23, height: 23 }),
+    rectFrame("firemace_ball_1", 12, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 56, y: 12, width: 31, height: 31 }),
+    rectFrame("firemace_ball_2", 12, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 89, y: 7, width: 43, height: 43 }),
+    rectFrame("firemace_ball_3", 12, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 136, y: 7, width: 43, height: 43 })
+  ];
+
+  return {
+    id: "firemace_ball_set",
+    sheetId: "weapons_sheet",
+    defaultState: "idle",
+    worldWidth: 0.54,
+    worldHeight: 0.54,
+    anchorOffsetY: 0.2,
+    flipY: true,
+    frames,
+    clips: [
+      {
+        id: "firemace_ball_clip",
+        frames: ["firemace_ball_0", "firemace_ball_1", "firemace_ball_2", "firemace_ball_3"],
+        fps: 10,
+        loop: true
+      }
+    ],
+    animations: [{ state: "idle", directionalClips: [{ clipId: "firemace_ball_clip" }] }]
+  };
+}
+
+function buildFiremacePoweredBallSet(): SpriteSetDefinition {
+  const frames = [
+    rectFrame("firemace_powered_ball_0", 12, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 1, y: 105, width: 48, height: 48 })
+  ];
+
+  return {
+    id: "firemace_powered_ball_set",
+    sheetId: "weapons_sheet",
+    defaultState: "idle",
+    worldWidth: 0.58,
+    worldHeight: 0.58,
+    anchorOffsetY: 0.2,
+    flipY: true,
+    frames,
+    clips: [
+      {
+        id: "firemace_powered_ball_clip",
+        frames: ["firemace_powered_ball_0"],
+        fps: 1,
+        loop: true
+      }
+    ],
+    animations: [{ state: "idle", directionalClips: [{ clipId: "firemace_powered_ball_clip" }] }]
   };
 }
 
@@ -448,7 +647,14 @@ export const spriteManifest: VisualDatabaseDefinition = {
     buildPhoenixRodSet(),
     buildFiremaceSet(),
     buildWandPuffSet(),
-    buildArcBoltSet()
+    buildCrossbowBoltSet(),
+    buildArcBoltSet(),
+    buildHellstaffProjectileSet(),
+    buildHellstaffCloudSet(),
+    buildPhoenixProjectileSet(),
+    buildPhoenixFlameSet(),
+    buildFiremaceBallSet(),
+    buildFiremacePoweredBallSet()
   ],
   entities: [
     { entityId: "grave_thrall", spriteSetId: "golem_set" },
@@ -462,17 +668,14 @@ export const spriteManifest: VisualDatabaseDefinition = {
     { entityId: "weapon:hellstaff", spriteSetId: "hellstaff_set" },
     { entityId: "weapon:phoenix_rod", spriteSetId: "phoenix_rod_set" },
     { entityId: "weapon:firemace", spriteSetId: "firemace_set" },
-    // Several projectile/effect bindings below intentionally reuse placeholder sets.
-    // They keep gameplay behaviors renderable, but they should be replaced with
-    // dedicated sprite sets once the exact projectile rects are authored.
     { entityId: "projectile:elven_wand", spriteSetId: "elven_puff_set" },
-    { entityId: "projectile:ethereal_crossbow", spriteSetId: "dragon_bolt_set" },
+    { entityId: "projectile:ethereal_crossbow", spriteSetId: "crossbow_bolt_set" },
     { entityId: "projectile:dragon_claw_burst", spriteSetId: "dragon_bolt_set" },
-    { entityId: "projectile:hellstaff", spriteSetId: "dragon_bolt_set" },
-    { entityId: "projectile:hellstaff_cloud", spriteSetId: "elven_puff_set" },
-    { entityId: "projectile:phoenix_rod", spriteSetId: "elven_puff_set" },
-    { entityId: "projectile:phoenix_flame", spriteSetId: "elven_puff_set" },
-    { entityId: "projectile:firemace", spriteSetId: "dragon_bolt_set" },
-    { entityId: "projectile:firemace_powered", spriteSetId: "dragon_bolt_set" }
+    { entityId: "projectile:hellstaff", spriteSetId: "hellstaff_projectile_set" },
+    { entityId: "projectile:hellstaff_cloud", spriteSetId: "hellstaff_cloud_set" },
+    { entityId: "projectile:phoenix_rod", spriteSetId: "phoenix_projectile_set" },
+    { entityId: "projectile:phoenix_flame", spriteSetId: "phoenix_flame_set" },
+    { entityId: "projectile:firemace", spriteSetId: "firemace_ball_set" },
+    { entityId: "projectile:firemace_powered", spriteSetId: "firemace_powered_ball_set" }
   ]
 };
