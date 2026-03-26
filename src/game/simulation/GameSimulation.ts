@@ -1,3 +1,4 @@
+import { WEAPON_ORDER } from "../content/ContentDb";
 import type {
   ContentDatabase,
   EnemyDefinition,
@@ -141,10 +142,8 @@ export class GameSimulation {
     const pickups = levelDef.pickups.map((spawn) =>
       this.createPickupState(spawn, this.cellCenter(spawn.x, spawn.y))
     );
-    const unlocked = Array.from(this.content.weapons.keys()).sort(
-      (left, right) =>
-        (this.content.weapons.get(left)?.slot ?? 0) - (this.content.weapons.get(right)?.slot ?? 0)
-    );
+    const unlocked = WEAPON_ORDER.filter((id) => this.content.weapons.has(id));
+    const initialWeaponId = unlocked[0] ?? "staff";
 
     return {
       level,
@@ -154,11 +153,12 @@ export class GameSimulation {
         remaining: 0
       },
       weapon: {
-        currentId: "elven_wand",
+        currentId: initialWeaponId,
         unlocked,
         cooldownRemaining: 0,
         viewAnimation: "idle",
         viewAnimationTime: 0,
+        viewAnimationRevision: 0,
         sustainTargetId: null
       },
       enemies,
@@ -282,6 +282,9 @@ export class GameSimulation {
     }
     if (this.state.weapon.currentId !== definition.id) {
       this.state.weapon.currentId = definition.id;
+      this.state.weapon.viewAnimation = "idle";
+      this.state.weapon.viewAnimationTime = 0;
+      this.state.weapon.viewAnimationRevision += 1;
       this.state.weapon.sustainTargetId = null;
       this.pushMessage(`${definition.name} readied.`, 1.2);
     }
@@ -309,6 +312,7 @@ export class GameSimulation {
     this.state.weapon.cooldownRemaining = this.resolveWeaponCooldown(weapon);
     this.state.weapon.viewAnimation = "attack";
     this.state.weapon.viewAnimationTime = 0;
+    this.state.weapon.viewAnimationRevision += 1;
     this.state.weapon.sustainTargetId = result.sustainTargetId ?? null;
     this.consumeAmmo(weapon, ammoCost);
     return {

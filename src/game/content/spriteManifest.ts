@@ -201,6 +201,10 @@ function buildWeaponViewSet(
   worldHeight: number,
   viewModel: SpriteSetDefinition["viewModel"]
 ): SpriteSetDefinition {
+  // Temporary whole-cell slicing for weapon viewmodels.
+  // This is convenient for wiring the full roster quickly, but it is not faithful
+  // to the Heretic sheet layout: several weapons need hand-authored rect crops,
+  // per-frame pivots, and separate Tome frame selections instead of uniform cells.
   const idleFrameId = `${id}_idle`;
   const frames = [cellFrame(idleFrameId, idleCol, row, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT)];
   const attackFrameIds: string[] = [];
@@ -240,6 +244,8 @@ function buildWeaponViewSet(
 }
 
 function buildStaffSet(): SpriteSetDefinition {
+  // Row 0 contains the staff strip. The current mapping uses the broad cell bounds,
+  // so this is one of the first candidates to replace with explicit rectFrame crops.
   return buildWeaponViewSet("staff", 0, 1, [2, 3], 0.98, 0.76, {
     offsetX: 0.02,
     offsetY: -0.61,
@@ -252,7 +258,9 @@ function buildStaffSet(): SpriteSetDefinition {
 }
 
 function buildGauntletsSet(): SpriteSetDefinition {
-  return buildWeaponViewSet("gauntlets", 1, 0, [1, 2, 3], 1.14, 0.66, {
+  // Row 1 covers the gauntlets strip. Powered/Tome art also lives in this region,
+  // but the current pass only wires a single shared idle/attack set.
+  return buildWeaponViewSet("gauntlets", 1, 0, [1, 2, 3, 4, 5], 1.14, 0.66, {
     offsetX: 0.02,
     offsetY: -0.68,
     offsetZ: 0.95,
@@ -276,7 +284,7 @@ function buildElvenWandSet(): SpriteSetDefinition {
 }
 
 function buildEtherealCrossbowSet(): SpriteSetDefinition {
-  return buildWeaponViewSet("ethereal_crossbow", 2, 5, [6, 7, 8], 1.24, 0.5, {
+  return buildWeaponViewSet("ethereal_crossbow", 2, 5, [6, 7, 8, 9, 10, 11, 12], 1.24, 0.5, {
     offsetX: 0.01,
     offsetY: -0.61,
     offsetZ: 1,
@@ -300,7 +308,7 @@ function buildDragonClawSet(): SpriteSetDefinition {
 }
 
 function buildHellstaffSet(): SpriteSetDefinition {
-  return buildWeaponViewSet("hellstaff", 3, 5, [6, 7, 8], 1.24, 0.5, {
+  return buildWeaponViewSet("hellstaff", 3, 5, [6, 7, 8, 9, 10, 11], 1.24, 0.5, {
     offsetX: 0.02,
     offsetY: -0.62,
     offsetZ: 0.99,
@@ -324,7 +332,7 @@ function buildPhoenixRodSet(): SpriteSetDefinition {
 }
 
 function buildFiremaceSet(): SpriteSetDefinition {
-  return buildWeaponViewSet("firemace", 4, 5, [6, 7, 8], 1.18, 0.48, {
+  return buildWeaponViewSet("firemace", 4, 5, [6, 7, 8, 9, 10], 1.18, 0.48, {
     offsetX: 0.02,
     offsetY: -0.62,
     offsetZ: 0.99,
@@ -336,6 +344,8 @@ function buildFiremaceSet(): SpriteSetDefinition {
 }
 
 function buildWandPuffSet(): SpriteSetDefinition {
+  // Projectile/effect crops already use rectFrame because these sprites are packed
+  // into small regions on the right side of the sheet rather than full weapon cells.
   const frames = [
     rectFrame("elven_puff_0", 4, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 1, y: 118, width: 29, height: 31 }),
     rectFrame("elven_puff_1", 4, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 31, y: 121, width: 25, height: 25 }),
@@ -448,6 +458,9 @@ export const spriteManifest: VisualDatabaseDefinition = {
     { entityId: "weapon:hellstaff", spriteSetId: "hellstaff_set" },
     { entityId: "weapon:phoenix_rod", spriteSetId: "phoenix_rod_set" },
     { entityId: "weapon:firemace", spriteSetId: "firemace_set" },
+    // Several projectile/effect bindings below intentionally reuse placeholder sets.
+    // They keep gameplay behaviors renderable, but they should be replaced with
+    // dedicated sprite sets once the exact projectile rects are authored.
     { entityId: "projectile:elven_wand", spriteSetId: "elven_puff_set" },
     { entityId: "projectile:ethereal_crossbow", spriteSetId: "dragon_bolt_set" },
     { entityId: "projectile:dragon_claw_burst", spriteSetId: "dragon_bolt_set" },

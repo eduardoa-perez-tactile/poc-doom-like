@@ -175,6 +175,7 @@ export class RetroRenderer {
     for (const weapon of this.content.weapons.values()) {
       const sprite = this.spriteLibrary.createSpriteForEntity(`weapon:${weapon.id}`, "view", this.camera);
       const viewModel = sprite.viewModel;
+      sprite.setVisible(false);
       sprite.mesh.rotation.set(
         viewModel?.rotationX ?? 0,
         viewModel?.rotationY ?? 0,
@@ -301,7 +302,7 @@ export class RetroRenderer {
         viewModel?.offsetZ ?? 1,
         (viewModel?.offsetY ?? -0.6) + Math.sin(state.player.bobPhase) * bobAmplitude
       );
-      sprite.setAnimationState(state.weapon.viewAnimation);
+      sprite.setAnimationState(state.weapon.viewAnimation, state.weapon.viewAnimationRevision);
       sprite.update(dt);
     }
   }

@@ -30,6 +30,7 @@ export interface WeaponRuntimeState {
   cooldownRemaining: number;
   viewAnimation: SpriteAnimationStateName;
   viewAnimationTime: number;
+  viewAnimationRevision: number;
   sustainTargetId: string | null;
 }
 
