@@ -308,7 +308,9 @@ function buildDragonClawSet(): SpriteSetDefinition {
 }
 
 function buildHellstaffSet(): SpriteSetDefinition {
-  return buildWeaponViewSet("hellstaff", 3, 5, [6, 7, 8, 9, 10, 11], 1.24, 0.5, {
+  // Hellstaff starts one cell later than the first pass assumed:
+  // col 5 is still Dragon Claw powered FX, while the actual Hellstaff idle frame is col 6.
+  return buildWeaponViewSet("hellstaff", 3, 6, [7, 8, 9, 10, 11, 12], 1.24, 0.5, {
     offsetX: 0.02,
     offsetY: -0.62,
     offsetZ: 0.99,
@@ -332,7 +334,9 @@ function buildPhoenixRodSet(): SpriteSetDefinition {
 }
 
 function buildFiremaceSet(): SpriteSetDefinition {
-  return buildWeaponViewSet("firemace", 4, 5, [6, 7, 8, 9, 10], 1.18, 0.48, {
+  // Firemace also starts one cell later than the first pass assumed:
+  // col 5 is still the impact strip, while the actual Firemace idle frame is col 6.
+  return buildWeaponViewSet("firemace", 4, 6, [7, 8, 9, 10, 11], 1.18, 0.48, {
     offsetX: 0.02,
     offsetY: -0.62,
     offsetZ: 0.99,
