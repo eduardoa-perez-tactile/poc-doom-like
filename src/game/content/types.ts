@@ -1,7 +1,14 @@
 export type WeaponAmmoType = "none" | "bullets";
 export type EnemyAttackType = "melee" | "projectile";
 export type PickupKind = "health" | "ammo";
-export type SpriteAnimationStateName = "idle" | "move" | "attack" | "hurt" | "death";
+export type SpriteAnimationStateName =
+  | "idle"
+  | "move"
+  | "attack"
+  | "hurt"
+  | "death"
+  | "select"
+  | "lower";
 
 export interface WeaponDefinition {
   id: string;
@@ -73,35 +80,68 @@ export interface LevelDefinition {
   briefing: string;
 }
 
-export interface SpriteAtlasDefinition {
+export interface SpriteRectDefinition {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface SpriteSheetDefinition {
   id: string;
-  frameWidth: number;
-  frameHeight: number;
-  columns: number;
-  rows: number;
-  generatorId: string;
+  imageUrl: string;
+  chromaKeyColors: string[];
+  clearRects?: SpriteRectDefinition[];
+}
+
+export interface SpriteFrameDefinition extends SpriteRectDefinition {
+  id: string;
+  offsetX?: number;
+  offsetY?: number;
 }
 
 export interface SpriteClipDefinition {
   id: string;
-  startFrame: number;
-  length: number;
+  frames: string[];
   fps: number;
   loop: boolean;
 }
 
+export interface DirectionalSpriteClipDefinition {
+  clipId: string;
+  mirrorX?: boolean;
+}
+
 export interface SpriteAnimationDefinition {
   state: SpriteAnimationStateName;
-  directionalClips: string[];
+  directionalClips: DirectionalSpriteClipDefinition[];
+}
+
+export interface SpriteViewModelDefinition {
+  offsetX: number;
+  offsetY: number;
+  offsetZ: number;
+  bobAmplitude?: number;
+  flipX?: boolean;
+  flipY?: boolean;
+  rotationX?: number;
+  rotationY?: number;
+  rotationZ?: number;
 }
 
 export interface SpriteSetDefinition {
   id: string;
-  atlasId: string;
+  sheetId: string;
   defaultState: SpriteAnimationStateName;
   worldWidth: number;
   worldHeight: number;
   anchorOffsetY: number;
+  flipX?: boolean;
+  flipY?: boolean;
+  pivotX?: number;
+  pivotY?: number;
+  viewModel?: SpriteViewModelDefinition;
+  frames: SpriteFrameDefinition[];
   clips: SpriteClipDefinition[];
   animations: SpriteAnimationDefinition[];
 }
@@ -112,7 +152,7 @@ export interface EntityVisualDefinition {
 }
 
 export interface VisualDatabaseDefinition {
-  atlases: SpriteAtlasDefinition[];
+  sheets: SpriteSheetDefinition[];
   spriteSets: SpriteSetDefinition[];
   entities: EntityVisualDefinition[];
 }

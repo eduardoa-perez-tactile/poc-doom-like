@@ -8,56 +8,85 @@ import {
   Scene,
   StandardMaterial,
   Texture,
+  Vector3,
   VertexBuffer
 } from "@babylonjs/core";
 import type {
+  DirectionalSpriteClipDefinition,
   SpriteAnimationStateName,
-  SpriteAtlasDefinition,
-  SpriteClipDefinition,
+  SpriteFrameDefinition,
   SpriteSetDefinition,
+  SpriteSheetDefinition,
   VisualDatabaseDefinition
 } from "../content/types";
 import { TAU, normalizeAngle } from "../core/math";
 import type { SpriteRuntimeState } from "../core/types";
 
-interface CompiledSpriteAtlas {
-  definition: SpriteAtlasDefinition;
+interface RgbColor {
+  r: number;
+  g: number;
+  b: number;
+}
+
+interface CompiledSpriteSheet {
+  definition: SpriteSheetDefinition;
   texture: DynamicTexture;
-  uStep: number;
-  vStep: number;
+  width: number;
+  height: number;
+}
+
+interface CompiledSpriteFrame {
+  definition: SpriteFrameDefinition;
+  u0: number;
+  u1: number;
+  v0: number;
+  v1: number;
 }
 
 interface CompiledSpriteClip {
   id: string;
-  frames: number[];
+  frames: CompiledSpriteFrame[];
   fps: number;
   loop: boolean;
 }
 
+interface CompiledDirectionalClip {
+  clip: CompiledSpriteClip;
+  mirrorX: boolean;
+}
+
 interface CompiledSpriteSet {
   definition: SpriteSetDefinition;
-  atlas: CompiledSpriteAtlas;
   material: StandardMaterial;
-  animations: Map<SpriteAnimationStateName, CompiledSpriteClip[]>;
+  animations: Map<SpriteAnimationStateName, CompiledDirectionalClip[]>;
 }
 
 export class SpriteLibrary {
-  private readonly atlases = new Map<string, CompiledSpriteAtlas>();
+  private readonly sheets = new Map<string, CompiledSpriteSheet>();
   private readonly spriteSets = new Map<string, CompiledSpriteSet>();
   private readonly visuals = new Map<string, string>();
 
-  constructor(private readonly scene: Scene, database: VisualDatabaseDefinition) {
-    for (const atlasDefinition of database.atlases) {
-      this.atlases.set(atlasDefinition.id, this.compileAtlas(atlasDefinition));
+  private constructor(private readonly scene: Scene) {}
+
+  static async create(scene: Scene, database: VisualDatabaseDefinition): Promise<SpriteLibrary> {
+    const library = new SpriteLibrary(scene);
+
+    const compiledSheets = await Promise.all(
+      database.sheets.map(async (definition) => [definition.id, await compileSpriteSheet(scene, definition)] as const)
+    );
+    for (const [id, sheet] of compiledSheets) {
+      library.sheets.set(id, sheet);
     }
 
     for (const spriteSetDefinition of database.spriteSets) {
-      this.spriteSets.set(spriteSetDefinition.id, this.compileSpriteSet(spriteSetDefinition));
+      library.spriteSets.set(spriteSetDefinition.id, library.compileSpriteSet(spriteSetDefinition));
     }
 
     for (const visualDefinition of database.entities) {
-      this.visuals.set(visualDefinition.entityId, visualDefinition.spriteSetId);
+      library.visuals.set(visualDefinition.entityId, visualDefinition.spriteSetId);
     }
+
+    return library;
   }
 
   createSpriteForEntity(
@@ -78,65 +107,54 @@ export class SpriteLibrary {
     return new AnimatedSpriteInstance(this.scene, spriteSet, mode, parent);
   }
 
-  private compileAtlas(definition: SpriteAtlasDefinition): CompiledSpriteAtlas {
-    const texture = new DynamicTexture(
-      `${definition.id}-atlas`,
-      {
-        width: definition.frameWidth * definition.columns,
-        height: definition.frameHeight * definition.rows
-      },
-      this.scene,
-      true
-    );
-    texture.hasAlpha = true;
-    texture.wrapU = Texture.CLAMP_ADDRESSMODE;
-    texture.wrapV = Texture.CLAMP_ADDRESSMODE;
-    texture.updateSamplingMode(Texture.NEAREST_SAMPLINGMODE);
-    generateAtlas(texture, definition);
-
-    return {
-      definition,
-      texture,
-      uStep: 1 / definition.columns,
-      vStep: 1 / definition.rows
-    };
-  }
-
   private compileSpriteSet(definition: SpriteSetDefinition): CompiledSpriteSet {
-    const atlas = this.atlases.get(definition.atlasId);
-    if (!atlas) {
-      throw new Error(`Unknown sprite atlas: ${definition.atlasId}`);
+    const sheet = this.sheets.get(definition.sheetId);
+    if (!sheet) {
+      throw new Error(`Unknown sprite sheet: ${definition.sheetId}`);
+    }
+
+    const frames = new Map<string, CompiledSpriteFrame>();
+    for (const frameDefinition of definition.frames) {
+      frames.set(frameDefinition.id, compileFrame(frameDefinition, sheet));
     }
 
     const clips = new Map<string, CompiledSpriteClip>();
     for (const clipDefinition of definition.clips) {
-      clips.set(clipDefinition.id, compileClip(clipDefinition));
+      clips.set(clipDefinition.id, {
+        id: clipDefinition.id,
+        frames: clipDefinition.frames.map((frameId) => {
+          const frame = frames.get(frameId);
+          if (!frame) {
+            throw new Error(`Missing sprite frame '${frameId}' in set '${definition.id}'.`);
+          }
+          return frame;
+        }),
+        fps: clipDefinition.fps,
+        loop: clipDefinition.loop
+      });
     }
 
-    const animations = new Map<SpriteAnimationStateName, CompiledSpriteClip[]>();
+    const animations = new Map<SpriteAnimationStateName, CompiledDirectionalClip[]>();
     for (const animationDefinition of definition.animations) {
-      const directionalClips = animationDefinition.directionalClips.map((clipId) => {
-        const clip = clips.get(clipId);
-        if (!clip) {
-          throw new Error(`Missing sprite clip '${clipId}' in set '${definition.id}'.`);
-        }
-        return clip;
-      });
-      animations.set(animationDefinition.state, directionalClips);
+      animations.set(
+        animationDefinition.state,
+        animationDefinition.directionalClips.map((directionalClip) =>
+          compileDirectionalClip(directionalClip, clips, definition.id)
+        )
+      );
     }
 
     const material = new StandardMaterial(`${definition.id}-material`, this.scene);
-    material.diffuseTexture = atlas.texture;
-    material.opacityTexture = atlas.texture;
+    material.diffuseTexture = sheet.texture;
+    material.opacityTexture = sheet.texture;
     material.useAlphaFromDiffuseTexture = true;
-    material.emissiveTexture = atlas.texture;
+    material.emissiveTexture = sheet.texture;
     material.specularColor = Color3.Black();
     material.disableLighting = true;
     material.backFaceCulling = false;
 
     return {
       definition,
-      atlas,
       material,
       animations
     };
@@ -146,15 +164,20 @@ export class SpriteLibrary {
 export class AnimatedSpriteInstance {
   readonly mesh: Mesh;
   readonly runtime: SpriteRuntimeState;
+
   private readonly uvData = new Float32Array(8);
+  private readonly basePosition = new Vector3();
   private animationState: SpriteAnimationStateName;
   private facingAngle = 0;
   private worldX = 0;
   private worldY = 0;
-  private lastFrame = -1;
+  private lastFrameId = "";
+  private lastMirrorX = false;
+  private frameOffsetX = 0;
+  private frameOffsetY = 0;
 
   constructor(
-    private readonly scene: Scene,
+    scene: Scene,
     private readonly spriteSet: CompiledSpriteSet,
     mode: "world" | "view",
     parent?: Node
@@ -165,7 +188,7 @@ export class AnimatedSpriteInstance {
         width: spriteSet.definition.worldWidth,
         height: spriteSet.definition.worldHeight
       },
-      this.scene
+      scene
     );
     this.mesh.material = spriteSet.material;
     this.mesh.isPickable = false;
@@ -185,11 +208,21 @@ export class AnimatedSpriteInstance {
       finished: false
     };
     this.animationState = spriteSet.definition.defaultState;
-    this.applyFrame(0);
+
+    const initialDirections = spriteSet.animations.get(spriteSet.definition.defaultState);
+    const initialFrame = initialDirections?.[0]?.clip.frames[0];
+    if (!initialFrame) {
+      throw new Error(`Sprite set '${spriteSet.definition.id}' does not define any usable frames.`);
+    }
+    this.applyFrame(initialFrame, false);
   }
 
   get anchorOffsetY(): number {
     return this.spriteSet.definition.anchorOffsetY;
+  }
+
+  get viewModel() {
+    return this.spriteSet.definition.viewModel;
   }
 
   setVisible(visible: boolean): void {
@@ -204,13 +237,14 @@ export class AnimatedSpriteInstance {
     this.runtime.animationState = state;
     this.runtime.animationTime = 0;
     this.runtime.finished = false;
-    this.lastFrame = -1;
+    this.lastFrameId = "";
   }
 
   setPosition(x: number, z: number, y: number): void {
     this.worldX = x;
     this.worldY = z;
-    this.mesh.position.set(x, y, z);
+    this.basePosition.set(x, y, z);
+    this.syncMeshPosition();
   }
 
   setFacingAngle(angle: number): void {
@@ -219,68 +253,121 @@ export class AnimatedSpriteInstance {
 
   update(dt: number, viewerX?: number, viewerY?: number): void {
     this.runtime.animationTime += dt;
-    const clips =
+    const directions =
       this.spriteSet.animations.get(this.animationState) ??
       this.spriteSet.animations.get(this.spriteSet.definition.defaultState);
 
-    if (!clips || clips.length === 0) {
+    if (!directions || directions.length === 0) {
       return;
     }
 
     const directionIndex =
-      clips.length <= 1 || viewerX === undefined || viewerY === undefined
+      directions.length <= 1 || viewerX === undefined || viewerY === undefined
         ? 0
-        : resolveDirectionIndex(this.facingAngle, Math.atan2(viewerY - this.worldY, viewerX - this.worldX), clips.length);
+        : resolveDirectionIndex(
+            this.facingAngle,
+            Math.atan2(viewerY - this.worldY, viewerX - this.worldX),
+            directions.length
+          );
     this.runtime.directionIndex = directionIndex;
 
-    const clip = clips[Math.min(directionIndex, clips.length - 1)];
-    const frameIndex = clip.loop
-      ? clip.frames[Math.floor(this.runtime.animationTime * clip.fps) % clip.frames.length]
-      : clip.frames[Math.min(clip.frames.length - 1, Math.floor(this.runtime.animationTime * clip.fps))];
+    const directionalClip = directions[Math.min(directionIndex, directions.length - 1)];
+    const clip = directionalClip.clip;
+    const frameOffset = Math.floor(this.runtime.animationTime * clip.fps);
+    const frame =
+      clip.frames[
+        clip.loop
+          ? frameOffset % clip.frames.length
+          : Math.min(clip.frames.length - 1, frameOffset)
+      ];
 
-    if (!clip.loop && this.runtime.animationTime * clip.fps >= clip.frames.length - 1) {
+    if (!clip.loop && frameOffset >= clip.frames.length - 1) {
       this.runtime.finished = true;
     }
 
-    this.applyFrame(frameIndex);
+    this.applyFrame(frame, directionalClip.mirrorX);
   }
 
   dispose(): void {
     this.mesh.dispose();
   }
 
-  private applyFrame(frameIndex: number): void {
-    if (this.lastFrame === frameIndex) {
+  private applyFrame(frame: CompiledSpriteFrame, mirrorX: boolean): void {
+    const flipX =
+      (this.spriteSet.definition.flipX ?? false) || (this.spriteSet.definition.viewModel?.flipX ?? false);
+    const flipY =
+      (this.spriteSet.definition.flipY ?? false) || (this.spriteSet.definition.viewModel?.flipY ?? false);
+    const effectiveMirrorX = mirrorX !== flipX;
+    const topV = flipY ? frame.v1 : frame.v0;
+    const bottomV = flipY ? frame.v0 : frame.v1;
+
+    if (this.lastFrameId === frame.definition.id && this.lastMirrorX === effectiveMirrorX) {
       return;
     }
-    this.lastFrame = frameIndex;
+    this.lastFrameId = frame.definition.id;
+    this.lastMirrorX = effectiveMirrorX;
 
-    const atlas = this.spriteSet.atlas;
-    const col = frameIndex % atlas.definition.columns;
-    const row = Math.floor(frameIndex / atlas.definition.columns);
-    const u0 = col * atlas.uStep;
-    const u1 = u0 + atlas.uStep;
-    const v1 = 1 - row * atlas.vStep;
-    const v0 = v1 - atlas.vStep;
+    const leftU = effectiveMirrorX ? frame.u1 : frame.u0;
+    const rightU = effectiveMirrorX ? frame.u0 : frame.u1;
 
-    this.uvData[0] = u0;
-    this.uvData[1] = v0;
-    this.uvData[2] = u1;
-    this.uvData[3] = v0;
-    this.uvData[4] = u1;
-    this.uvData[5] = v1;
-    this.uvData[6] = u0;
-    this.uvData[7] = v1;
+    this.uvData[0] = leftU;
+    this.uvData[1] = topV;
+    this.uvData[2] = rightU;
+    this.uvData[3] = topV;
+    this.uvData[4] = rightU;
+    this.uvData[5] = bottomV;
+    this.uvData[6] = leftU;
+    this.uvData[7] = bottomV;
     this.mesh.updateVerticesData(VertexBuffer.UVKind, this.uvData, false, false);
+    this.frameOffsetX = frame.definition.offsetX ?? 0;
+    this.frameOffsetY = frame.definition.offsetY ?? 0;
+    this.syncMeshPosition();
+  }
+
+  private syncMeshPosition(): void {
+    const pivotX = this.spriteSet.definition.pivotX ?? 0.5;
+    const pivotY = this.spriteSet.definition.pivotY ?? 0.5;
+    const pivotOffsetX = (0.5 - pivotX) * this.spriteSet.definition.worldWidth;
+    const pivotOffsetY = (pivotY - 0.5) * this.spriteSet.definition.worldHeight;
+    this.mesh.position.set(
+      this.basePosition.x + pivotOffsetX + this.frameOffsetX,
+      this.basePosition.y + pivotOffsetY + this.frameOffsetY,
+      this.basePosition.z
+    );
   }
 }
 
-function compileClip(definition: SpriteClipDefinition): CompiledSpriteClip {
+function compileDirectionalClip(
+  definition: DirectionalSpriteClipDefinition,
+  clips: Map<string, CompiledSpriteClip>,
+  spriteSetId: string
+): CompiledDirectionalClip {
+  const clip = clips.get(definition.clipId);
+  if (!clip) {
+    throw new Error(`Missing sprite clip '${definition.clipId}' in set '${spriteSetId}'.`);
+  }
+
   return {
-    id: definition.id,
-    frames: Array.from({ length: definition.length }, (_, index) => definition.startFrame + index),
-    fps: definition.fps,
-    loop: definition.loop
+    clip,
+    mirrorX: definition.mirrorX ?? false
+  };
+}
+
+function compileFrame(
+  definition: SpriteFrameDefinition,
+  sheet: CompiledSpriteSheet
+): CompiledSpriteFrame {
+  const u0 = definition.x / sheet.width;
+  const u1 = (definition.x + definition.width) / sheet.width;
+  const v0 = 1 - (definition.y + definition.height) / sheet.height;
+  const v1 = 1 - definition.y / sheet.height;
+
+  return {
+    definition,
+    u0,
+    u1,
+    v0,
+    v1
   };
 }
 
@@ -290,190 +377,81 @@ function resolveDirectionIndex(entityFacingAngle: number, angleToViewer: number,
   return ((bucket % directionCount) + directionCount) % directionCount;
 }
 
-function generateAtlas(texture: DynamicTexture, definition: SpriteAtlasDefinition): void {
-  const context = texture.getContext() as unknown as CanvasRenderingContext2D;
-  const width = definition.frameWidth * definition.columns;
-  const height = definition.frameHeight * definition.rows;
-  context.clearRect(0, 0, width, height);
+async function compileSpriteSheet(
+  scene: Scene,
+  definition: SpriteSheetDefinition
+): Promise<CompiledSpriteSheet> {
+  const canvas = await loadProcessedCanvas(definition);
+  const texture = new DynamicTexture(`${definition.id}-sheet`, canvas, scene, false);
+  texture.hasAlpha = true;
+  texture.wrapU = Texture.CLAMP_ADDRESSMODE;
+  texture.wrapV = Texture.CLAMP_ADDRESSMODE;
+  texture.updateSamplingMode(Texture.NEAREST_SAMPLINGMODE);
+  texture.update(false);
 
-  const frameCount = definition.columns * definition.rows;
-  for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
-    const col = frameIndex % definition.columns;
-    const row = Math.floor(frameIndex / definition.columns);
-    const x = col * definition.frameWidth;
-    const y = row * definition.frameHeight;
-    context.save();
-    context.translate(x, y);
-    drawFrame(context, definition.generatorId, frameIndex, definition.frameWidth, definition.frameHeight);
-    context.restore();
-  }
-
-  texture.update();
+  return {
+    definition,
+    texture,
+    width: canvas.width,
+    height: canvas.height
+  };
 }
 
-function drawFrame(
-  context: CanvasRenderingContext2D,
-  generatorId: string,
-  frameIndex: number,
-  width: number,
-  height: number
-): void {
-  context.clearRect(0, 0, width, height);
+async function loadProcessedCanvas(definition: SpriteSheetDefinition): Promise<HTMLCanvasElement> {
+  const image = await loadImage(definition.imageUrl);
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
 
-  switch (generatorId) {
-    case "grave_thrall":
-      drawGraveThrallFrame(context, frameIndex, width, height);
-      break;
-    case "health_pickup":
-      drawHealthPickupFrame(context, frameIndex, width, height);
-      break;
-    case "ammo_pickup":
-      drawAmmoPickupFrame(context, frameIndex, width, height);
-      break;
-    case "ember_wand":
-      drawWeaponFrame(context, frameIndex, width, height, "#cf8a55", "#5a2b18");
-      break;
-    case "shard_caster":
-      drawWeaponFrame(context, frameIndex, width, height, "#8ad6ff", "#20415c");
-      break;
-    case "ember_projectile":
-      drawProjectileFrame(context, frameIndex, width, height, "#f8a56a", "#fff4cc");
-      break;
-    case "shard_projectile":
-      drawProjectileFrame(context, frameIndex, width, height, "#84d9ff", "#eefcff");
-      break;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error(`Unable to create 2D context for sprite sheet '${definition.id}'.`);
   }
+
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(image, 0, 0);
+
+  for (const clearRect of definition.clearRects ?? []) {
+    context.clearRect(clearRect.x, clearRect.y, clearRect.width, clearRect.height);
+  }
+
+  const chromaKeys = definition.chromaKeyColors.map(parseHexColor);
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const pixels = imageData.data;
+
+  // Exact color replacement keeps the keyed backgrounds clean without touching actual sprite colors.
+  for (let index = 0; index < pixels.length; index += 4) {
+    const red = pixels[index];
+    const green = pixels[index + 1];
+    const blue = pixels[index + 2];
+
+    if (chromaKeys.some((color) => color.r === red && color.g === green && color.b === blue)) {
+      pixels[index + 3] = 0;
+    }
+  }
+
+  context.putImageData(imageData, 0, 0);
+  return canvas;
 }
 
-function drawGraveThrallFrame(
-  context: CanvasRenderingContext2D,
-  frameIndex: number,
-  width: number,
-  height: number
-): void {
-  const decoded = decodeThrallFrame(frameIndex);
-  const centerX = width * 0.5;
-  const floorY = height - 4;
-  const stride = decoded.state === "move" ? (decoded.frame % 2 === 0 ? -2 : 2) : 0;
-  const reach = decoded.state === "attack" ? 8 + decoded.frame * 3 : 4;
-  const deathDrop = decoded.state === "death" ? decoded.frame * 6 : 0;
-  const torsoHeight = decoded.state === "death" ? 18 - decoded.frame * 3 : 24;
-  const bodyOffset = (decoded.direction - 3.5) * 1.1;
-
-  context.fillStyle = "rgba(0, 0, 0, 0.18)";
-  context.fillRect(centerX - 14, floorY - 4, 28, 4);
-
-  context.fillStyle = decoded.state === "hurt" ? "#c77474" : "#8db08d";
-  context.fillRect(centerX - 9 + bodyOffset, floorY - deathDrop - torsoHeight, 18, torsoHeight);
-
-  context.fillStyle = "#263926";
-  context.fillRect(centerX - 6 + bodyOffset, floorY - deathDrop - torsoHeight - 12, 12, 12);
-
-  context.fillStyle = "#cfdcab";
-  context.fillRect(centerX - 5 + bodyOffset + decoded.direction * 0.2, floorY - deathDrop - torsoHeight - 8, 3, 3);
-  context.fillRect(centerX + 2 + bodyOffset + decoded.direction * 0.2, floorY - deathDrop - torsoHeight - 8, 3, 3);
-
-  if (decoded.state !== "death") {
-    context.fillStyle = "#415a41";
-    context.fillRect(centerX - 14 + bodyOffset - reach * 0.45, floorY - deathDrop - torsoHeight + 3, 8 + reach, 4);
-    context.fillRect(centerX - 6 + bodyOffset + stride, floorY - deathDrop, 4, 8);
-    context.fillRect(centerX + 2 + bodyOffset - stride, floorY - deathDrop, 4, 8);
-  } else {
-    context.fillStyle = "#334333";
-    context.fillRect(centerX - 14 + bodyOffset, floorY - 5 - decoded.frame, 28, 6);
-  }
+async function loadImage(url: string): Promise<HTMLImageElement> {
+  return await new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(`Failed to load sprite sheet: ${url}`));
+    image.src = url;
+  });
 }
 
-function decodeThrallFrame(frameIndex: number): {
-  state: SpriteAnimationStateName;
-  direction: number;
-  frame: number;
-} {
-  if (frameIndex < 8) {
-    return { state: "idle", direction: frameIndex, frame: 0 };
+function parseHexColor(value: string): RgbColor {
+  const normalized = value.replace("#", "");
+  if (normalized.length !== 6) {
+    throw new Error(`Unsupported chroma key color: ${value}`);
   }
-  if (frameIndex < 24) {
-    const local = frameIndex - 8;
-    return { state: "move", direction: Math.floor(local / 2), frame: local % 2 };
-  }
-  if (frameIndex < 40) {
-    const local = frameIndex - 24;
-    return { state: "attack", direction: Math.floor(local / 2), frame: local % 2 };
-  }
-  if (frameIndex < 48) {
-    return { state: "hurt", direction: frameIndex - 40, frame: 0 };
-  }
-  const local = frameIndex - 48;
-  return { state: "death", direction: Math.floor(local / 4), frame: local % 4 };
-}
 
-function drawHealthPickupFrame(
-  context: CanvasRenderingContext2D,
-  frameIndex: number,
-  width: number,
-  height: number
-): void {
-  const pulse = 1 + ((frameIndex % 8) - 3.5) * 0.02;
-  context.fillStyle = "rgba(0,0,0,0.18)";
-  context.fillRect(7, height - 8, width - 14, 4);
-  context.fillStyle = "#d45454";
-  context.fillRect(10, 8, 12 * pulse, 16 * pulse);
-  context.fillStyle = "#ffe3d1";
-  context.fillRect(14, 12, 4, 12);
-  context.fillRect(10, 16, 12, 4);
-}
-
-function drawAmmoPickupFrame(
-  context: CanvasRenderingContext2D,
-  frameIndex: number,
-  width: number,
-  height: number
-): void {
-  const tilt = (frameIndex % 8) - 3.5;
-  context.fillStyle = "rgba(0,0,0,0.18)";
-  context.fillRect(6, height - 8, width - 12, 4);
-  context.fillStyle = "#76a2d9";
-  context.fillRect(8 + tilt * 0.3, 10, 16, 10);
-  context.fillStyle = "#eef8ff";
-  context.fillRect(10 + tilt * 0.3, 12, 12, 3);
-  context.fillStyle = "#395476";
-  context.fillRect(11 + tilt * 0.3, 21, 10, 4);
-}
-
-function drawWeaponFrame(
-  context: CanvasRenderingContext2D,
-  frameIndex: number,
-  width: number,
-  height: number,
-  bodyColor: string,
-  gripColor: string
-): void {
-  const recoil = frameIndex === 0 ? 0 : frameIndex === 1 ? 6 : 2;
-  context.fillStyle = "rgba(0,0,0,0)";
-  context.fillRect(0, 0, width, height);
-  context.fillStyle = gripColor;
-  context.fillRect(width * 0.46, height * 0.46 + recoil, 18, 18);
-  context.fillStyle = bodyColor;
-  context.fillRect(width * 0.34, height * 0.28 + recoil, 42, 18);
-  context.fillStyle = "#ffe0a6";
-  context.fillRect(width * 0.69, height * 0.34 + recoil, 12, 6);
-}
-
-function drawProjectileFrame(
-  context: CanvasRenderingContext2D,
-  frameIndex: number,
-  width: number,
-  height: number,
-  fillColor: string,
-  accentColor: string
-): void {
-  const radius = frameIndex % 2 === 0 ? 6 : 8;
-  context.fillStyle = fillColor;
-  context.beginPath();
-  context.arc(width * 0.5, height * 0.5, radius, 0, Math.PI * 2);
-  context.fill();
-  context.fillStyle = accentColor;
-  context.beginPath();
-  context.arc(width * 0.5, height * 0.5, radius * 0.5, 0, Math.PI * 2);
-  context.fill();
+  return {
+    r: Number.parseInt(normalized.slice(0, 2), 16),
+    g: Number.parseInt(normalized.slice(2, 4), 16),
+    b: Number.parseInt(normalized.slice(4, 6), 16)
+  };
 }
