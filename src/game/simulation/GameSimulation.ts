@@ -191,8 +191,8 @@ export class GameSimulation {
   private updatePlayerMovement(dt: number, input: InputFrame): void {
     const forwardX = Math.cos(this.state.player.angle);
     const forwardY = Math.sin(this.state.player.angle);
-    const rightX = -forwardY;
-    const rightY = forwardX;
+    const rightX = forwardY;
+    const rightY = -forwardX;
     const rawX = forwardX * input.moveY + rightX * input.moveX;
     const rawY = forwardY * input.moveY + rightY * input.moveX;
     const length = length2(rawX, rawY);
