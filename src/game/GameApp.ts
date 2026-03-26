@@ -57,7 +57,7 @@ export class GameApp {
   async start(): Promise<void> {
     const bootstrap = await createBabylonEngine(this.canvas);
     this.backend = bootstrap.backend;
-    this.renderer = new RetroRenderer(bootstrap.engine, this.content);
+    this.renderer = await RetroRenderer.create(bootstrap.engine, this.content);
     this.renderer.setPixelScale(this.settings.pixelScale);
     this.audio.setMasterVolume(this.settings.masterVolume);
     this.setMode("main_menu");

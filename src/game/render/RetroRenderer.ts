@@ -23,7 +23,7 @@ export class RetroRenderer {
   readonly scene: Scene;
   private readonly camera: UniversalCamera;
   private readonly root: TransformNode;
-  private readonly spriteLibrary: SpriteLibrary;
+  private spriteLibrary!: SpriteLibrary;
   private readonly enemySprites = new Map<string, AnimatedSpriteInstance>();
   private readonly pickupSprites = new Map<string, AnimatedSpriteInstance>();
   private readonly projectileSprites = new Map<number, AnimatedSpriteInstance>();
@@ -55,11 +55,18 @@ export class RetroRenderer {
     this.floorMaterial = createPatternMaterial(this.scene, "floor", "#342a1e", "#1f1812", "#4b3a2e");
     this.ceilingMaterial = createPatternMaterial(this.scene, "ceiling", "#221511", "#100b09", "#382019");
     this.wallMaterial = createPatternMaterial(this.scene, "wall", "#6b4a2f", "#2a1b12", "#8a674a");
-    this.spriteLibrary = new SpriteLibrary(this.scene, content.visuals);
 
     this.buildStaticLevel();
-    this.buildSprites();
     this.setAttractCamera();
+  }
+
+  static async create(
+    engine: Engine | WebGPUEngine,
+    content: ContentDatabase
+  ): Promise<RetroRenderer> {
+    const renderer = new RetroRenderer(engine, content);
+    await renderer.initializeSprites();
+    return renderer;
   }
 
   setPixelScale(scale: number): void {
@@ -94,6 +101,11 @@ export class RetroRenderer {
     this.syncPickups(state.pickups, state.player.x, state.player.y, dt);
     this.syncProjectiles(state.projectiles, state.player.x, state.player.y, dt);
     this.syncWeapon(state, dt);
+  }
+
+  private async initializeSprites(): Promise<void> {
+    this.spriteLibrary = await SpriteLibrary.create(this.scene, this.content.visuals);
+    this.buildSprites();
   }
 
   private buildStaticLevel(): void {
@@ -154,8 +166,17 @@ export class RetroRenderer {
 
     for (const weapon of this.content.weapons.values()) {
       const sprite = this.spriteLibrary.createSpriteForEntity(`weapon:${weapon.id}`, "view", this.camera);
-      sprite.mesh.rotation.y = Math.PI;
-      sprite.mesh.position.set(0.36, -0.27, 0.82);
+      const viewModel = sprite.viewModel;
+      sprite.mesh.rotation.set(
+        viewModel?.rotationX ?? 0,
+        viewModel?.rotationY ?? 0,
+        viewModel?.rotationZ ?? 0
+      );
+      sprite.setPosition(
+        viewModel?.offsetX ?? 0.2,
+        viewModel?.offsetZ ?? 1,
+        viewModel?.offsetY ?? -0.6
+      );
       this.weaponSprites.set(weapon.id, sprite);
     }
   }
@@ -234,9 +255,13 @@ export class RetroRenderer {
         continue;
       }
 
-      sprite.mesh.position.x = 0.36;
-      sprite.mesh.position.y = -0.27 + Math.sin(state.player.bobPhase) * 0.01;
-      sprite.mesh.position.z = 0.82;
+      const viewModel = sprite.viewModel;
+      const bobAmplitude = viewModel?.bobAmplitude ?? 0.01;
+      sprite.setPosition(
+        viewModel?.offsetX ?? 0.2,
+        viewModel?.offsetZ ?? 1,
+        (viewModel?.offsetY ?? -0.6) + Math.sin(state.player.bobPhase) * bobAmplitude
+      );
       sprite.setAnimationState(state.weapon.viewAnimation);
       sprite.update(dt);
     }
