@@ -136,6 +136,8 @@ export interface SpriteSetDefinition {
   worldWidth: number;
   worldHeight: number;
   anchorOffsetY: number;
+  flipX?: boolean;
+  flipY?: boolean;
   pivotX?: number;
   pivotY?: number;
   viewModel?: SpriteViewModelDefinition;

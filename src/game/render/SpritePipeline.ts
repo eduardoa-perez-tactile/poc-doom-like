@@ -293,8 +293,10 @@ export class AnimatedSpriteInstance {
   }
 
   private applyFrame(frame: CompiledSpriteFrame, mirrorX: boolean): void {
-    const flipX = this.spriteSet.definition.viewModel?.flipX ?? false;
-    const flipY = this.spriteSet.definition.viewModel?.flipY ?? false;
+    const flipX =
+      (this.spriteSet.definition.flipX ?? false) || (this.spriteSet.definition.viewModel?.flipX ?? false);
+    const flipY =
+      (this.spriteSet.definition.flipY ?? false) || (this.spriteSet.definition.viewModel?.flipY ?? false);
     const effectiveMirrorX = mirrorX !== flipX;
     const topV = flipY ? frame.v1 : frame.v0;
     const bottomV = flipY ? frame.v0 : frame.v1;

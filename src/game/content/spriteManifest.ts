@@ -127,6 +127,7 @@ function buildGolemSet(): SpriteSetDefinition {
     worldWidth: 1.55,
     worldHeight: 1.8,
     anchorOffsetY: 0.9,
+    flipY: true,
     frames,
     clips,
     animations: [
@@ -151,6 +152,7 @@ function buildGolemSoulSet(): SpriteSetDefinition {
     worldWidth: 0.82,
     worldHeight: 0.82,
     anchorOffsetY: 0.45,
+    flipY: true,
     frames,
     clips: [
       {
@@ -176,6 +178,7 @@ function buildBandageSet(): SpriteSetDefinition {
     worldWidth: 0.82,
     worldHeight: 0.82,
     anchorOffsetY: 0.45,
+    flipY: true,
     frames,
     clips: [
       {
@@ -204,6 +207,7 @@ function buildElvenWandSet(): SpriteSetDefinition {
     worldWidth: 1.06,
     worldHeight: 0.59,
     anchorOffsetY: 0,
+    flipY: true,
     pivotX: 0.5,
     pivotY: 1,
     viewModel: {
@@ -248,6 +252,7 @@ function buildDragonClawSet(): SpriteSetDefinition {
     worldWidth: 1.1,
     worldHeight: 0.61,
     anchorOffsetY: 0,
+    flipY: true,
     pivotX: 0.5,
     pivotY: 1,
     viewModel: {
@@ -292,6 +297,7 @@ function buildElvenProjectileSet(): SpriteSetDefinition {
     worldWidth: 0.34,
     worldHeight: 0.34,
     anchorOffsetY: 0.16,
+    flipY: true,
     frames,
     clips: [
       {
@@ -320,6 +326,7 @@ function buildDragonProjectileSet(): SpriteSetDefinition {
     worldWidth: 0.32,
     worldHeight: 0.32,
     anchorOffsetY: 0.16,
+    flipY: true,
     frames,
     clips: [
       {
