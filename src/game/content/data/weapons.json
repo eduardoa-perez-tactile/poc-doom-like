@@ -1,30 +1,272 @@
 [
   {
-    "id": "ember_wand",
-    "name": "Ember Wand",
+    "id": "staff",
+    "name": "Staff",
     "slot": 1,
     "ammoType": "none",
-    "ammoPerShot": 0,
-    "cooldown": 0.34,
-    "damage": 12,
-    "projectileSpeed": 0,
-    "range": 16,
-    "projectileLife": 0,
-    "fireMode": "hitscan",
-    "uiColor": "#f3985a"
+    "ammoCostBase": 0,
+    "ammoCostPowered": 0,
+    "cooldownBase": 0.42,
+    "cooldownPowered": 0.32,
+    "uiColor": "#b78a56",
+    "baseBehavior": {
+      "kind": "melee_strike",
+      "damage": 18,
+      "reach": 1.4,
+      "coneAngleDeg": 22,
+      "ghostInteraction": "ignore"
+    },
+    "poweredBehavior": {
+      "kind": "melee_strike",
+      "damage": 34,
+      "reach": 1.6,
+      "coneAngleDeg": 28,
+      "knockback": 0.7,
+      "ghostInteraction": "normal"
+    }
   },
   {
-    "id": "shard_caster",
-    "name": "Shard Caster",
+    "id": "gauntlets_of_the_necromancer",
+    "name": "Gauntlets of the Necromancer",
     "slot": 2,
-    "ammoType": "bullets",
-    "ammoPerShot": 1,
-    "cooldown": 0.16,
-    "damage": 10,
-    "projectileSpeed": 20,
-    "range": 18,
-    "projectileLife": 1.05,
-    "fireMode": "projectile",
-    "uiColor": "#93d9ff"
+    "ammoType": "none",
+    "ammoCostBase": 0,
+    "ammoCostPowered": 0,
+    "cooldownBase": 0.12,
+    "cooldownPowered": 0.1,
+    "uiColor": "#71d277",
+    "baseBehavior": {
+      "kind": "melee_latch",
+      "damage": 7,
+      "reach": 1.45,
+      "coneAngleDeg": 30,
+      "holdToFire": true
+    },
+    "poweredBehavior": {
+      "kind": "melee_latch",
+      "damage": 9,
+      "reach": 1.55,
+      "coneAngleDeg": 34,
+      "holdToFire": true,
+      "healFactor": 0.4
+    }
+  },
+  {
+    "id": "elven_wand",
+    "name": "Elven Wand",
+    "slot": 3,
+    "ammoType": "wand",
+    "ammoCostBase": 1,
+    "ammoCostPowered": 2,
+    "cooldownBase": 0.22,
+    "cooldownPowered": 0.2,
+    "uiColor": "#f3985a",
+    "baseBehavior": {
+      "kind": "hitscan_single",
+      "damage": 14,
+      "range": 18
+    },
+    "poweredBehavior": {
+      "kind": "hitscan_single",
+      "damage": 11,
+      "range": 18,
+      "spread": {
+        "count": 3,
+        "angleDeg": 12
+      }
+    }
+  },
+  {
+    "id": "ethereal_crossbow",
+    "name": "Ethereal Crossbow",
+    "slot": 4,
+    "ammoType": "crossbow",
+    "ammoCostBase": 1,
+    "ammoCostPowered": 1,
+    "cooldownBase": 0.5,
+    "cooldownPowered": 0.44,
+    "uiColor": "#8ce7ff",
+    "baseBehavior": {
+      "kind": "projectile_spread",
+      "damage": 11,
+      "spread": {
+        "count": 3,
+        "angleDeg": 16
+      },
+      "projectile": {
+        "visualId": "ethereal_crossbow",
+        "speed": 18,
+        "life": 1.4,
+        "radius": 0.14
+      }
+    },
+    "poweredBehavior": {
+      "kind": "projectile_spread",
+      "damage": 11,
+      "spread": {
+        "count": 5,
+        "angleDeg": 24
+      },
+      "projectile": {
+        "visualId": "ethereal_crossbow",
+        "speed": 19,
+        "life": 1.4,
+        "radius": 0.14
+      }
+    }
+  },
+  {
+    "id": "dragon_claw",
+    "name": "Dragon Claw",
+    "slot": 5,
+    "ammoType": "claw",
+    "ammoCostBase": 1,
+    "ammoCostPowered": 2,
+    "cooldownBase": 0.1,
+    "cooldownPowered": 0.18,
+    "uiColor": "#93d9ff",
+    "baseBehavior": {
+      "kind": "hitscan_rapid",
+      "damage": 8,
+      "range": 17
+    },
+    "poweredBehavior": {
+      "kind": "hitscan_rapid",
+      "damage": 18,
+      "range": 17,
+      "impactEffect": {
+        "kind": "radial_burst",
+        "projectileVisualId": "dragon_claw_burst",
+        "count": 8,
+        "spreadAngleDeg": 360,
+        "damage": 9,
+        "speed": 11,
+        "life": 0.6,
+        "radius": 0.1
+      }
+    }
+  },
+  {
+    "id": "hellstaff",
+    "name": "Hellstaff",
+    "slot": 6,
+    "ammoType": "hellstaff",
+    "ammoCostBase": 1,
+    "ammoCostPowered": 2,
+    "cooldownBase": 0.18,
+    "cooldownPowered": 0.26,
+    "uiColor": "#6dc278",
+    "baseBehavior": {
+      "kind": "projectile_single",
+      "damage": 15,
+      "projectile": {
+        "visualId": "hellstaff",
+        "speed": 16,
+        "life": 1.5,
+        "radius": 0.18
+      }
+    },
+    "poweredBehavior": {
+      "kind": "projectile_homing",
+      "damage": 22,
+      "projectile": {
+        "visualId": "hellstaff",
+        "speed": 14,
+        "life": 1.7,
+        "radius": 0.22,
+        "homingStrength": 0.12
+      },
+      "impactEffect": {
+        "kind": "hazard_cloud",
+        "hazard": {
+          "visualId": "hellstaff_cloud",
+          "radius": 1.4,
+          "duration": 4,
+          "damagePerTick": 6,
+          "tickInterval": 0.35
+        }
+      }
+    }
+  },
+  {
+    "id": "phoenix_rod",
+    "name": "Phoenix Rod",
+    "slot": 7,
+    "ammoType": "phoenix",
+    "ammoCostBase": 1,
+    "ammoCostPowered": 1,
+    "cooldownBase": 0.5,
+    "cooldownPowered": 0.1,
+    "uiColor": "#ffb35d",
+    "baseBehavior": {
+      "kind": "projectile_splash",
+      "damage": 28,
+      "projectile": {
+        "visualId": "phoenix_rod",
+        "speed": 12,
+        "life": 1.7,
+        "radius": 0.22
+      },
+      "splash": {
+        "radius": 1.5,
+        "damageScale": 0.7
+      }
+    },
+    "poweredBehavior": {
+      "kind": "beam_sustain",
+      "damage": 8,
+      "range": 4.2,
+      "coneAngleDeg": 34,
+      "holdToFire": true,
+      "impactEffect": {
+        "kind": "flame_visual",
+        "projectileVisualId": "phoenix_flame"
+      }
+    }
+  },
+  {
+    "id": "firemace",
+    "name": "Firemace",
+    "slot": 8,
+    "ammoType": "firemace",
+    "ammoCostBase": 1,
+    "ammoCostPowered": 2,
+    "cooldownBase": 0.52,
+    "cooldownPowered": 0.62,
+    "uiColor": "#caa2ff",
+    "baseBehavior": {
+      "kind": "projectile_bounce",
+      "damage": 24,
+      "projectile": {
+        "visualId": "firemace",
+        "speed": 10,
+        "life": 2.6,
+        "radius": 0.26
+      },
+      "bounce": {
+        "maxBounces": 4,
+        "speedMultiplier": 0.9
+      }
+    },
+    "poweredBehavior": {
+      "kind": "projectile_bounce",
+      "damage": 34,
+      "projectile": {
+        "visualId": "firemace_powered",
+        "speed": 11,
+        "life": 3,
+        "radius": 0.32,
+        "homingStrength": 0.16
+      },
+      "bounce": {
+        "maxBounces": 6,
+        "speedMultiplier": 0.94,
+        "seekAfterBounce": true
+      },
+      "splash": {
+        "radius": 1.2,
+        "damageScale": 0.55
+      }
+    }
   }
 ]

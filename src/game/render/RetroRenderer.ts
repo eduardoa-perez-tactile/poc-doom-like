@@ -14,7 +14,13 @@ import {
   WebGPUEngine
 } from "@babylonjs/core";
 import type { ContentDatabase, SpriteAnimationStateName } from "../content/types";
-import type { EnemyState, GameSessionState, PickupState, ProjectileState } from "../core/types";
+import type {
+  EnemyState,
+  GameSessionState,
+  HazardState,
+  PickupState,
+  ProjectileState
+} from "../core/types";
 import { AnimatedSpriteInstance, SpriteLibrary } from "./SpritePipeline";
 
 const PLAYER_EYE_HEIGHT = 1.2;
@@ -27,6 +33,7 @@ export class RetroRenderer {
   private readonly enemySprites = new Map<string, AnimatedSpriteInstance>();
   private readonly pickupSprites = new Map<string, AnimatedSpriteInstance>();
   private readonly projectileSprites = new Map<number, AnimatedSpriteInstance>();
+  private readonly hazardSprites = new Map<number, AnimatedSpriteInstance>();
   private readonly weaponSprites = new Map<string, AnimatedSpriteInstance>();
   private readonly floorMaterial: StandardMaterial;
   private readonly ceilingMaterial: StandardMaterial;
@@ -100,6 +107,7 @@ export class RetroRenderer {
     this.syncEnemies(state.enemies, state.player.x, state.player.y, dt);
     this.syncPickups(state.pickups, state.player.x, state.player.y, dt);
     this.syncProjectiles(state.projectiles, state.player.x, state.player.y, dt);
+    this.syncHazards(state.hazards, state.player.x, state.player.y, dt);
     this.syncWeapon(state, dt);
   }
 
@@ -226,7 +234,7 @@ export class RetroRenderer {
     for (const projectile of projectiles) {
       let sprite = this.projectileSprites.get(projectile.id);
       if (!sprite) {
-        sprite = this.spriteLibrary.createSpriteForEntity(`projectile:${projectile.weaponId}`, "world");
+        sprite = this.spriteLibrary.createSpriteForEntity(`projectile:${projectile.visualId}`, "world");
         this.projectileSprites.set(projectile.id, sprite);
       }
 
@@ -244,6 +252,37 @@ export class RetroRenderer {
       }
       sprite.dispose();
       this.projectileSprites.delete(id);
+    }
+  }
+
+  private syncHazards(
+    hazards: HazardState[],
+    viewerX: number,
+    viewerY: number,
+    dt: number
+  ): void {
+    const liveIds = new Set<number>();
+    for (const hazard of hazards) {
+      let sprite = this.hazardSprites.get(hazard.id);
+      if (!sprite) {
+        sprite = this.spriteLibrary.createSpriteForEntity(`projectile:${hazard.visualId}`, "world");
+        this.hazardSprites.set(hazard.id, sprite);
+      }
+
+      sprite.setVisible(true);
+      sprite.setPosition(hazard.x, hazard.y, sprite.anchorOffsetY + 0.35);
+      sprite.setFacingAngle(0);
+      sprite.setAnimationState("idle");
+      sprite.update(dt, viewerX, viewerY);
+      liveIds.add(hazard.id);
+    }
+
+    for (const [id, sprite] of this.hazardSprites) {
+      if (liveIds.has(id)) {
+        continue;
+      }
+      sprite.dispose();
+      this.hazardSprites.delete(id);
     }
   }
 

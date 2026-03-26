@@ -1,4 +1,4 @@
-import type { PickupKind, SpriteAnimationStateName } from "../content/types";
+import type { PickupKind, SpriteAnimationStateName, WeaponAmmoType } from "../content/types";
 
 export type AppMode =
   | "boot"
@@ -30,6 +30,7 @@ export interface WeaponRuntimeState {
   cooldownRemaining: number;
   viewAnimation: SpriteAnimationStateName;
   viewAnimationTime: number;
+  sustainTargetId: string | null;
 }
 
 export interface PlayerState {
@@ -41,8 +42,13 @@ export interface PlayerState {
   radius: number;
   moveSpeed: number;
   bobPhase: number;
-  ammo: number;
+  ammo: Record<Exclude<WeaponAmmoType, "none">, number>;
   alive: boolean;
+}
+
+export interface TomeRuntimeState {
+  active: boolean;
+  remaining: number;
 }
 
 export interface EnemyState {
@@ -69,6 +75,7 @@ export interface ProjectileState {
   source: "player" | "enemy";
   ownerId: string;
   weaponId: string;
+  visualId: string;
   x: number;
   y: number;
   dx: number;
@@ -76,6 +83,40 @@ export interface ProjectileState {
   speed: number;
   radius: number;
   damage: number;
+  ttl: number;
+  homingStrength: number;
+  splashRadius: number;
+  splashDamageScale: number;
+  bouncesRemaining: number;
+  bounceSpeedMultiplier: number;
+  seekAfterBounce: boolean;
+  hasBounced: boolean;
+  impactBurstVisualId?: string;
+  impactBurstCount?: number;
+  impactBurstSpreadDeg?: number;
+  impactHazard?: HazardTemplateState;
+}
+
+export interface HazardTemplateState {
+  visualId: string;
+  radius: number;
+  duration: number;
+  damagePerTick: number;
+  tickInterval: number;
+}
+
+export interface HazardState {
+  id: number;
+  source: "player" | "enemy";
+  ownerId: string;
+  weaponId: string;
+  visualId: string;
+  x: number;
+  y: number;
+  radius: number;
+  damagePerTick: number;
+  tickInterval: number;
+  tickRemaining: number;
   ttl: number;
 }
 
@@ -105,9 +146,11 @@ export interface LevelState {
 export interface GameSessionState {
   level: LevelState;
   player: PlayerState;
+  tome: TomeRuntimeState;
   weapon: WeaponRuntimeState;
   enemies: EnemyState[];
   projectiles: ProjectileState[];
+  hazards: HazardState[];
   pickups: PickupState[];
   messages: SimulationMessage[];
   elapsedTime: number;
@@ -118,7 +161,7 @@ export interface GameSessionState {
 export type GameState = GameSessionState;
 
 export interface SaveGameData {
-  version: 1;
+  version: 2;
   savedAt: string;
   state: GameSessionState;
 }

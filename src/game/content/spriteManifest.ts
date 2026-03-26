@@ -192,97 +192,150 @@ function buildBandageSet(): SpriteSetDefinition {
   };
 }
 
-function buildElvenWandSet(): SpriteSetDefinition {
-  const frames = [
-    cellFrame("elven_wand_idle", 0, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT),
-    cellFrame("elven_wand_attack_0", 1, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT),
-    cellFrame("elven_wand_attack_1", 2, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT),
-    cellFrame("elven_wand_attack_2", 3, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT)
-  ];
+function buildWeaponViewSet(
+  id: string,
+  row: number,
+  idleCol: number,
+  attackCols: number[],
+  worldWidth: number,
+  worldHeight: number,
+  viewModel: SpriteSetDefinition["viewModel"]
+): SpriteSetDefinition {
+  const idleFrameId = `${id}_idle`;
+  const frames = [cellFrame(idleFrameId, idleCol, row, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT)];
+  const attackFrameIds: string[] = [];
+
+  for (let index = 0; index < attackCols.length; index += 1) {
+    const frameId = `${id}_attack_${index}`;
+    frames.push(cellFrame(frameId, attackCols[index], row, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT));
+    attackFrameIds.push(frameId);
+  }
 
   return {
-    id: "elven_wand_set",
+    id: `${id}_set`,
     sheetId: "weapons_sheet",
     defaultState: "idle",
-    worldWidth: 1.06,
-    worldHeight: 0.59,
+    worldWidth,
+    worldHeight,
     anchorOffsetY: 0,
     flipY: true,
     pivotX: 0.5,
     pivotY: 1,
-    viewModel: {
-      offsetX: 0.02,
-      offsetY: -0.66,
-      offsetZ: 0.98,
-      bobAmplitude: 0.01,
-      flipX: true,
-      flipY: true,
-      rotationY: Math.PI,
-      rotationZ: 0
-    },
+    viewModel,
     frames,
     clips: [
-      { id: "elven_wand_idle_clip", frames: ["elven_wand_idle"], fps: 1, loop: true },
+      { id: `${id}_idle_clip`, frames: [idleFrameId], fps: 1, loop: true },
       {
-        id: "elven_wand_attack_clip",
-        frames: ["elven_wand_attack_0", "elven_wand_attack_1", "elven_wand_attack_2"],
+        id: `${id}_attack_clip`,
+        frames: attackFrameIds,
         fps: 18,
         loop: false
       }
     ],
     animations: [
-      { state: "idle", directionalClips: [{ clipId: "elven_wand_idle_clip" }] },
-      { state: "attack", directionalClips: [{ clipId: "elven_wand_attack_clip" }] }
+      { state: "idle", directionalClips: [{ clipId: `${id}_idle_clip` }] },
+      { state: "attack", directionalClips: [{ clipId: `${id}_attack_clip` }] }
     ]
   };
+}
+
+function buildStaffSet(): SpriteSetDefinition {
+  return buildWeaponViewSet("staff", 0, 1, [2, 3], 0.98, 0.76, {
+    offsetX: 0.02,
+    offsetY: -0.61,
+    offsetZ: 0.94,
+    bobAmplitude: 0.01,
+    flipX: true,
+    flipY: true,
+    rotationY: Math.PI
+  });
+}
+
+function buildGauntletsSet(): SpriteSetDefinition {
+  return buildWeaponViewSet("gauntlets", 1, 0, [1, 2, 3], 1.14, 0.66, {
+    offsetX: 0.02,
+    offsetY: -0.68,
+    offsetZ: 0.95,
+    bobAmplitude: 0.008,
+    flipX: true,
+    flipY: true,
+    rotationY: Math.PI
+  });
+}
+
+function buildElvenWandSet(): SpriteSetDefinition {
+  return buildWeaponViewSet("elven_wand", 2, 0, [1, 2, 3], 1.06, 0.59, {
+    offsetX: 0.02,
+    offsetY: -0.66,
+    offsetZ: 0.98,
+    bobAmplitude: 0.01,
+    flipX: true,
+    flipY: true,
+    rotationY: Math.PI
+  });
+}
+
+function buildEtherealCrossbowSet(): SpriteSetDefinition {
+  return buildWeaponViewSet("ethereal_crossbow", 2, 5, [6, 7, 8], 1.24, 0.5, {
+    offsetX: 0.01,
+    offsetY: -0.61,
+    offsetZ: 1,
+    bobAmplitude: 0.009,
+    flipX: true,
+    flipY: true,
+    rotationY: Math.PI
+  });
 }
 
 function buildDragonClawSet(): SpriteSetDefinition {
-  const frames = [
-    cellFrame("dragon_claw_idle", 0, 1, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT),
-    cellFrame("dragon_claw_attack_0", 1, 1, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT),
-    cellFrame("dragon_claw_attack_1", 2, 1, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT),
-    cellFrame("dragon_claw_attack_2", 3, 1, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT)
-  ];
-
-  return {
-    id: "dragon_claw_set",
-    sheetId: "weapons_sheet",
-    defaultState: "idle",
-    worldWidth: 1.1,
-    worldHeight: 0.61,
-    anchorOffsetY: 0,
+  return buildWeaponViewSet("dragon_claw", 3, 0, [1, 2, 3], 1.02, 0.62, {
+    offsetX: 0.02,
+    offsetY: -0.67,
+    offsetZ: 0.99,
+    bobAmplitude: 0.01,
+    flipX: true,
     flipY: true,
-    pivotX: 0.5,
-    pivotY: 1,
-    viewModel: {
-      offsetX: 0.02,
-      offsetY: -0.69,
-      offsetZ: 0.98,
-      bobAmplitude: 0.01,
-      flipX: true,
-      flipY: true,
-      rotationY: Math.PI,
-      rotationZ: 0
-    },
-    frames,
-    clips: [
-      { id: "dragon_claw_idle_clip", frames: ["dragon_claw_idle"], fps: 1, loop: true },
-      {
-        id: "dragon_claw_attack_clip",
-        frames: ["dragon_claw_attack_0", "dragon_claw_attack_1", "dragon_claw_attack_2"],
-        fps: 20,
-        loop: false
-      }
-    ],
-    animations: [
-      { state: "idle", directionalClips: [{ clipId: "dragon_claw_idle_clip" }] },
-      { state: "attack", directionalClips: [{ clipId: "dragon_claw_attack_clip" }] }
-    ]
-  };
+    rotationY: Math.PI
+  });
 }
 
-function buildElvenProjectileSet(): SpriteSetDefinition {
+function buildHellstaffSet(): SpriteSetDefinition {
+  return buildWeaponViewSet("hellstaff", 3, 5, [6, 7, 8], 1.24, 0.5, {
+    offsetX: 0.02,
+    offsetY: -0.62,
+    offsetZ: 0.99,
+    bobAmplitude: 0.009,
+    flipX: true,
+    flipY: true,
+    rotationY: Math.PI
+  });
+}
+
+function buildPhoenixRodSet(): SpriteSetDefinition {
+  return buildWeaponViewSet("phoenix_rod", 4, 0, [1, 2, 3], 1.08, 0.6, {
+    offsetX: 0.02,
+    offsetY: -0.68,
+    offsetZ: 0.98,
+    bobAmplitude: 0.01,
+    flipX: true,
+    flipY: true,
+    rotationY: Math.PI
+  });
+}
+
+function buildFiremaceSet(): SpriteSetDefinition {
+  return buildWeaponViewSet("firemace", 4, 5, [6, 7, 8], 1.18, 0.48, {
+    offsetX: 0.02,
+    offsetY: -0.62,
+    offsetZ: 0.99,
+    bobAmplitude: 0.008,
+    flipX: true,
+    flipY: true,
+    rotationY: Math.PI
+  });
+}
+
+function buildWandPuffSet(): SpriteSetDefinition {
   const frames = [
     rectFrame("elven_puff_0", 4, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 1, y: 118, width: 29, height: 31 }),
     rectFrame("elven_puff_1", 4, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 31, y: 121, width: 25, height: 25 }),
@@ -311,7 +364,7 @@ function buildElvenProjectileSet(): SpriteSetDefinition {
   };
 }
 
-function buildDragonProjectileSet(): SpriteSetDefinition {
+function buildArcBoltSet(): SpriteSetDefinition {
   const frames = [
     rectFrame("dragon_bolt_0", 4, 1, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 1, y: 42, width: 29, height: 29 }),
     rectFrame("dragon_bolt_1", 4, 1, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 31, y: 45, width: 23, height: 23 }),
@@ -372,18 +425,37 @@ export const spriteManifest: VisualDatabaseDefinition = {
     buildGolemSet(),
     buildGolemSoulSet(),
     buildBandageSet(),
+    buildStaffSet(),
+    buildGauntletsSet(),
     buildElvenWandSet(),
+    buildEtherealCrossbowSet(),
     buildDragonClawSet(),
-    buildElvenProjectileSet(),
-    buildDragonProjectileSet()
+    buildHellstaffSet(),
+    buildPhoenixRodSet(),
+    buildFiremaceSet(),
+    buildWandPuffSet(),
+    buildArcBoltSet()
   ],
   entities: [
     { entityId: "grave_thrall", spriteSetId: "golem_set" },
     { entityId: "pickup:ammo", spriteSetId: "golem_soul_set" },
     { entityId: "pickup:health", spriteSetId: "bandage_set" },
-    { entityId: "weapon:ember_wand", spriteSetId: "elven_wand_set" },
-    { entityId: "weapon:shard_caster", spriteSetId: "dragon_claw_set" },
-    { entityId: "projectile:ember_wand", spriteSetId: "elven_puff_set" },
-    { entityId: "projectile:shard_caster", spriteSetId: "dragon_bolt_set" }
+    { entityId: "weapon:staff", spriteSetId: "staff_set" },
+    { entityId: "weapon:gauntlets_of_the_necromancer", spriteSetId: "gauntlets_set" },
+    { entityId: "weapon:elven_wand", spriteSetId: "elven_wand_set" },
+    { entityId: "weapon:ethereal_crossbow", spriteSetId: "ethereal_crossbow_set" },
+    { entityId: "weapon:dragon_claw", spriteSetId: "dragon_claw_set" },
+    { entityId: "weapon:hellstaff", spriteSetId: "hellstaff_set" },
+    { entityId: "weapon:phoenix_rod", spriteSetId: "phoenix_rod_set" },
+    { entityId: "weapon:firemace", spriteSetId: "firemace_set" },
+    { entityId: "projectile:elven_wand", spriteSetId: "elven_puff_set" },
+    { entityId: "projectile:ethereal_crossbow", spriteSetId: "dragon_bolt_set" },
+    { entityId: "projectile:dragon_claw_burst", spriteSetId: "dragon_bolt_set" },
+    { entityId: "projectile:hellstaff", spriteSetId: "dragon_bolt_set" },
+    { entityId: "projectile:hellstaff_cloud", spriteSetId: "elven_puff_set" },
+    { entityId: "projectile:phoenix_rod", spriteSetId: "elven_puff_set" },
+    { entityId: "projectile:phoenix_flame", spriteSetId: "elven_puff_set" },
+    { entityId: "projectile:firemace", spriteSetId: "dragon_bolt_set" },
+    { entityId: "projectile:firemace_powered", spriteSetId: "dragon_bolt_set" }
   ]
 };

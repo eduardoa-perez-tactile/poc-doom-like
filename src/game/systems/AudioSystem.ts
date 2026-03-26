@@ -17,11 +17,11 @@ export class AudioSystem {
     }
   }
 
-  playShot(kind: "ember" | "shard"): void {
-    const frequency = kind === "ember" ? 310 : 210;
-    const duration = kind === "ember" ? 0.08 : 0.12;
-    const gain = kind === "ember" ? 0.05 : 0.06;
-    this.beep(frequency, duration, gain, kind === "ember" ? "triangle" : "square");
+  playShot(weaponId: string, powered: boolean): void {
+    const profile = powered
+      ? poweredShotProfile(weaponId)
+      : baseShotProfile(weaponId);
+    this.beep(profile.frequency, profile.duration, profile.gain, profile.type);
   }
 
   playPickup(): void {
@@ -62,4 +62,43 @@ export class AudioSystem {
     oscillator.start(now);
     oscillator.stop(now + duration);
   }
+}
+
+function baseShotProfile(weaponId: string): ShotProfile {
+  switch (weaponId) {
+    case "staff":
+      return { frequency: 170, duration: 0.07, gain: 0.045, type: "sawtooth" };
+    case "gauntlets_of_the_necromancer":
+      return { frequency: 260, duration: 0.09, gain: 0.05, type: "triangle" };
+    case "ethereal_crossbow":
+      return { frequency: 360, duration: 0.08, gain: 0.05, type: "square" };
+    case "dragon_claw":
+      return { frequency: 240, duration: 0.06, gain: 0.04, type: "square" };
+    case "hellstaff":
+      return { frequency: 220, duration: 0.1, gain: 0.055, type: "triangle" };
+    case "phoenix_rod":
+      return { frequency: 290, duration: 0.12, gain: 0.06, type: "sawtooth" };
+    case "firemace":
+      return { frequency: 200, duration: 0.11, gain: 0.055, type: "square" };
+    case "elven_wand":
+    default:
+      return { frequency: 310, duration: 0.08, gain: 0.05, type: "triangle" };
+  }
+}
+
+function poweredShotProfile(weaponId: string): ShotProfile {
+  const base = baseShotProfile(weaponId);
+  return {
+    frequency: base.frequency + 80,
+    duration: base.duration + 0.03,
+    gain: base.gain + 0.015,
+    type: "sawtooth"
+  };
+}
+
+interface ShotProfile {
+  frequency: number;
+  duration: number;
+  gain: number;
+  type: OscillatorType;
 }
