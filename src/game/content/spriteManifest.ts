@@ -48,6 +48,19 @@ function rectFrame(
   };
 }
 
+function cellRect(
+  cellCol: number,
+  cellRow: number,
+  rect: SpriteRectDefinition
+): SpriteRectDefinition {
+  return {
+    x: cellCol * WEAPON_CELL_WIDTH + rect.x,
+    y: cellRow * WEAPON_CELL_HEIGHT + rect.y,
+    width: rect.width,
+    height: rect.height
+  };
+}
+
 function mirroredFiveDirections(clipIds: string[]): DirectionalSpriteClipDefinition[] {
   if (clipIds.length !== 5) {
     throw new Error("Expected 5 directional clips for mirrored Doom-style sprites.");
@@ -347,34 +360,40 @@ function buildFiremaceSet(): SpriteSetDefinition {
   });
 }
 
-function buildWandPuffSet(): SpriteSetDefinition {
-  // Projectile/effect crops already use rectFrame because these sprites are packed
-  // into small regions on the right side of the sheet rather than full weapon cells.
+function buildElvenProjectileSet(): SpriteSetDefinition {
+  // Projectile/effect crops are hand-sliced from the atlas strips on the right side
+  // of weapons.png. Elven Wand uses the lower "Tomed Projectile" strip here, not
+  // the upper puff/impact strip, so the shot reads as a traveling bolt in-game.
   const frames = [
-    rectFrame("elven_puff_0", 4, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 1, y: 118, width: 29, height: 31 }),
-    rectFrame("elven_puff_1", 4, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 31, y: 121, width: 25, height: 25 }),
-    rectFrame("elven_puff_2", 4, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 57, y: 124, width: 17, height: 19 }),
-    rectFrame("elven_puff_3", 4, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 75, y: 129, width: 9, height: 9 })
+    rectFrame("elven_projectile_0", 4, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 4, y: 103, width: 11, height: 22 }),
+    rectFrame("elven_projectile_1", 4, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 20, y: 102, width: 14, height: 24 }),
+    rectFrame("elven_projectile_2", 4, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 39, y: 101, width: 17, height: 26 }),
+    rectFrame("elven_projectile_3", 4, 2, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 61, y: 105, width: 13, height: 19 })
   ];
 
   return {
-    id: "elven_puff_set",
+    id: "elven_projectile_set",
     sheetId: "weapons_sheet",
     defaultState: "idle",
-    worldWidth: 0.64,
-    worldHeight: 0.64,
-    anchorOffsetY: 0.2,
+    worldWidth: 0.42,
+    worldHeight: 0.7,
+    anchorOffsetY: 0.18,
     flipY: true,
     frames,
     clips: [
       {
-        id: "elven_puff_clip",
-        frames: ["elven_puff_0", "elven_puff_1", "elven_puff_2", "elven_puff_3"],
-        fps: 12,
+        id: "elven_projectile_clip",
+        frames: [
+          "elven_projectile_0",
+          "elven_projectile_1",
+          "elven_projectile_2",
+          "elven_projectile_3"
+        ],
+        fps: 18,
         loop: true
       }
     ],
-    animations: [{ state: "idle", directionalClips: [{ clipId: "elven_puff_clip" }] }]
+    animations: [{ state: "idle", directionalClips: [{ clipId: "elven_projectile_clip" }] }]
   };
 }
 
@@ -407,32 +426,68 @@ function buildCrossbowBoltSet(): SpriteSetDefinition {
   };
 }
 
-function buildArcBoltSet(): SpriteSetDefinition {
+function buildDragonRipperSet(): SpriteSetDefinition {
   const frames = [
-    rectFrame("dragon_bolt_0", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 135, y: 18, width: 20, height: 17 }),
-    rectFrame("dragon_bolt_1", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 157, y: 17, width: 22, height: 19 }),
-    rectFrame("dragon_bolt_2", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 180, y: 7, width: 43, height: 38 }),
-    rectFrame("dragon_bolt_3", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 226, y: 17, width: 31, height: 19 })
+    rectFrame("dragon_ripper_0", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 184, y: 20, width: 17, height: 15 }),
+    rectFrame("dragon_ripper_1", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 205, y: 20, width: 20, height: 15 }),
+    rectFrame("dragon_ripper_2", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 229, y: 19, width: 28, height: 18 }),
+    rectFrame("dragon_ripper_3", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 259, y: 19, width: 24, height: 18 }),
+    rectFrame("dragon_ripper_4", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 285, y: 21, width: 12, height: 12 })
   ];
 
   return {
-    id: "dragon_bolt_set",
+    id: "dragon_ripper_set",
     sheetId: "weapons_sheet",
     defaultState: "idle",
-    worldWidth: 0.74,
-    worldHeight: 0.34,
+    worldWidth: 0.72,
+    worldHeight: 0.22,
     anchorOffsetY: 0.2,
     flipY: true,
     frames,
     clips: [
       {
-        id: "dragon_bolt_clip",
-        frames: ["dragon_bolt_0", "dragon_bolt_1", "dragon_bolt_2", "dragon_bolt_3"],
-        fps: 14,
+        id: "dragon_ripper_clip",
+        frames: [
+          "dragon_ripper_0",
+          "dragon_ripper_1",
+          "dragon_ripper_2",
+          "dragon_ripper_3",
+          "dragon_ripper_4"
+        ],
+        fps: 16,
         loop: true
       }
     ],
-    animations: [{ state: "idle", directionalClips: [{ clipId: "dragon_bolt_clip" }] }]
+    animations: [{ state: "idle", directionalClips: [{ clipId: "dragon_ripper_clip" }] }]
+  };
+}
+
+function buildDragonBurstSet(): SpriteSetDefinition {
+  const frames = [
+    rectFrame("dragon_burst_0", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 0, y: 95, width: 75, height: 73 }),
+    rectFrame("dragon_burst_1", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 79, y: 95, width: 74, height: 73 }),
+    rectFrame("dragon_burst_2", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 158, y: 95, width: 73, height: 73 }),
+    rectFrame("dragon_burst_3", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 237, y: 95, width: 73, height: 73 })
+  ];
+
+  return {
+    id: "dragon_burst_set",
+    sheetId: "weapons_sheet",
+    defaultState: "idle",
+    worldWidth: 0.92,
+    worldHeight: 0.92,
+    anchorOffsetY: 0.24,
+    flipY: true,
+    frames,
+    clips: [
+      {
+        id: "dragon_burst_clip",
+        frames: ["dragon_burst_0", "dragon_burst_1", "dragon_burst_2", "dragon_burst_3"],
+        fps: 12,
+        loop: true
+      }
+    ],
+    animations: [{ state: "idle", directionalClips: [{ clipId: "dragon_burst_clip" }] }]
   };
 }
 
@@ -553,10 +608,10 @@ function buildPhoenixFlameSet(): SpriteSetDefinition {
 
 function buildFiremaceBallSet(): SpriteSetDefinition {
   const frames = [
-    rectFrame("firemace_ball_0", 12, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 31, y: 15, width: 23, height: 23 }),
-    rectFrame("firemace_ball_1", 12, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 56, y: 12, width: 31, height: 31 }),
-    rectFrame("firemace_ball_2", 12, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 89, y: 7, width: 43, height: 43 }),
-    rectFrame("firemace_ball_3", 12, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 136, y: 7, width: 43, height: 43 })
+    rectFrame("firemace_ball_0", 12, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 4, y: 17, width: 13, height: 13 }),
+    rectFrame("firemace_ball_1", 12, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 22, y: 16, width: 17, height: 17 }),
+    rectFrame("firemace_ball_2", 12, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 44, y: 12, width: 26, height: 26 }),
+    rectFrame("firemace_ball_3", 12, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 71, y: 9, width: 37, height: 37 })
   ];
 
   return {
@@ -607,12 +662,38 @@ function buildFiremacePoweredBallSet(): SpriteSetDefinition {
 }
 
 function weaponLabelClearRects(): SpriteRectDefinition[] {
-  return Array.from({ length: 5 }, (_, row) => ({
-    x: 0,
-    y: row * WEAPON_CELL_HEIGHT,
-    width: 4495,
-    height: 15
-  }));
+  return [
+    ...Array.from({ length: 5 }, (_, row) => ({
+      x: 0,
+      y: row * WEAPON_CELL_HEIGHT,
+      width: 4495,
+      height: 15
+    })),
+    ...projectileLabelClearRects()
+  ];
+}
+
+function projectileLabelClearRects(): SpriteRectDefinition[] {
+  // The projectile/effect atlas cells on the right side of weapons.png include
+  // embedded white guide labels inside the cell, not just along the row header.
+  // Clear those bands before chroma-keying so the in-game bullets cannot sample text.
+  return [
+    cellRect(4, 2, { x: 0, y: 0, width: WEAPON_CELL_WIDTH, height: 16 }),
+    cellRect(4, 2, { x: 0, y: 84, width: WEAPON_CELL_WIDTH, height: 16 }),
+    cellRect(13, 2, { x: 0, y: 0, width: WEAPON_CELL_WIDTH, height: 16 }),
+    cellRect(13, 2, { x: 0, y: 84, width: WEAPON_CELL_WIDTH, height: 16 }),
+    cellRect(5, 3, { x: 0, y: 0, width: WEAPON_CELL_WIDTH, height: 16 }),
+    cellRect(5, 3, { x: 0, y: 84, width: WEAPON_CELL_WIDTH, height: 16 }),
+    cellRect(13, 3, { x: 0, y: 0, width: WEAPON_CELL_WIDTH, height: 16 }),
+    cellRect(13, 3, { x: 0, y: 84, width: WEAPON_CELL_WIDTH, height: 16 }),
+    cellRect(13, 3, { x: 0, y: 154, width: WEAPON_CELL_WIDTH, height: 16 }),
+    cellRect(4, 4, { x: 0, y: 0, width: WEAPON_CELL_WIDTH, height: 16 }),
+    cellRect(4, 4, { x: 0, y: 84, width: WEAPON_CELL_WIDTH, height: 16 }),
+    cellRect(5, 4, { x: 0, y: 0, width: WEAPON_CELL_WIDTH, height: 16 }),
+    cellRect(12, 4, { x: 0, y: 0, width: WEAPON_CELL_WIDTH, height: 16 }),
+    cellRect(12, 4, { x: 0, y: 84, width: WEAPON_CELL_WIDTH, height: 16 }),
+    cellRect(12, 4, { x: 0, y: 154, width: WEAPON_CELL_WIDTH, height: 16 })
+  ];
 }
 
 export const spriteManifest: VisualDatabaseDefinition = {
@@ -646,9 +727,10 @@ export const spriteManifest: VisualDatabaseDefinition = {
     buildHellstaffSet(),
     buildPhoenixRodSet(),
     buildFiremaceSet(),
-    buildWandPuffSet(),
+    buildElvenProjectileSet(),
     buildCrossbowBoltSet(),
-    buildArcBoltSet(),
+    buildDragonRipperSet(),
+    buildDragonBurstSet(),
     buildHellstaffProjectileSet(),
     buildHellstaffCloudSet(),
     buildPhoenixProjectileSet(),
@@ -668,15 +750,17 @@ export const spriteManifest: VisualDatabaseDefinition = {
     { entityId: "weapon:hellstaff", spriteSetId: "hellstaff_set" },
     { entityId: "weapon:phoenix_rod", spriteSetId: "phoenix_rod_set" },
     { entityId: "weapon:firemace", spriteSetId: "firemace_set" },
-    { entityId: "projectile:elven_wand", spriteSetId: "elven_puff_set" },
+    // Temporary readability pass: use one clean bolt sprite for most ranged shots
+    // until the per-weapon projectile atlas crops are tuned properly.
+    { entityId: "projectile:elven_wand", spriteSetId: "crossbow_bolt_set" },
     { entityId: "projectile:ethereal_crossbow", spriteSetId: "crossbow_bolt_set" },
-    { entityId: "projectile:dragon_claw", spriteSetId: "dragon_bolt_set" },
-    { entityId: "projectile:dragon_claw_burst", spriteSetId: "dragon_bolt_set" },
-    { entityId: "projectile:hellstaff", spriteSetId: "hellstaff_projectile_set" },
+    { entityId: "projectile:dragon_claw", spriteSetId: "crossbow_bolt_set" },
+    { entityId: "projectile:dragon_claw_burst", spriteSetId: "dragon_burst_set" },
+    { entityId: "projectile:hellstaff", spriteSetId: "crossbow_bolt_set" },
     { entityId: "projectile:hellstaff_cloud", spriteSetId: "hellstaff_cloud_set" },
-    { entityId: "projectile:phoenix_rod", spriteSetId: "phoenix_projectile_set" },
+    { entityId: "projectile:phoenix_rod", spriteSetId: "crossbow_bolt_set" },
     { entityId: "projectile:phoenix_flame", spriteSetId: "phoenix_flame_set" },
     { entityId: "projectile:firemace", spriteSetId: "firemace_ball_set" },
-    { entityId: "projectile:firemace_powered", spriteSetId: "firemace_powered_ball_set" }
+    { entityId: "projectile:firemace_powered", spriteSetId: "firemace_ball_set" }
   ]
 };
