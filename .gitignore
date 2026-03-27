@@ -1,3 +1,32 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
+
+# TypeScript and tool caches
 *.tsbuildinfo
+.vite/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment overrides
+.env
+.env.*
+!.env.example
+
+# Coverage and reports
+coverage/
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local Codex workspace metadata
+.codex/

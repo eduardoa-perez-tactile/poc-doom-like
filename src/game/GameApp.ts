@@ -117,7 +117,7 @@ export class GameApp {
     );
 
     if (events.shot) {
-      this.audio.playShot(events.shot.kind);
+      this.audio.playShot(events.shot.weaponId, events.shot.powered);
     }
     if (events.pickup) {
       this.audio.playPickup();
@@ -246,11 +246,15 @@ export class GameApp {
     const state = this.session.state;
     const weapon = this.content.weapons.get(state.weapon.currentId);
     const enemiesRemaining = state.enemies.filter((enemy) => enemy.fsmState !== "dead").length;
+    const ammo =
+      weapon && weapon.ammoType !== "none"
+        ? state.player.ammo[weapon.ammoType]
+        : 0;
 
     return {
       visible: this.appMode === "in_game" || this.appMode === "death_transition",
       health: Math.ceil(state.player.health),
-      ammo: state.player.ammo,
+      ammo,
       weaponName: weapon?.name ?? state.weapon.currentId,
       enemiesRemaining,
       message: messageOverride ?? state.messages[0]?.text ?? state.level.name,
@@ -282,6 +286,7 @@ function createNeutralInput(): InputFrame {
     lookDeltaX: 0,
     fireDown: false,
     usePressed: false,
-    menuPressed: false
+    menuPressed: false,
+    toggleTome: false
   };
 }

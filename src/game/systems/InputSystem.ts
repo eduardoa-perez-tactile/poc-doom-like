@@ -7,6 +7,7 @@ export interface InputFrame {
   fireDown: boolean;
   usePressed: boolean;
   menuPressed: boolean;
+  toggleTome: boolean;
   weaponSlot?: number;
 }
 
@@ -15,6 +16,7 @@ export class InputSystem {
   private lookDeltaX = 0;
   private frameUsePressed = false;
   private frameMenuPressed = false;
+  private frameToggleTome = false;
   private frameWeaponSlot?: number;
   private pointerLocked = false;
   private pointerLockLost = false;
@@ -73,12 +75,14 @@ export class InputSystem {
       fireDown: this.fireDown,
       usePressed: this.frameUsePressed,
       menuPressed: this.frameMenuPressed,
+      toggleTome: this.frameToggleTome,
       weaponSlot: this.frameWeaponSlot
     };
 
     this.lookDeltaX = 0;
     this.frameUsePressed = false;
     this.frameMenuPressed = false;
+    this.frameToggleTome = false;
     this.frameWeaponSlot = undefined;
 
     return frame;
@@ -89,13 +93,16 @@ export class InputSystem {
 
     if (event.code === "KeyE") {
       this.frameUsePressed = true;
+    } else if (event.code === "KeyT") {
+      this.frameToggleTome = true;
     } else if (MENU_KEYS.has(event.code)) {
       this.frameMenuPressed = true;
       event.preventDefault();
-    } else if (event.code === "Digit1") {
-      this.frameWeaponSlot = 1;
-    } else if (event.code === "Digit2") {
-      this.frameWeaponSlot = 2;
+    } else if (event.code.startsWith("Digit")) {
+      const slot = Number.parseInt(event.code.slice(5), 10);
+      if (slot >= 1 && slot <= 8) {
+        this.frameWeaponSlot = slot;
+      }
     }
   };
 

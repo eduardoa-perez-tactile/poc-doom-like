@@ -1,4 +1,11 @@
-export type WeaponAmmoType = "none" | "bullets";
+export type WeaponAmmoType =
+  | "none"
+  | "wand"
+  | "crossbow"
+  | "claw"
+  | "hellstaff"
+  | "phoenix"
+  | "firemace";
 export type EnemyAttackType = "melee" | "projectile";
 export type PickupKind = "health" | "ammo";
 export type SpriteAnimationStateName =
@@ -10,19 +17,94 @@ export type SpriteAnimationStateName =
   | "select"
   | "lower";
 
+export type WeaponBehaviorKind =
+  | "melee_strike"
+  | "melee_latch"
+  | "hitscan_single"
+  | "hitscan_rapid"
+  | "projectile_single"
+  | "projectile_spread"
+  | "projectile_bounce"
+  | "projectile_splash"
+  | "projectile_homing"
+  | "impact_spawn_hazard"
+  | "beam_sustain";
+
+export type GhostInteractionRule = "normal" | "ignore";
+
+export interface WeaponSpreadDefinition {
+  count: number;
+  angleDeg: number;
+}
+
+export interface WeaponBounceDefinition {
+  maxBounces: number;
+  speedMultiplier?: number;
+  seekAfterBounce?: boolean;
+}
+
+export interface WeaponSplashDefinition {
+  radius: number;
+  damageScale?: number;
+}
+
+export interface WeaponHazardDefinition {
+  visualId: string;
+  radius: number;
+  duration: number;
+  damagePerTick: number;
+  tickInterval: number;
+}
+
+export interface WeaponProjectileDefinition {
+  visualId: string;
+  speed: number;
+  life: number;
+  radius: number;
+  homingStrength?: number;
+}
+
+export interface WeaponImpactEffectDefinition {
+  kind: "radial_burst" | "hazard_cloud" | "flame_visual";
+  projectileVisualId?: string;
+  count?: number;
+  spreadAngleDeg?: number;
+  damage?: number;
+  speed?: number;
+  life?: number;
+  radius?: number;
+  hazard?: WeaponHazardDefinition;
+}
+
+export interface WeaponBehaviorDefinition {
+  kind: WeaponBehaviorKind;
+  damage: number;
+  range?: number;
+  reach?: number;
+  coneAngleDeg?: number;
+  holdToFire?: boolean;
+  healFactor?: number;
+  knockback?: number;
+  ghostInteraction?: GhostInteractionRule;
+  spread?: WeaponSpreadDefinition;
+  projectile?: WeaponProjectileDefinition;
+  bounce?: WeaponBounceDefinition;
+  splash?: WeaponSplashDefinition;
+  impactEffect?: WeaponImpactEffectDefinition;
+}
+
 export interface WeaponDefinition {
   id: string;
   name: string;
   slot: number;
   ammoType: WeaponAmmoType;
-  ammoPerShot: number;
-  cooldown: number;
-  damage: number;
-  projectileSpeed: number;
-  range: number;
-  projectileLife: number;
-  fireMode: "hitscan" | "projectile";
+  ammoCostBase: number;
+  ammoCostPowered: number;
+  cooldownBase: number;
+  cooldownPowered: number;
   uiColor: string;
+  baseBehavior: WeaponBehaviorDefinition;
+  poweredBehavior: WeaponBehaviorDefinition;
 }
 
 export interface EnemyDefinition {
@@ -41,6 +123,7 @@ export interface EnemyDefinition {
   loseSightGrace: number;
   hurtTime: number;
   projectileSpeed: number;
+  isGhost?: boolean;
 }
 
 export interface GridPoint {
@@ -136,6 +219,7 @@ export interface SpriteSetDefinition {
   worldWidth: number;
   worldHeight: number;
   anchorOffsetY: number;
+  worldFacing?: "billboard" | "direction";
   flipX?: boolean;
   flipY?: boolean;
   pivotX?: number;

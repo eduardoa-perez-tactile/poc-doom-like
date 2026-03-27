@@ -168,6 +168,7 @@ export class AnimatedSpriteInstance {
   private readonly uvData = new Float32Array(8);
   private readonly basePosition = new Vector3();
   private animationState: SpriteAnimationStateName;
+  private animationRevision = -1;
   private facingAngle = 0;
   private worldX = 0;
   private worldY = 0;
@@ -175,6 +176,7 @@ export class AnimatedSpriteInstance {
   private lastMirrorX = false;
   private frameOffsetX = 0;
   private frameOffsetY = 0;
+  private readonly worldFacing: "billboard" | "direction";
 
   constructor(
     scene: Scene,
@@ -182,6 +184,7 @@ export class AnimatedSpriteInstance {
     mode: "world" | "view",
     parent?: Node
   ) {
+    this.worldFacing = spriteSet.definition.worldFacing ?? "billboard";
     this.mesh = MeshBuilder.CreatePlane(
       `${spriteSet.definition.id}-${mode}`,
       {
@@ -196,7 +199,10 @@ export class AnimatedSpriteInstance {
     this.mesh.renderingGroupId = mode === "view" ? 1 : 0;
 
     if (mode === "world") {
-      this.mesh.billboardMode = AbstractMesh.BILLBOARDMODE_Y;
+      this.mesh.billboardMode =
+        this.worldFacing === "billboard"
+          ? AbstractMesh.BILLBOARDMODE_Y
+          : AbstractMesh.BILLBOARDMODE_NONE;
     } else if (parent) {
       this.mesh.parent = parent;
     }
@@ -229,11 +235,15 @@ export class AnimatedSpriteInstance {
     this.mesh.setEnabled(visible);
   }
 
-  setAnimationState(state: SpriteAnimationStateName): void {
-    if (this.animationState === state) {
+  setAnimationState(state: SpriteAnimationStateName, revision?: number): void {
+    const shouldRestart = revision !== undefined && revision !== this.animationRevision;
+    if (this.animationState === state && !shouldRestart) {
       return;
     }
     this.animationState = state;
+    if (revision !== undefined) {
+      this.animationRevision = revision;
+    }
     this.runtime.animationState = state;
     this.runtime.animationTime = 0;
     this.runtime.finished = false;
@@ -249,6 +259,11 @@ export class AnimatedSpriteInstance {
 
   setFacingAngle(angle: number): void {
     this.facingAngle = angle;
+    if (this.worldFacing === "direction") {
+      // Plane width runs along local +X, so rotate around Y to align the sprite's
+      // horizontal travel direction with the projectile velocity on the XZ plane.
+      this.mesh.rotation.y = -angle;
+    }
   }
 
   update(dt: number, viewerX?: number, viewerY?: number): void {
@@ -359,8 +374,12 @@ function compileFrame(
 ): CompiledSpriteFrame {
   const u0 = definition.x / sheet.width;
   const u1 = (definition.x + definition.width) / sheet.width;
-  const v0 = 1 - (definition.y + definition.height) / sheet.height;
-  const v1 = 1 - definition.y / sheet.height;
+  // The source atlases are defined in canvas/image space with a top-left origin.
+  // DynamicTexture sampling here expects that same row ordering, so we keep the
+  // vertical range in top-to-bottom sheet order and let flipY handle per-sprite
+  // orientation without selecting the wrong atlas row.
+  const v0 = definition.y / sheet.height;
+  const v1 = (definition.y + definition.height) / sheet.height;
 
   return {
     definition,
