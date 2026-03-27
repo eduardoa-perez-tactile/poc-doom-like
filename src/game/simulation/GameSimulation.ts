@@ -405,6 +405,7 @@ export class GameSimulation {
     const spreadAngleDeg = behavior.spread?.angleDeg ?? 0;
     for (let index = 0; index < spreadCount; index += 1) {
       const angleOffset = spreadCount === 1 ? 0 : centeredSpreadOffset(index, spreadCount, spreadAngleDeg);
+      this.spawnVisualHitscanProjectile(weapon, behavior, angleOffset);
       this.fireHitscanRay(weapon, behavior, angleOffset);
     }
     return { performed: true, sustainTargetId: null };
@@ -536,6 +537,43 @@ export class GameSimulation {
       impactHazard: behavior.impactEffect?.hazard
         ? this.createHazardTemplate(behavior.impactEffect.hazard)
         : undefined
+    });
+  }
+
+  private spawnVisualHitscanProjectile(
+    weapon: WeaponDefinition,
+    behavior: WeaponBehaviorDefinition,
+    angleOffset: number
+  ): void {
+    const projectile = behavior.projectile;
+    if (!projectile) {
+      return;
+    }
+
+    const angle = normalizeAngle(this.state.player.angle + angleOffset);
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    this.state.projectiles.push({
+      id: this.projectileId++,
+      source: "player",
+      ownerId: "player",
+      weaponId: weapon.id,
+      visualId: projectile.visualId,
+      x: this.state.player.x + dx * PLAYER_PROJECTILE_OFFSET,
+      y: this.state.player.y + dy * PLAYER_PROJECTILE_OFFSET,
+      dx,
+      dy,
+      speed: projectile.speed,
+      radius: projectile.radius,
+      damage: 0,
+      ttl: projectile.life,
+      homingStrength: 0,
+      splashRadius: 0,
+      splashDamageScale: 0,
+      bouncesRemaining: 0,
+      bounceSpeedMultiplier: 1,
+      seekAfterBounce: false,
+      hasBounced: false
     });
   }
 

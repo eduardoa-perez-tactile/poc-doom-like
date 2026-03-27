@@ -361,9 +361,9 @@ function buildWandPuffSet(): SpriteSetDefinition {
     id: "elven_puff_set",
     sheetId: "weapons_sheet",
     defaultState: "idle",
-    worldWidth: 0.34,
-    worldHeight: 0.34,
-    anchorOffsetY: 0.16,
+    worldWidth: 0.64,
+    worldHeight: 0.64,
+    anchorOffsetY: 0.2,
     flipY: true,
     frames,
     clips: [
@@ -409,19 +409,19 @@ function buildCrossbowBoltSet(): SpriteSetDefinition {
 
 function buildArcBoltSet(): SpriteSetDefinition {
   const frames = [
-    rectFrame("dragon_bolt_0", 4, 1, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 1, y: 42, width: 29, height: 29 }),
-    rectFrame("dragon_bolt_1", 4, 1, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 31, y: 45, width: 23, height: 23 }),
-    rectFrame("dragon_bolt_2", 4, 1, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 55, y: 47, width: 19, height: 19 }),
-    rectFrame("dragon_bolt_3", 4, 1, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 31, y: 45, width: 23, height: 23 })
+    rectFrame("dragon_bolt_0", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 135, y: 18, width: 20, height: 17 }),
+    rectFrame("dragon_bolt_1", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 157, y: 17, width: 22, height: 19 }),
+    rectFrame("dragon_bolt_2", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 180, y: 7, width: 43, height: 38 }),
+    rectFrame("dragon_bolt_3", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 226, y: 17, width: 31, height: 19 })
   ];
 
   return {
     id: "dragon_bolt_set",
     sheetId: "weapons_sheet",
     defaultState: "idle",
-    worldWidth: 0.32,
-    worldHeight: 0.32,
-    anchorOffsetY: 0.16,
+    worldWidth: 0.74,
+    worldHeight: 0.34,
+    anchorOffsetY: 0.2,
     flipY: true,
     frames,
     clips: [
@@ -563,9 +563,9 @@ function buildFiremaceBallSet(): SpriteSetDefinition {
     id: "firemace_ball_set",
     sheetId: "weapons_sheet",
     defaultState: "idle",
-    worldWidth: 0.54,
-    worldHeight: 0.54,
-    anchorOffsetY: 0.2,
+    worldWidth: 1.1,
+    worldHeight: 1.1,
+    anchorOffsetY: 0.24,
     flipY: true,
     frames,
     clips: [
@@ -589,9 +589,9 @@ function buildFiremacePoweredBallSet(): SpriteSetDefinition {
     id: "firemace_powered_ball_set",
     sheetId: "weapons_sheet",
     defaultState: "idle",
-    worldWidth: 0.58,
-    worldHeight: 0.58,
-    anchorOffsetY: 0.2,
+    worldWidth: 1.26,
+    worldHeight: 1.26,
+    anchorOffsetY: 0.24,
     flipY: true,
     frames,
     clips: [
@@ -670,6 +670,7 @@ export const spriteManifest: VisualDatabaseDefinition = {
     { entityId: "weapon:firemace", spriteSetId: "firemace_set" },
     { entityId: "projectile:elven_wand", spriteSetId: "elven_puff_set" },
     { entityId: "projectile:ethereal_crossbow", spriteSetId: "crossbow_bolt_set" },
+    { entityId: "projectile:dragon_claw", spriteSetId: "dragon_bolt_set" },
     { entityId: "projectile:dragon_claw_burst", spriteSetId: "dragon_bolt_set" },
     { entityId: "projectile:hellstaff", spriteSetId: "hellstaff_projectile_set" },
     { entityId: "projectile:hellstaff_cloud", spriteSetId: "hellstaff_cloud_set" },

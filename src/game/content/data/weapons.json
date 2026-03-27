@@ -64,12 +64,24 @@
     "baseBehavior": {
       "kind": "hitscan_single",
       "damage": 14,
-      "range": 18
+      "range": 18,
+      "projectile": {
+        "visualId": "elven_wand",
+        "speed": 24,
+        "life": 0.32,
+        "radius": 0.14
+      }
     },
     "poweredBehavior": {
       "kind": "hitscan_single",
       "damage": 11,
       "range": 18,
+      "projectile": {
+        "visualId": "elven_wand",
+        "speed": 26,
+        "life": 0.32,
+        "radius": 0.14
+      },
       "spread": {
         "count": 3,
         "angleDeg": 12
@@ -128,12 +140,24 @@
     "baseBehavior": {
       "kind": "hitscan_rapid",
       "damage": 8,
-      "range": 17
+      "range": 17,
+      "projectile": {
+        "visualId": "dragon_claw",
+        "speed": 26,
+        "life": 0.24,
+        "radius": 0.14
+      }
     },
     "poweredBehavior": {
       "kind": "hitscan_rapid",
       "damage": 18,
       "range": 17,
+      "projectile": {
+        "visualId": "dragon_claw",
+        "speed": 28,
+        "life": 0.24,
+        "radius": 0.14
+      },
       "impactEffect": {
         "kind": "radial_burst",
         "projectileVisualId": "dragon_claw_burst",
@@ -240,8 +264,8 @@
       "projectile": {
         "visualId": "firemace",
         "speed": 10,
-        "life": 2.6,
-        "radius": 0.26
+        "life": 2.8,
+        "radius": 0.3
       },
       "bounce": {
         "maxBounces": 4,
@@ -254,8 +278,8 @@
       "projectile": {
         "visualId": "firemace_powered",
         "speed": 11,
-        "life": 3,
-        "radius": 0.32,
+        "life": 3.2,
+        "radius": 0.36,
         "homingStrength": 0.16
       },
       "bounce": {
