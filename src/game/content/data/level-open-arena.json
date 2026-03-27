@@ -1,0 +1,184 @@
+{
+  "id": "open_arena",
+  "name": "Open Arena",
+  "cellSize": 2,
+  "skyColor": "#22140f",
+  "fogColor": "#100908",
+  "ambientColor": "#4c2c1a",
+  "playerStart": {
+    "x": 12,
+    "y": 11,
+    "angleDeg": 0
+  },
+  "grid": [
+    "############################",
+    "#............##............#",
+    "#..####......##......####..#",
+    "#..#..#..............#..#..#",
+    "#..#..#....####......#..#..#",
+    "#..####....#..#......####..#",
+    "#..........#..#............#",
+    "#######....#..#....#######.#",
+    "#..........####............#",
+    "#..........................#",
+    "#....####..........####....#",
+    "#....#..#..........#..#....#",
+    "#....#..#..........#..#....#",
+    "#....####..........####....#",
+    "#..........................#",
+    "#..........####............#",
+    "#.#######....#..#....#######",
+    "#............#..#..........#",
+    "#..####......#..#....####..#",
+    "#..#..#......####....#..#..#",
+    "#..#..#..............#..#..#",
+    "#..####......##......####..#",
+    "#............##............#",
+    "############################"
+  ],
+  "pickups": [
+    {
+      "id": "p_ammo_1",
+      "kind": "ammo",
+      "amount": 12,
+      "x": 8,
+      "y": 9
+    },
+    {
+      "id": "p_ammo_2",
+      "kind": "ammo",
+      "amount": 12,
+      "x": 19,
+      "y": 9
+    },
+    {
+      "id": "p_ammo_3",
+      "kind": "ammo",
+      "amount": 10,
+      "x": 8,
+      "y": 14
+    },
+    {
+      "id": "p_ammo_4",
+      "kind": "ammo",
+      "amount": 10,
+      "x": 19,
+      "y": 14
+    },
+    {
+      "id": "p_health_1",
+      "kind": "health",
+      "amount": 25,
+      "x": 2,
+      "y": 6
+    },
+    {
+      "id": "p_health_2",
+      "kind": "health",
+      "amount": 25,
+      "x": 25,
+      "y": 6
+    },
+    {
+      "id": "p_health_3",
+      "kind": "health",
+      "amount": 25,
+      "x": 2,
+      "y": 17
+    },
+    {
+      "id": "p_health_4",
+      "kind": "health",
+      "amount": 25,
+      "x": 25,
+      "y": 17
+    }
+  ],
+  "enemies": [
+    {
+      "id": "e_thrall_1",
+      "type": "grave_thrall",
+      "x": 2,
+      "y": 2,
+      "facingDeg": 0
+    },
+    {
+      "id": "e_thrall_2",
+      "type": "grave_thrall",
+      "x": 25,
+      "y": 2,
+      "facingDeg": 180
+    },
+    {
+      "id": "e_thrall_3",
+      "type": "grave_thrall",
+      "x": 4,
+      "y": 3,
+      "facingDeg": 0
+    },
+    {
+      "id": "e_thrall_4",
+      "type": "grave_thrall",
+      "x": 23,
+      "y": 3,
+      "facingDeg": 180
+    },
+    {
+      "id": "e_thrall_5",
+      "type": "grave_thrall",
+      "x": 9,
+      "y": 7,
+      "facingDeg": 90
+    },
+    {
+      "id": "e_thrall_6",
+      "type": "grave_thrall",
+      "x": 18,
+      "y": 7,
+      "facingDeg": 90
+    },
+    {
+      "id": "e_thrall_7",
+      "type": "grave_thrall",
+      "x": 2,
+      "y": 12,
+      "facingDeg": 0
+    },
+    {
+      "id": "e_thrall_8",
+      "type": "grave_thrall",
+      "x": 25,
+      "y": 12,
+      "facingDeg": 180
+    },
+    {
+      "id": "e_thrall_9",
+      "type": "grave_thrall",
+      "x": 9,
+      "y": 16,
+      "facingDeg": 270
+    },
+    {
+      "id": "e_thrall_10",
+      "type": "grave_thrall",
+      "x": 18,
+      "y": 16,
+      "facingDeg": 270
+    },
+    {
+      "id": "e_thrall_11",
+      "type": "grave_thrall",
+      "x": 4,
+      "y": 20,
+      "facingDeg": 0
+    },
+    {
+      "id": "e_thrall_12",
+      "type": "grave_thrall",
+      "x": 23,
+      "y": 20,
+      "facingDeg": 180
+    }
+  ],
+  "briefing": "Enter the open arena, keep the outer loop moving, and survive the grave thralls."
+}

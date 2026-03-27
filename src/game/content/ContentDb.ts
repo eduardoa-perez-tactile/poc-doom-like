@@ -1,5 +1,5 @@
 import enemyDefs from "./data/enemies.json";
-import levelDef from "./data/level-ashen-catacomb.json";
+import levelDef from "./data/level-open-arena.json";
 import { spriteManifest } from "./spriteManifest";
 import weaponDefs from "./data/weapons.json";
 import type {
