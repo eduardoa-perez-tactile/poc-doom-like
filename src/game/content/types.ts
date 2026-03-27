@@ -8,6 +8,19 @@ export type WeaponAmmoType =
   | "firemace";
 export type EnemyAttackType = "melee" | "projectile";
 export type PickupKind = "health" | "ammo";
+export type WallTextureTypeName =
+  | "Stone"
+  | "Brick"
+  | "Wood"
+  | "Metal"
+  | "Decorative"
+  | "Door"
+  | "Lava"
+  | "Water"
+  | "Moss"
+  | "Arcane"
+  | "StainedGlass"
+  | "Bars";
 export type SpriteAnimationStateName =
   | "idle"
   | "move"
@@ -158,6 +171,7 @@ export interface LevelDefinition {
   ambientColor: string;
   playerStart: PlayerStart;
   grid: string[];
+  wallTypes?: Record<string, WallTextureTypeName>;
   pickups: PickupSpawn[];
   enemies: EnemySpawn[];
   briefing: string;

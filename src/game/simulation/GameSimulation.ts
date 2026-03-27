@@ -1145,7 +1145,7 @@ export class GameSimulation {
       return true;
     }
 
-    return this.state.level.grid[cellY][cellX] === "#";
+    return this.state.level.grid[cellY][cellX] !== ".";
   }
 
   private worldToCell(worldX: number, worldY: number): { x: number; y: number } {

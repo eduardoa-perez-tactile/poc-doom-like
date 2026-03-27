@@ -11,9 +11,10 @@ import {
   TransformNode,
   UniversalCamera,
   Vector3,
+  Vector4,
   WebGPUEngine
 } from "@babylonjs/core";
-import type { ContentDatabase, SpriteAnimationStateName } from "../content/types";
+import type { ContentDatabase, LevelDefinition, SpriteAnimationStateName } from "../content/types";
 import type {
   EnemyState,
   GameSessionState,
@@ -22,6 +23,15 @@ import type {
   ProjectileState
 } from "../core/types";
 import { AnimatedSpriteInstance, SpriteLibrary } from "./SpritePipeline";
+import { WallTextureAtlas } from "./WallTextureAtlas";
+import {
+  pickTexture,
+  WALL_ATLAS_SOURCE_TILES,
+  WALL_ATLAS_SOURCE_URL,
+  WALL_ATLAS_TILE_SIZE,
+  wallTextureTypeFromName,
+  WallTextureType
+} from "./WallTextureRegistry";
 
 const PLAYER_EYE_HEIGHT = 1.2;
 
@@ -37,7 +47,8 @@ export class RetroRenderer {
   private readonly weaponSprites = new Map<string, AnimatedSpriteInstance>();
   private readonly floorMaterial: StandardMaterial;
   private readonly ceilingMaterial: StandardMaterial;
-  private readonly wallMaterial: StandardMaterial;
+  private wallMaterial!: StandardMaterial;
+  private wallAtlas!: WallTextureAtlas;
 
   constructor(
     private readonly engine: Engine | WebGPUEngine,
@@ -61,10 +72,6 @@ export class RetroRenderer {
     this.root = new TransformNode("world-root", this.scene);
     this.floorMaterial = createPatternMaterial(this.scene, "floor", "#342a1e", "#1f1812", "#4b3a2e");
     this.ceilingMaterial = createPatternMaterial(this.scene, "ceiling", "#221511", "#100b09", "#382019");
-    this.wallMaterial = createPatternMaterial(this.scene, "wall", "#6b4a2f", "#2a1b12", "#8a674a");
-
-    this.buildStaticLevel();
-    this.setAttractCamera();
   }
 
   static async create(
@@ -72,7 +79,10 @@ export class RetroRenderer {
     content: ContentDatabase
   ): Promise<RetroRenderer> {
     const renderer = new RetroRenderer(engine, content);
+    await renderer.initializeWallTextures();
+    renderer.buildStaticLevel();
     await renderer.initializeSprites();
+    renderer.setAttractCamera();
     return renderer;
   }
 
@@ -116,10 +126,26 @@ export class RetroRenderer {
     this.buildSprites();
   }
 
+  private async initializeWallTextures(): Promise<void> {
+    this.wallAtlas = await WallTextureAtlas.create(
+      this.scene,
+      WALL_ATLAS_SOURCE_URL,
+      WALL_ATLAS_SOURCE_TILES,
+      WALL_ATLAS_TILE_SIZE
+    );
+
+    this.wallMaterial = new StandardMaterial("wall-atlas-material", this.scene);
+    this.wallMaterial.diffuseTexture = this.wallAtlas.texture;
+    this.wallMaterial.emissiveTexture = this.wallAtlas.texture;
+    this.wallMaterial.specularColor = Color3.Black();
+    this.wallMaterial.disableLighting = true;
+  }
+
   private buildStaticLevel(): void {
     const { grid, cellSize } = this.content.level;
     const width = grid[0]?.length ?? 0;
     const height = grid.length;
+    const chosenWallTiles = new Map<string, number>();
 
     const ground = MeshBuilder.CreateGround(
       "ground",
@@ -145,13 +171,22 @@ export class RetroRenderer {
 
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
-        if (grid[y][x] !== "#") {
+        if (!isWallCell(grid[y][x])) {
           continue;
         }
 
+        const textureType = resolveWallTextureType(this.content.level, x, y);
+        const tileIndex = pickTexture(textureType, x, y, [
+          chosenWallTiles.get(`${x - 1},${y}`) ?? -1,
+          chosenWallTiles.get(`${x},${y - 1}`) ?? -1
+        ]);
+        chosenWallTiles.set(`${x},${y}`, tileIndex);
+        const uv = this.wallAtlas.getTileUV(tileIndex);
+        const faceUV = Array.from({ length: 6 }, () => new Vector4(uv.u0, uv.v0, uv.u1, uv.v1));
+
         const wall = MeshBuilder.CreateBox(
           `wall-${x}-${y}`,
-          { width: cellSize, depth: cellSize, height: 2.6 },
+          { width: cellSize, depth: cellSize, height: 2.6, faceUV },
           this.scene
         );
         wall.position = new Vector3(x * cellSize, 1.3, y * cellSize);
@@ -325,6 +360,31 @@ function enemyAnimationState(enemy: EnemyState): SpriteAnimationStateName {
     default:
       return "idle";
   }
+}
+
+function isWallCell(cell: string | undefined): boolean {
+  return cell !== undefined && cell !== ".";
+}
+
+function resolveWallTextureType(level: LevelDefinition, x: number, y: number): WallTextureType {
+  const glyph = level.grid[y]?.[x];
+  const mappedType = wallTextureTypeFromName(level.wallTypes?.[glyph]);
+  if (mappedType) {
+    return mappedType;
+  }
+
+  if (x === 0 || y === 0 || x === level.grid[0].length - 1 || y === level.grid.length - 1) {
+    return WallTextureType.Stone;
+  }
+
+  const neighbors = [
+    level.grid[y - 1]?.[x],
+    level.grid[y + 1]?.[x],
+    level.grid[y]?.[x - 1],
+    level.grid[y]?.[x + 1]
+  ];
+  const wallNeighborCount = neighbors.reduce((count, neighbor) => count + Number(isWallCell(neighbor)), 0);
+  return wallNeighborCount >= 3 ? WallTextureType.Brick : WallTextureType.Decorative;
 }
 
 function createPatternMaterial(
