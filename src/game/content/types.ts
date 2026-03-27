@@ -219,6 +219,7 @@ export interface SpriteSetDefinition {
   worldWidth: number;
   worldHeight: number;
   anchorOffsetY: number;
+  worldFacing?: "billboard" | "direction";
   flipX?: boolean;
   flipY?: boolean;
   pivotX?: number;

@@ -1,0 +1,132 @@
+ObjC.import("AppKit");
+
+const CELL_WIDTH = 96;
+const CELL_HEIGHT = 96;
+const COLUMNS = 4;
+
+// These source rectangles mirror the live projectile/effect crops that are
+// currently bound in spriteManifest.ts.
+const SETS = [
+  {
+    row: 0,
+    frames: [
+      { x: 1286, y: 722, width: 26, height: 14 },
+      { x: 1316, y: 722, width: 41, height: 14 },
+      { x: 1362, y: 721, width: 62, height: 16 },
+      { x: 1429, y: 722, width: 42, height: 14 }
+    ]
+  },
+  {
+    row: 1,
+    frames: [
+      { x: 1605, y: 623, width: 75, height: 73 },
+      { x: 1684, y: 623, width: 74, height: 73 },
+      { x: 1763, y: 623, width: 73, height: 73 },
+      { x: 1842, y: 623, width: 73, height: 73 }
+    ]
+  },
+  {
+    row: 2,
+    frames: [
+      { x: 4174, y: 601, width: 73, height: 62 },
+      { x: 4253, y: 601, width: 73, height: 62 },
+      { x: 4332, y: 601, width: 73, height: 62 }
+    ]
+  },
+  {
+    row: 3,
+    frames: [
+      { x: 1611, y: 826, width: 45, height: 26 },
+      { x: 1663, y: 826, width: 35, height: 26 },
+      { x: 1704, y: 826, width: 27, height: 26 },
+      { x: 1739, y: 826, width: 15, height: 26 }
+    ]
+  },
+];
+
+function rgba(color) {
+  const converted = color.colorUsingColorSpaceName($.NSCalibratedRGBColorSpace);
+  return {
+    r: converted.redComponent,
+    g: converted.greenComponent,
+    b: converted.blueComponent,
+    a: converted.alphaComponent
+  };
+}
+
+function isChroma(color) {
+  const r = Math.round(color.r * 255);
+  const g = Math.round(color.g * 255);
+  const b = Math.round(color.b * 255);
+  const brightCyan = r <= 40 && g >= 248 && b >= 248;
+  const darkTeal = r <= 8 && g >= 120 && g <= 136 && b >= 120 && b <= 136;
+  const atlasBackground = r <= 32 && g >= 96 && b >= 96 && Math.abs(g - b) <= 16;
+  return brightCyan || darkTeal || atlasBackground;
+}
+
+function main() {
+  const argv = ObjC.deepUnwrap($.NSProcessInfo.processInfo.arguments);
+  const sourcePath = argv[argv.length - 2];
+  const outputPath = argv[argv.length - 1];
+
+  const sourceData = $.NSData.dataWithContentsOfFile(sourcePath);
+  const source = $.NSBitmapImageRep.imageRepWithData(sourceData);
+  if (!source) {
+    throw new Error(`Unable to load source atlas: ${sourcePath}`);
+  }
+
+  const rows = SETS.length;
+  const width = COLUMNS * CELL_WIDTH;
+  const height = rows * CELL_HEIGHT;
+  const output = $.NSBitmapImageRep.alloc.initWithBitmapDataPlanesPixelsWidePixelsHighBitsPerSampleSamplesPerPixelHasAlphaIsPlanarColorSpaceNameBytesPerRowBitsPerPixel(
+    null,
+    width,
+    height,
+    8,
+    4,
+    true,
+    false,
+    $.NSCalibratedRGBColorSpace,
+    0,
+    0
+  );
+
+  const transparent = $.NSColor.colorWithCalibratedRedGreenBlueAlpha(0, 0, 0, 0);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      output.setColorAtXY(transparent, x, y);
+    }
+  }
+
+  for (const set of SETS) {
+    for (let frameIndex = 0; frameIndex < set.frames.length; frameIndex += 1) {
+      const frame = set.frames[frameIndex];
+      const cellLeft = frameIndex * CELL_WIDTH;
+      const cellTop = set.row * CELL_HEIGHT;
+      const offsetX = Math.floor((CELL_WIDTH - frame.width) / 2);
+      const offsetY = Math.floor((CELL_HEIGHT - frame.height) / 2);
+
+      for (let y = 0; y < frame.height; y += 1) {
+        for (let x = 0; x < frame.width; x += 1) {
+          const color = rgba(source.colorAtXY(frame.x + x, frame.y + y));
+          if (isChroma(color)) {
+            continue;
+          }
+
+          const pixel = $.NSColor.colorWithCalibratedRedGreenBlueAlpha(
+            color.r,
+            color.g,
+            color.b,
+            color.a
+          );
+          output.setColorAtXY(pixel, cellLeft + offsetX + x, cellTop + offsetY + y);
+        }
+      }
+    }
+  }
+
+  const png = output.representationUsingTypeProperties($.NSPNGFileType, $({}));
+  png.writeToFileAtomically(outputPath, true);
+}
+
+main();

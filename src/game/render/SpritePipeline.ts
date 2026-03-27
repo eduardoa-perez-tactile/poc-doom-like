@@ -176,6 +176,7 @@ export class AnimatedSpriteInstance {
   private lastMirrorX = false;
   private frameOffsetX = 0;
   private frameOffsetY = 0;
+  private readonly worldFacing: "billboard" | "direction";
 
   constructor(
     scene: Scene,
@@ -183,6 +184,7 @@ export class AnimatedSpriteInstance {
     mode: "world" | "view",
     parent?: Node
   ) {
+    this.worldFacing = spriteSet.definition.worldFacing ?? "billboard";
     this.mesh = MeshBuilder.CreatePlane(
       `${spriteSet.definition.id}-${mode}`,
       {
@@ -197,7 +199,10 @@ export class AnimatedSpriteInstance {
     this.mesh.renderingGroupId = mode === "view" ? 1 : 0;
 
     if (mode === "world") {
-      this.mesh.billboardMode = AbstractMesh.BILLBOARDMODE_Y;
+      this.mesh.billboardMode =
+        this.worldFacing === "billboard"
+          ? AbstractMesh.BILLBOARDMODE_Y
+          : AbstractMesh.BILLBOARDMODE_NONE;
     } else if (parent) {
       this.mesh.parent = parent;
     }
@@ -254,6 +259,11 @@ export class AnimatedSpriteInstance {
 
   setFacingAngle(angle: number): void {
     this.facingAngle = angle;
+    if (this.worldFacing === "direction") {
+      // Plane width runs along local +X, so rotate around Y to align the sprite's
+      // horizontal travel direction with the projectile velocity on the XZ plane.
+      this.mesh.rotation.y = -angle;
+    }
   }
 
   update(dt: number, viewerX?: number, viewerY?: number): void {

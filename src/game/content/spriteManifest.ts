@@ -9,11 +9,14 @@ import type {
 
 const GOLEM_SHEET_URL = new URL("./assets/golem.png", import.meta.url).href;
 const WEAPONS_SHEET_URL = new URL("./assets/weapons.png", import.meta.url).href;
+const PROJECTILES_SHEET_URL = new URL("./assets/projectiles.png", import.meta.url).href;
 
 const GOLEM_CELL_WIDTH = 76;
 const GOLEM_CELL_HEIGHT = 74;
 const WEAPON_CELL_WIDTH = 321;
 const WEAPON_CELL_HEIGHT = 176;
+const PROJECTILE_CELL_WIDTH = 96;
+const PROJECTILE_CELL_HEIGHT = 96;
 
 function cellFrame(
   id: string,
@@ -59,6 +62,10 @@ function cellRect(
     width: rect.width,
     height: rect.height
   };
+}
+
+function projectileCellFrame(id: string, col: number, row: number): SpriteFrameDefinition {
+  return cellFrame(id, col, row, PROJECTILE_CELL_WIDTH, PROJECTILE_CELL_HEIGHT);
 }
 
 function mirroredFiveDirections(clipIds: string[]): DirectionalSpriteClipDefinition[] {
@@ -464,15 +471,15 @@ function buildDragonRipperSet(): SpriteSetDefinition {
 
 function buildDragonBurstSet(): SpriteSetDefinition {
   const frames = [
-    rectFrame("dragon_burst_0", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 0, y: 95, width: 75, height: 73 }),
-    rectFrame("dragon_burst_1", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 79, y: 95, width: 74, height: 73 }),
-    rectFrame("dragon_burst_2", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 158, y: 95, width: 73, height: 73 }),
-    rectFrame("dragon_burst_3", 5, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 237, y: 95, width: 73, height: 73 })
+    projectileCellFrame("dragon_burst_0", 0, 1),
+    projectileCellFrame("dragon_burst_1", 1, 1),
+    projectileCellFrame("dragon_burst_2", 2, 1),
+    projectileCellFrame("dragon_burst_3", 3, 1)
   ];
 
   return {
     id: "dragon_burst_set",
-    sheetId: "weapons_sheet",
+    sheetId: "projectiles_sheet",
     defaultState: "idle",
     worldWidth: 0.92,
     worldHeight: 0.92,
@@ -522,14 +529,14 @@ function buildHellstaffProjectileSet(): SpriteSetDefinition {
 
 function buildHellstaffCloudSet(): SpriteSetDefinition {
   const frames = [
-    rectFrame("hellstaff_cloud_0", 13, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 1, y: 73, width: 73, height: 62 }),
-    rectFrame("hellstaff_cloud_1", 13, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 80, y: 73, width: 73, height: 62 }),
-    rectFrame("hellstaff_cloud_2", 13, 3, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 159, y: 73, width: 73, height: 62 })
+    projectileCellFrame("hellstaff_cloud_0", 0, 2),
+    projectileCellFrame("hellstaff_cloud_1", 1, 2),
+    projectileCellFrame("hellstaff_cloud_2", 2, 2)
   ];
 
   return {
     id: "hellstaff_cloud_set",
-    sheetId: "weapons_sheet",
+    sheetId: "projectiles_sheet",
     defaultState: "idle",
     worldWidth: 1.1,
     worldHeight: 0.92,
@@ -550,26 +557,29 @@ function buildHellstaffCloudSet(): SpriteSetDefinition {
 
 function buildPhoenixProjectileSet(): SpriteSetDefinition {
   const frames = [
-    rectFrame("phoenix_proj_0", 4, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 2, y: 16, width: 26, height: 18 }),
-    rectFrame("phoenix_proj_1", 4, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 32, y: 12, width: 41, height: 20 }),
-    rectFrame("phoenix_proj_2", 4, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 78, y: 9, width: 62, height: 24 }),
-    rectFrame("phoenix_proj_3", 4, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 145, y: 13, width: 42, height: 18 })
+    projectileCellFrame("phoenix_proj_0", 0, 0),
+    projectileCellFrame("phoenix_proj_1", 1, 0),
+    projectileCellFrame("phoenix_proj_2", 2, 0),
+    projectileCellFrame("phoenix_proj_3", 3, 0)
   ];
 
   return {
     id: "phoenix_projectile_set",
-    sheetId: "weapons_sheet",
+    sheetId: "projectiles_sheet",
     defaultState: "idle",
-    worldWidth: 0.7,
-    worldHeight: 0.26,
-    anchorOffsetY: 0.16,
+    // Keep the shared baseline projectile compact and square-ish so it reads as
+    // an energy bolt in first person instead of a long horizontal card.
+    worldWidth: 0.42,
+    worldHeight: 0.42,
+    anchorOffsetY: 0.18,
     flipY: true,
     frames,
     clips: [
       {
         id: "phoenix_projectile_clip",
-        frames: ["phoenix_proj_0", "phoenix_proj_1", "phoenix_proj_2", "phoenix_proj_3"],
-        fps: 12,
+        // Use the most readable compact projectile frame as the shared baseline.
+        frames: ["phoenix_proj_0"],
+        fps: 1,
         loop: true
       }
     ],
@@ -579,15 +589,15 @@ function buildPhoenixProjectileSet(): SpriteSetDefinition {
 
 function buildPhoenixFlameSet(): SpriteSetDefinition {
   const frames = [
-    rectFrame("phoenix_flame_0", 5, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 0, y: 85, width: 52, height: 28 }),
-    rectFrame("phoenix_flame_1", 5, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 53, y: 89, width: 44, height: 23 }),
-    rectFrame("phoenix_flame_2", 5, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 98, y: 93, width: 31, height: 16 }),
-    rectFrame("phoenix_flame_3", 5, 4, WEAPON_CELL_WIDTH, WEAPON_CELL_HEIGHT, { x: 130, y: 95, width: 22, height: 12 })
+    projectileCellFrame("phoenix_flame_0", 0, 3),
+    projectileCellFrame("phoenix_flame_1", 1, 3),
+    projectileCellFrame("phoenix_flame_2", 2, 3),
+    projectileCellFrame("phoenix_flame_3", 3, 3)
   ];
 
   return {
     id: "phoenix_flame_set",
-    sheetId: "weapons_sheet",
+    sheetId: "projectiles_sheet",
     defaultState: "idle",
     worldWidth: 0.58,
     worldHeight: 0.22,
@@ -713,6 +723,11 @@ export const spriteManifest: VisualDatabaseDefinition = {
       imageUrl: WEAPONS_SHEET_URL,
       chromaKeyColors: ["#00FFFF", "#008080"],
       clearRects: weaponLabelClearRects()
+    },
+    {
+      id: "projectiles_sheet",
+      imageUrl: PROJECTILES_SHEET_URL,
+      chromaKeyColors: []
     }
   ],
   spriteSets: [
@@ -750,17 +765,17 @@ export const spriteManifest: VisualDatabaseDefinition = {
     { entityId: "weapon:hellstaff", spriteSetId: "hellstaff_set" },
     { entityId: "weapon:phoenix_rod", spriteSetId: "phoenix_rod_set" },
     { entityId: "weapon:firemace", spriteSetId: "firemace_set" },
-    // Temporary readability pass: use one clean bolt sprite for most ranged shots
-    // until the per-weapon projectile atlas crops are tuned properly.
-    { entityId: "projectile:elven_wand", spriteSetId: "crossbow_bolt_set" },
-    { entityId: "projectile:ethereal_crossbow", spriteSetId: "crossbow_bolt_set" },
-    { entityId: "projectile:dragon_claw", spriteSetId: "crossbow_bolt_set" },
+    // Normalized projectile baseline: most live shots share the dedicated
+    // projectiles sheet until each weapon gets a tuned unique projectile set.
+    { entityId: "projectile:elven_wand", spriteSetId: "phoenix_projectile_set" },
+    { entityId: "projectile:ethereal_crossbow", spriteSetId: "phoenix_projectile_set" },
+    { entityId: "projectile:dragon_claw", spriteSetId: "phoenix_projectile_set" },
     { entityId: "projectile:dragon_claw_burst", spriteSetId: "dragon_burst_set" },
-    { entityId: "projectile:hellstaff", spriteSetId: "crossbow_bolt_set" },
+    { entityId: "projectile:hellstaff", spriteSetId: "phoenix_projectile_set" },
     { entityId: "projectile:hellstaff_cloud", spriteSetId: "hellstaff_cloud_set" },
-    { entityId: "projectile:phoenix_rod", spriteSetId: "crossbow_bolt_set" },
+    { entityId: "projectile:phoenix_rod", spriteSetId: "phoenix_projectile_set" },
     { entityId: "projectile:phoenix_flame", spriteSetId: "phoenix_flame_set" },
-    { entityId: "projectile:firemace", spriteSetId: "firemace_ball_set" },
-    { entityId: "projectile:firemace_powered", spriteSetId: "firemace_ball_set" }
+    { entityId: "projectile:firemace", spriteSetId: "phoenix_projectile_set" },
+    { entityId: "projectile:firemace_powered", spriteSetId: "phoenix_projectile_set" }
   ]
 };
