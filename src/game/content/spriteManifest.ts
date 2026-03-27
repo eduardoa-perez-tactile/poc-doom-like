@@ -767,15 +767,15 @@ export const spriteManifest: VisualDatabaseDefinition = {
     { entityId: "weapon:firemace", spriteSetId: "firemace_set" },
     // Normalized projectile baseline: most live shots share the dedicated
     // projectiles sheet until each weapon gets a tuned unique projectile set.
-    { entityId: "projectile:elven_wand", spriteSetId: "phoenix_projectile_set" },
-    { entityId: "projectile:ethereal_crossbow", spriteSetId: "phoenix_projectile_set" },
-    { entityId: "projectile:dragon_claw", spriteSetId: "phoenix_projectile_set" },
+    { entityId: "projectile:elven_wand", spriteSetId: "phoenix_flame_set" },
+    { entityId: "projectile:ethereal_crossbow", spriteSetId: "phoenix_flame_set" },
+    { entityId: "projectile:dragon_claw", spriteSetId: "phoenix_flame_set" },
     { entityId: "projectile:dragon_claw_burst", spriteSetId: "dragon_burst_set" },
-    { entityId: "projectile:hellstaff", spriteSetId: "phoenix_projectile_set" },
+    { entityId: "projectile:hellstaff", spriteSetId: "phoenix_flame_set" },
     { entityId: "projectile:hellstaff_cloud", spriteSetId: "hellstaff_cloud_set" },
-    { entityId: "projectile:phoenix_rod", spriteSetId: "phoenix_projectile_set" },
+    { entityId: "projectile:phoenix_rod", spriteSetId: "phoenix_flame_set" },
     { entityId: "projectile:phoenix_flame", spriteSetId: "phoenix_flame_set" },
-    { entityId: "projectile:firemace", spriteSetId: "phoenix_projectile_set" },
-    { entityId: "projectile:firemace_powered", spriteSetId: "phoenix_projectile_set" }
+    { entityId: "projectile:firemace", spriteSetId: "phoenix_flame_set" },
+    { entityId: "projectile:firemace_powered", spriteSetId: "phoenix_flame_set" }
   ]
 };
