@@ -171,7 +171,7 @@ function buildGolemSet(): SpriteSetDefinition {
     worldHeight: 1.8,
     anchorOffsetY: 0,
     verticalPlacement: "grounded",
-    groundClearance: 0.02,
+    groundClearance: 0.18,
     flipY: true,
     frames,
     clips,
@@ -871,7 +871,11 @@ export const spriteManifest: VisualDatabaseDefinition = {
       imageUrl: GOLEM_SHEET_URL,
       chromaKeyColors: ["#00FFFF", "#008080"],
       clearRects: [
-        { x: 0, y: 0, width: 837, height: 15 },
+        { x: 0, y: 0, width: 40, height: 15 },
+        { x: 300, y: 0, width: 40, height: 15 },
+        { x: 530, y: 0, width: 90, height: 15 },
+        { x: 680, y: 0, width: 30, height: 15 },
+        { x: 758, y: 0, width: 32, height: 15 },
         { x: 0, y: 5 * GOLEM_CELL_HEIGHT, width: 837, height: 15 },
         { x: 0, y: 6 * GOLEM_CELL_HEIGHT, width: 320, height: 15 }
       ]
