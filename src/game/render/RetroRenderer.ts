@@ -1,19 +1,18 @@
 import {
   Color3,
   Color4,
-  DynamicTexture,
   Engine,
   HemisphericLight,
   MeshBuilder,
   Scene,
   StandardMaterial,
-  Texture,
   TransformNode,
   UniversalCamera,
   Vector3,
   Vector4,
   WebGPUEngine
 } from "@babylonjs/core";
+import { getLevelCeilingFlat, getLevelFloorFlat } from "../content/flats";
 import type { ContentDatabase, LevelDefinition, SpriteAnimationStateName } from "../content/types";
 import type {
   EnemyState,
@@ -22,6 +21,7 @@ import type {
   ProjectileState
 } from "../core/types";
 import { AnimatedSpriteInstance, SpriteLibrary } from "./SpritePipeline";
+import { FlatMaterialSystem } from "./flats/FlatMaterialSystem";
 import { PickupRenderSystem } from "./pickups/PickupRenderSystem";
 import { WallTextureAtlas } from "./WallTextureAtlas";
 import {
@@ -45,10 +45,9 @@ export class RetroRenderer {
   private readonly projectileSprites = new Map<number, AnimatedSpriteInstance>();
   private readonly hazardSprites = new Map<number, AnimatedSpriteInstance>();
   private readonly weaponSprites = new Map<string, AnimatedSpriteInstance>();
-  private readonly floorMaterial: StandardMaterial;
-  private readonly ceilingMaterial: StandardMaterial;
   private wallMaterial!: StandardMaterial;
   private wallAtlas!: WallTextureAtlas;
+  private flatMaterials!: FlatMaterialSystem;
 
   constructor(
     private readonly engine: Engine | WebGPUEngine,
@@ -70,8 +69,6 @@ export class RetroRenderer {
     new HemisphericLight("key-light", new Vector3(0.2, 1, 0.1), this.scene).intensity = 0.6;
 
     this.root = new TransformNode("world-root", this.scene);
-    this.floorMaterial = createPatternMaterial(this.scene, "floor", "#342a1e", "#1f1812", "#4b3a2e");
-    this.ceilingMaterial = createPatternMaterial(this.scene, "ceiling", "#221511", "#100b09", "#382019");
   }
 
   static async create(
@@ -80,6 +77,7 @@ export class RetroRenderer {
   ): Promise<RetroRenderer> {
     const renderer = new RetroRenderer(engine, content);
     await renderer.initializeWallTextures();
+    renderer.flatMaterials = await FlatMaterialSystem.create(renderer.scene, content.level);
     renderer.buildStaticLevel();
     await renderer.initializeSprites();
     renderer.setAttractCamera();
@@ -105,10 +103,12 @@ export class RetroRenderer {
   }
 
   dispose(): void {
+    this.flatMaterials.dispose();
     this.scene.dispose();
   }
 
   sync(state: GameSessionState, dt: number): void {
+    this.flatMaterials.update(dt);
     this.camera.position.x = state.player.x;
     this.camera.position.z = state.player.y;
     this.camera.position.y = PLAYER_EYE_HEIGHT + Math.sin(state.player.bobPhase) * 0.03;
@@ -155,7 +155,7 @@ export class RetroRenderer {
     );
     ground.position.x = ((width - 1) * cellSize) / 2;
     ground.position.z = ((height - 1) * cellSize) / 2;
-    ground.material = this.floorMaterial;
+    ground.material = this.flatMaterials.getFlatMaterial(getLevelFloorFlat(this.content.level));
     ground.parent = this.root;
 
     const ceiling = MeshBuilder.CreateGround(
@@ -167,7 +167,7 @@ export class RetroRenderer {
     ceiling.position.z = ground.position.z;
     ceiling.position.y = 2.6;
     ceiling.rotation.x = Math.PI;
-    ceiling.material = this.ceilingMaterial;
+    ceiling.material = this.flatMaterials.getFlatMaterial(getLevelCeilingFlat(this.content.level));
     ceiling.parent = this.root;
 
     for (let y = 0; y < height; y += 1) {
@@ -371,36 +371,4 @@ function resolveWallTextureType(level: LevelDefinition, x: number, y: number): W
   ];
   const wallNeighborCount = neighbors.reduce((count, neighbor) => count + Number(isWallCell(neighbor)), 0);
   return wallNeighborCount >= 3 ? WallTextureType.Brick : WallTextureType.Decorative;
-}
-
-function createPatternMaterial(
-  scene: Scene,
-  name: string,
-  base: string,
-  shadow: string,
-  accent: string
-): StandardMaterial {
-  const texture = new DynamicTexture(`${name}-texture`, { width: 64, height: 64 }, scene, false);
-  const context = texture.getContext();
-  context.fillStyle = base;
-  context.fillRect(0, 0, 64, 64);
-  context.fillStyle = shadow;
-  for (let row = 0; row < 8; row += 1) {
-    context.fillRect(0, row * 8, 64, 2);
-  }
-  context.fillStyle = accent;
-  for (let column = 0; column < 64; column += 16) {
-    context.fillRect(column, 0, 2, 64);
-  }
-  texture.update();
-  texture.wrapU = Texture.WRAP_ADDRESSMODE;
-  texture.wrapV = Texture.WRAP_ADDRESSMODE;
-  texture.updateSamplingMode(Texture.NEAREST_SAMPLINGMODE);
-
-  const material = new StandardMaterial(name, scene);
-  material.diffuseTexture = texture;
-  material.emissiveTexture = texture;
-  material.specularColor = Color3.Black();
-  material.disableLighting = true;
-  return material;
 }

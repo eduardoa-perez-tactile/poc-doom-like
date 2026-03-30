@@ -1,5 +1,6 @@
 import enemyDefs from "./data/enemies.json";
 import levelDef from "./data/level-open-arena.json";
+import { getFlatDef, getLevelCeilingFlat, getLevelFloorFlat } from "./flats";
 import { pickupDefs, pickupVisuals } from "./pickups";
 import { spriteManifest } from "./spriteManifest";
 import weaponDefs from "./data/weapons.json";
@@ -22,6 +23,10 @@ export const WEAPON_ORDER = [
 ] as const;
 
 export function createContentDb(): ContentDatabase {
+  const level = levelDef as LevelDefinition;
+  getFlatDef(getLevelFloorFlat(level));
+  getFlatDef(getLevelCeilingFlat(level));
+
   const definitionsById = new Map(
     (weaponDefs as WeaponDefinition[]).map((definition) => [definition.id, definition] as const)
   );
@@ -47,7 +52,7 @@ export function createContentDb(): ContentDatabase {
     ),
     pickupDefs: new Map(pickupDefs.map((definition) => [definition.id, definition] as const)),
     pickupVisuals: new Map(pickupVisuals.map((definition) => [definition.id, definition] as const)),
-    level: levelDef as LevelDefinition,
+    level,
     visuals: spriteManifest
   };
 }

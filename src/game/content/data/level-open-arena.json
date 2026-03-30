@@ -5,6 +5,8 @@
   "skyColor": "#22140f",
   "fogColor": "#100908",
   "ambientColor": "#4c2c1a",
+  "floorFlat": "WATER_BLUE",
+  "ceilingFlat": "STONE_WORN_GRAY",
   "playerStart": {
     "x": 12,
     "y": 11,
