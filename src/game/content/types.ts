@@ -1,4 +1,5 @@
 import type { PickupDef, PickupVisualDefinition, WorldPickupSpawn } from "./pickups";
+import type { FlatDefId } from "./flats/flatTypes";
 
 export type WeaponAmmoType =
   | "none"
@@ -166,6 +167,8 @@ export interface LevelDefinition {
   skyColor: string;
   fogColor: string;
   ambientColor: string;
+  floorFlat?: FlatDefId;
+  ceilingFlat?: FlatDefId;
   playerStart: PlayerStart;
   grid: string[];
   wallTypes?: Record<string, WallTextureTypeName>;
