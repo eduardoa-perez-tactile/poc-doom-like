@@ -1,0 +1,313 @@
+{
+  "id": "dspairils_keep_test",
+  "name": "D'Spairil's Keep Test",
+  "cellSize": 2,
+  "skyColor": "#22140f",
+  "fogColor": "#100908",
+  "ambientColor": "#4c2c1a",
+  "floorFlat": "STONE_BRICK_GRAY",
+  "ceilingFlat": "STONE_WORN_GRAY",
+  "playerStart": {
+    "x": 13,
+    "y": 20,
+    "angleDeg": 270
+  },
+  "grid": [
+    "############################",
+    "#............##............#",
+    "#..BBBB......DD......BBBB..#",
+    "#..M..M..............M..M..#",
+    "#..M..M....DDDD......M..M..#",
+    "#..BBBB....M..M......BBBB..#",
+    "#..........M..M............#",
+    "#######....M..M....#######.#",
+    "#..........DDDD............#",
+    "#..........................#",
+    "#....BBBB..........BBBB....#",
+    "#....M..M..........M..M....#",
+    "#....M..M..........M..M....#",
+    "#....BBBB..........BBBB....#",
+    "#..........................#",
+    "#..........DDDD............#",
+    "#.BBBBBBB....M..M....BBBBBB#",
+    "#............M..M..........#",
+    "#..BBBB......M..M....BBBB..#",
+    "#..M..M......DDDD....M..M..#",
+    "#..M..M..............M..M..#",
+    "#..BBBB......DD......BBBB..#",
+    "#............##............#",
+    "############################"
+  ],
+  "wallTypes": {
+    "#": "Stone",
+    "B": "Brick",
+    "M": "Metal",
+    "D": "Door"
+  },
+  "pickups": [
+    {
+      "id": "keep_yellow_key",
+      "defId": "YELLOW_KEY",
+      "x": 13,
+      "y": 19
+    },
+    {
+      "id": "keep_vial_1",
+      "defId": "CRYSTAL_VIAL",
+      "x": 10,
+      "y": 20
+    },
+    {
+      "id": "keep_vial_2",
+      "defId": "CRYSTAL_VIAL",
+      "x": 18,
+      "y": 16
+    }
+  ],
+  "enemies": [
+    {
+      "id": "switch_guard",
+      "type": "grave_thrall",
+      "x": 18,
+      "y": 16,
+      "facingDeg": 270
+    },
+    {
+      "id": "pre_teleport_guard",
+      "type": "nitrogolem",
+      "x": 18,
+      "y": 7,
+      "facingDeg": 180
+    },
+    {
+      "id": "arena_thrall_1",
+      "type": "grave_thrall",
+      "x": 2,
+      "y": 2,
+      "facingDeg": 0
+    },
+    {
+      "id": "arena_thrall_2",
+      "type": "grave_thrall",
+      "x": 4,
+      "y": 3,
+      "facingDeg": 0
+    },
+    {
+      "id": "arena_golem_1",
+      "type": "golem",
+      "x": 9,
+      "y": 7,
+      "facingDeg": 90
+    }
+  ],
+  "briefing": "Recover the yellow key, break the switch chain, ride the hidden warp, clear the arena, and reach the exit seal.",
+  "script": {
+    "id": "keep_flow",
+    "flags": {
+      "bossArenaUnlocked": false,
+      "arenaCleared": false
+    },
+    "regions": [
+      {
+        "id": "boss_pre_region",
+        "rect": { "x": 17, "y": 6, "w": 5, "h": 4 },
+        "debugLabel": "Boss Pre-Warp"
+      },
+      {
+        "id": "arena_region",
+        "rect": { "x": 1, "y": 1, "w": 9, "h": 9 },
+        "debugLabel": "Arena"
+      },
+      {
+        "id": "exit_region",
+        "rect": { "x": 18, "y": 1, "w": 5, "h": 4 },
+        "debugLabel": "Exit Seal"
+      }
+    ],
+    "doors": [
+      {
+        "id": "yellow_door_main",
+        "gridCells": [
+          { "x": 11, "y": 15 },
+          { "x": 12, "y": 15 },
+          { "x": 13, "y": 15 },
+          { "x": 14, "y": 15 }
+        ],
+        "requiredKeyId": "YELLOW_KEY",
+        "locked": true,
+        "startsOpen": false,
+        "debugLabel": "Yellow Gate"
+      },
+      {
+        "id": "switch_door_upper",
+        "gridCells": [
+          { "x": 10, "y": 8 },
+          { "x": 11, "y": 8 },
+          { "x": 12, "y": 8 },
+          { "x": 13, "y": 8 }
+        ],
+        "locked": true,
+        "startsOpen": false,
+        "debugLabel": "Upper Switch Door"
+      },
+      {
+        "id": "arena_exit_door",
+        "gridCells": [
+          { "x": 11, "y": 4 },
+          { "x": 12, "y": 4 },
+          { "x": 13, "y": 4 },
+          { "x": 14, "y": 4 }
+        ],
+        "locked": true,
+        "startsOpen": false,
+        "debugLabel": "Arena Exit"
+      }
+    ],
+    "teleporters": [
+      {
+        "id": "warp_sigil",
+        "fromRegion": { "x": 20, "y": 8, "w": 1, "h": 1 },
+        "targetPos": { "x": 4, "y": 6 },
+        "targetFacingRadians": 0,
+        "enabled": false,
+        "revealByDefault": false,
+        "debugLabel": "Hidden Warp"
+      }
+    ],
+    "switches": [
+      {
+        "id": "obsidian_switch",
+        "cell": { "x": 18, "y": 16 },
+        "once": true,
+        "actions": [
+          { "kind": "open_door", "doorId": "switch_door_upper" },
+          { "kind": "unlock_door", "doorId": "switch_door_upper" },
+          { "kind": "set_flag", "flag": "bossArenaUnlocked", "value": true },
+          { "kind": "activate_trigger", "triggerId": "switch_chain_note" }
+        ],
+        "debugLabel": "Obsidian Switch"
+      }
+    ],
+    "secrets": [
+      {
+        "id": "crypt_secret",
+        "region": { "x": 2, "y": 17, "w": 3, "h": 3 },
+        "message": "A hidden cache slides from the wall.",
+        "rewardActions": [
+          {
+            "kind": "spawn_pickup",
+            "pickupDefId": "QUARTZ_FLASK",
+            "spawnPos": { "x": 3, "y": 18 }
+          }
+        ],
+        "once": true,
+        "debugLabel": "Crypt Secret"
+      }
+    ],
+    "floorRegions": [
+      {
+        "id": "arena_bridge",
+        "blockingCells": [
+          { "x": 15, "y": 4 },
+          { "x": 16, "y": 4 },
+          { "x": 17, "y": 4 }
+        ],
+        "initialHeight": -1,
+        "passableWhenHeightAtLeast": 0,
+        "debugLabel": "Arena Bridge"
+      }
+    ],
+    "triggers": [
+      {
+        "id": "yellow_key_pickup_hint",
+        "kind": "pickup_item",
+        "itemId": "YELLOW_KEY",
+        "once": true,
+        "actions": [
+          {
+            "kind": "show_message",
+            "message": "The yellow seal answers. A switch waits beyond the gate."
+          }
+        ],
+        "debugLabel": "Yellow Key Hint"
+      },
+      {
+        "id": "switch_chain_note",
+        "kind": "manual",
+        "once": true,
+        "actions": [
+          {
+            "kind": "show_message",
+            "message": "Stone grinds overhead. Something ancient stirs in the upper halls."
+          }
+        ],
+        "debugLabel": "Switch Chain Note"
+      },
+      {
+        "id": "switch_use_feedback",
+        "kind": "use_switch",
+        "switchId": "obsidian_switch",
+        "once": true,
+        "actions": [
+          {
+            "kind": "show_message",
+            "message": "The obsidian seal unlocks a path forward."
+          }
+        ],
+        "debugLabel": "Switch Feedback"
+      },
+      {
+        "id": "reveal_hidden_warp",
+        "kind": "enter_region",
+        "regionId": "boss_pre_region",
+        "once": true,
+        "conditions": [
+          { "kind": "flag_set", "flag": "bossArenaUnlocked" }
+        ],
+        "actions": [
+          { "kind": "enable_teleporter", "teleporterId": "warp_sigil" },
+          {
+            "kind": "show_message",
+            "message": "A hidden warp sigil flashes into view."
+          }
+        ],
+        "debugLabel": "Reveal Hidden Warp"
+      },
+      {
+        "id": "arena_clear_chain",
+        "kind": "all_enemies_dead_in_region",
+        "regionId": "arena_region",
+        "once": true,
+        "actions": [
+          { "kind": "set_flag", "flag": "arenaCleared", "value": true },
+          { "kind": "unlock_door", "doorId": "arena_exit_door" },
+          { "kind": "open_door", "doorId": "arena_exit_door" },
+          { "kind": "raise_floor", "floorRegionId": "arena_bridge", "deltaHeight": 1 },
+          {
+            "kind": "show_message",
+            "message": "The arena yields. A bridge rises toward the exit seal."
+          }
+        ],
+        "debugLabel": "Arena Clear"
+      },
+      {
+        "id": "finish_level",
+        "kind": "enter_region",
+        "regionId": "exit_region",
+        "once": true,
+        "conditions": [
+          { "kind": "flag_set", "flag": "arenaCleared" },
+          { "kind": "door_open", "doorId": "arena_exit_door" }
+        ],
+        "actions": [
+          {
+            "kind": "complete_level",
+            "message": "D'Spairil's Keep test complete."
+          }
+        ],
+        "debugLabel": "Exit Seal"
+      }
+    ]
+  }
+}

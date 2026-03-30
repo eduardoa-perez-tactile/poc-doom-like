@@ -165,6 +165,7 @@ export class GameApp {
 
   private async startRun(): Promise<void> {
     this.session = new GameSession(this.content);
+    this.bindDebugHelpers();
     this.deathTimer = 0;
     if (this.renderer) {
       this.renderer.sync(this.session.state, 1 / 60);
@@ -176,6 +177,7 @@ export class GameApp {
 
   private async restartRun(): Promise<void> {
     this.session = new GameSession(this.content);
+    this.bindDebugHelpers();
     this.deathTimer = 0;
     if (this.renderer) {
       this.renderer.sync(this.session.state, 1 / 60);
@@ -300,6 +302,19 @@ export class GameApp {
   private readonly onResize = (): void => {
     this.renderer?.resize();
   };
+
+  private bindDebugHelpers(): void {
+    const debugHost = window as Window & {
+      __hereticDebug?: {
+        getSessionState: () => unknown;
+        getLevelScriptState: () => unknown;
+      };
+    };
+    debugHost.__hereticDebug = {
+      getSessionState: () => this.session?.createSaveState() ?? null,
+      getLevelScriptState: () => this.session?.getLevelScriptDebugState() ?? null
+    };
+  }
 }
 
 function createNeutralInput(): InputFrame {

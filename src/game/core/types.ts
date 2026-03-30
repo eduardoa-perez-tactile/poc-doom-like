@@ -1,5 +1,6 @@
 import type { InventoryEntry, PlayerEffectTimers, WorldPickupInstance } from "../content/pickups";
 import type { SpriteAnimationStateName, WeaponAmmoType } from "../content/types";
+import type { LevelScriptRuntimeState } from "../simulation/script/LevelScriptTypes";
 
 export type AppMode =
   | "boot"
@@ -161,6 +162,7 @@ export interface LevelState {
 
 export interface GameSessionState {
   level: LevelState;
+  levelScript: LevelScriptRuntimeState | null;
   player: PlayerState;
   tome: TomeRuntimeState;
   weapon: WeaponRuntimeState;
@@ -173,12 +175,15 @@ export interface GameSessionState {
   elapsedTime: number;
   killCount: number;
   totalKills: number;
+  secretsFound: number;
+  totalSecrets: number;
+  levelCompleted: boolean;
 }
 
 export type GameState = GameSessionState;
 
 export interface SaveGameData {
-  version: 3;
+  version: 4;
   savedAt: string;
   state: GameSessionState;
 }

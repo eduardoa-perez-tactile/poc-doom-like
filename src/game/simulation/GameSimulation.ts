@@ -27,6 +27,9 @@ import type {
 import type { InputFrame } from "../systems/InputSystem";
 import { PickupSystem } from "./pickups/PickupSystem";
 import { PickupUseSystem } from "./pickups/PickupUseSystem";
+import { createInitialLevelScriptRuntime } from "./script/LevelScriptRuntime";
+import { LevelScriptSystem, type LevelScriptCallbacks } from "./script/LevelScriptSystem";
+import type { LevelScriptRuntimeState, ScriptFrameEvents, Vec2 } from "./script/LevelScriptTypes";
 
 const ALERT_TIME = 0.12;
 const ATTACK_RESOLVE_TIME = 0.1;
@@ -42,13 +45,17 @@ export class GameSimulation {
   private readonly initialState: GameSessionState;
   private readonly pickupSystem = new PickupSystem();
   private readonly pickupUseSystem = new PickupUseSystem();
+  private readonly scriptSystem: LevelScriptSystem | null;
   private projectileId = 1;
   private hazardId = 1;
   private effectId = 1;
   private spawnedEnemyId = 1;
+  private spawnedPickupId = 1;
+  private currentScriptEvents: ScriptFrameEvents | null = null;
   state: GameSessionState;
 
   constructor(private readonly content: ContentDatabase) {
+    this.scriptSystem = content.level.script ? new LevelScriptSystem(content.level.script) : null;
     this.initialState = this.buildInitialState();
     this.state = structuredClone(this.initialState);
   }
@@ -58,6 +65,8 @@ export class GameSimulation {
     this.hazardId = 1;
     this.effectId = 1;
     this.spawnedEnemyId = 1;
+    this.spawnedPickupId = 1;
+    this.currentScriptEvents = null;
     this.state = structuredClone(this.initialState);
   }
 
@@ -77,6 +86,7 @@ export class GameSimulation {
       enemyAttack: false,
       playerDied: false
     };
+    this.currentScriptEvents = this.createScriptFrameEvents();
 
     this.updateMessages(dt);
     this.updateWeaponView(dt);
@@ -89,6 +99,12 @@ export class GameSimulation {
 
     if (!this.state.player.alive) {
       this.updateDeadEnemies(dt);
+      this.currentScriptEvents = null;
+      return events;
+    }
+
+    if (this.state.levelCompleted) {
+      this.currentScriptEvents = null;
       return events;
     }
 
@@ -102,6 +118,7 @@ export class GameSimulation {
       content: this.content,
       state: this.state,
       cycleInventory: (direction) => this.cycleInventory(direction),
+      tryUseWorld: () => this.tryUseWorld(),
       useSelectedInventoryItem: () => this.useSelectedInventoryItem()
     });
 
@@ -130,11 +147,14 @@ export class GameSimulation {
       },
       events
     );
+    this.updateLevelScript(dt);
     this.updateDeadEnemies(dt);
 
     if (!this.state.player.alive) {
       events.playerDied = true;
     }
+
+    this.currentScriptEvents = null;
 
     return events;
   }
@@ -202,6 +222,7 @@ export class GameSimulation {
 
     return {
       level,
+      levelScript: createInitialLevelScriptRuntime(levelDef.script),
       player,
       tome: {
         active: false,
@@ -224,7 +245,10 @@ export class GameSimulation {
       messages: [{ text: levelDef.briefing, ttl: 6 }],
       elapsedTime: 0,
       killCount: 0,
-      totalKills: enemies.length
+      totalKills: enemies.length,
+      secretsFound: 0,
+      totalSecrets: levelDef.script?.secrets?.length ?? 0,
+      levelCompleted: false
     };
   }
 
@@ -1304,6 +1328,7 @@ export class GameSimulation {
       this.state.killCount += 1;
       this.transitionEnemy(enemy, "dead");
       this.spawnDeathPayloads(enemy, deathProfile);
+      this.currentScriptEvents?.killedEnemyIds.push(enemy.id);
       this.pushMessage(`${definition.displayName} falls.`, 0.8);
       if (this.state.killCount >= this.state.totalKills) {
         this.pushMessage("The catacomb falls silent.", 4);
@@ -1437,6 +1462,11 @@ export class GameSimulation {
       return true;
     }
 
+    const scriptOverride = this.scriptSystem?.resolveCellSolidOverride(this.state, cellX, cellY);
+    if (scriptOverride !== undefined && scriptOverride !== null) {
+      return scriptOverride;
+    }
+
     return this.state.level.grid[cellY][cellX] !== ".";
   }
 
@@ -1449,9 +1479,10 @@ export class GameSimulation {
   }
 
   private cellCenter(cellX: number, cellY: number): { x: number; y: number } {
+    const cellSize = this.state?.level.cellSize ?? this.content.level.cellSize;
     return {
-      x: cellX * this.content.level.cellSize,
-      y: cellY * this.content.level.cellSize
+      x: cellX * cellSize,
+      y: cellY * cellSize
     };
   }
 
@@ -1611,6 +1642,7 @@ export class GameSimulation {
     }
 
     this.applyPickupDefinition(definition);
+    this.currentScriptEvents?.pickupDefIds.push(definition.id);
     return true;
   }
 
@@ -1891,6 +1923,7 @@ export class GameSimulation {
     this.transitionEnemy(enemy, "dead");
     this.spawnDeathPayloads(enemy, deathProfile);
     this.state.killCount += 1;
+    this.currentScriptEvents?.killedEnemyIds.push(enemy.id);
     this.pushMessage("The Morph Ovum warps a target out of the fight.", 1.2);
     if (this.state.killCount >= this.state.totalKills) {
       this.pushMessage("The catacomb falls silent.", 4);
@@ -1902,6 +1935,128 @@ export class GameSimulation {
     if (this.state.messages.length > 5) {
       this.state.messages.length = 5;
     }
+  }
+
+  getLevelScriptDebugState(): LevelScriptRuntimeState | null {
+    return this.scriptSystem?.getDebugSnapshot(this.state) ?? null;
+  }
+
+  private updateLevelScript(dt: number): void {
+    if (!this.scriptSystem || !this.currentScriptEvents) {
+      return;
+    }
+    this.scriptSystem.update(dt, this.createLevelScriptCallbacks(), this.currentScriptEvents);
+  }
+
+  private tryUseWorld(): boolean {
+    if (!this.scriptSystem || !this.currentScriptEvents) {
+      return false;
+    }
+
+    for (const cell of this.getUseCandidateCells()) {
+      if (
+        this.scriptSystem.tryUseCell(
+          this.state,
+          cell,
+          this.createLevelScriptCallbacks(),
+          this.currentScriptEvents
+        )
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private getUseCandidateCells(): Vec2[] {
+    const distances = [0, 0.4, 0.8, 1.1].map((value) => value * this.state.level.cellSize);
+    const forwardX = Math.cos(this.state.player.angle);
+    const forwardY = Math.sin(this.state.player.angle);
+    const cells: Vec2[] = [];
+    const seen = new Set<string>();
+
+    for (const distance of distances) {
+      const sampleX = this.state.player.x + forwardX * distance;
+      const sampleY = this.state.player.y + forwardY * distance;
+      const cell = this.worldToCell(sampleX, sampleY);
+      const key = `${cell.x},${cell.y}`;
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      cells.push(cell);
+    }
+
+    return cells;
+  }
+
+  private createScriptFrameEvents(): ScriptFrameEvents {
+    return {
+      usedSwitchIds: [],
+      usedCells: [],
+      pickupDefIds: [],
+      pickupEntityIds: [],
+      killedEnemyIds: [],
+      manualTriggerIds: []
+    };
+  }
+
+  private createLevelScriptCallbacks(): LevelScriptCallbacks {
+    return {
+      state: this.state,
+      pushMessage: (message, ttl = 2.2) => this.pushMessage(message, ttl),
+      teleportPlayer: (targetPos, facingRadians) => {
+        const center = this.cellCenter(targetPos.x, targetPos.y);
+        this.state.player.x = center.x;
+        this.state.player.y = center.y;
+        if (facingRadians !== undefined) {
+          this.state.player.angle = facingRadians;
+        }
+      },
+      spawnEnemy: (enemyDefId, spawnPos) => {
+        const center = this.cellCenter(spawnPos.x, spawnPos.y);
+        this.state.enemies.push(
+          this.instantiateEnemyState(
+            `script_enemy_${this.spawnedEnemyId++}`,
+            enemyDefId,
+            center.x,
+            center.y,
+            0
+          )
+        );
+        this.state.totalKills += 1;
+      },
+      spawnPickup: (pickupDefId, spawnPos) => {
+        this.state.pickups.push(
+          this.createPickupState(
+            {
+              id: `script_pickup_${this.spawnedPickupId++}`,
+              defId: pickupDefId,
+              x: spawnPos.x,
+              y: spawnPos.y
+            },
+            this.cellCenter(spawnPos.x, spawnPos.y)
+          )
+        );
+      },
+      completeLevel: (message) => {
+        this.state.levelCompleted = true;
+        this.pushMessage(message ?? "Level complete.", 4);
+      },
+      playSound: (soundId) => {
+        this.debugScript(`Requested scripted sound '${soundId}'.`);
+      },
+      debug: (message) => this.debugScript(message),
+      warn: (message) => console.warn(`[LevelScript:${this.state.level.id}] ${message}`)
+    };
+  }
+
+  private debugScript(message: string): void {
+    if (!this.content.level.script?.debug) {
+      return;
+    }
+    console.log(`[LevelScript:${this.state.level.id}] ${message}`);
   }
 
   private requireEnemyDefinition(id: string): EnemyDefinition {
