@@ -2,7 +2,11 @@ import { WEAPON_ORDER } from "../content/ContentDb";
 import type { PickupDef, PickupUseActionId } from "../content/pickups";
 import type {
   ContentDatabase,
+  EnemyAttackProfileDefinition,
+  EnemyDeathProfileDefinition,
+  EffectDefinition,
   EnemyDefinition,
+  EnemyProjectileDefinition,
   EnemySpawn,
   PickupSpawn,
   WeaponBehaviorDefinition,
@@ -40,6 +44,8 @@ export class GameSimulation {
   private readonly pickupUseSystem = new PickupUseSystem();
   private projectileId = 1;
   private hazardId = 1;
+  private effectId = 1;
+  private spawnedEnemyId = 1;
   state: GameSessionState;
 
   constructor(private readonly content: ContentDatabase) {
@@ -50,6 +56,8 @@ export class GameSimulation {
   restart(): void {
     this.projectileId = 1;
     this.hazardId = 1;
+    this.effectId = 1;
+    this.spawnedEnemyId = 1;
     this.state = structuredClone(this.initialState);
   }
 
@@ -110,8 +118,9 @@ export class GameSimulation {
     }
 
     this.updateEnemies(dt, events);
-    this.updateProjectiles(dt);
+    this.updateProjectiles(dt, events);
     this.updateHazards(dt);
+    this.updateEffects(dt);
     this.pickupSystem.update(
       dt,
       {
@@ -210,6 +219,7 @@ export class GameSimulation {
       enemies,
       projectiles: [],
       hazards: [],
+      effects: [],
       pickups,
       messages: [{ text: levelDef.briefing, ttl: 6 }],
       elapsedTime: 0,
@@ -219,23 +229,39 @@ export class GameSimulation {
   }
 
   private createEnemyState(spawn: EnemySpawn): EnemyState {
-    const definition = this.requireEnemyDefinition(spawn.type);
     const position = this.cellCenter(spawn.x, spawn.y);
+    return this.instantiateEnemyState(
+      spawn.id,
+      spawn.type,
+      position.x,
+      position.y,
+      ((spawn.facingDeg ?? 180) * Math.PI) / 180
+    );
+  }
+
+  private instantiateEnemyState(
+    id: string,
+    typeId: string,
+    x: number,
+    y: number,
+    facingAngle: number
+  ): EnemyState {
+    const definition = this.requireEnemyDefinition(typeId);
     return {
-      id: spawn.id,
-      typeId: spawn.type,
-      x: position.x,
-      y: position.y,
-      spawnX: position.x,
-      spawnY: position.y,
+      id,
+      typeId,
+      x,
+      y,
+      spawnX: x,
+      spawnY: y,
       health: definition.health,
       alive: true,
       fsmState: "idle",
       stateTime: 0,
-      lastKnownPlayerX: position.x,
-      lastKnownPlayerY: position.y,
+      lastKnownPlayerX: x,
+      lastKnownPlayerY: y,
       hasLineOfSight: false,
-      facingAngle: ((spawn.facingDeg ?? 180) * Math.PI) / 180,
+      facingAngle,
       memoryTime: 0,
       attackApplied: false
     };
@@ -556,6 +582,60 @@ export class GameSimulation {
     }
   }
 
+  private spawnRuntimeProjectile(spawn: {
+    source: "player" | "enemy";
+    ownerId: string;
+    weaponId: string;
+    visualId: string;
+    x: number;
+    y: number;
+    dx: number;
+    dy: number;
+    speed: number;
+    radius: number;
+    damage: number;
+    ttl: number;
+    homingStrength?: number;
+    splashRadius?: number;
+    splashDamageScale?: number;
+    bouncesRemaining?: number;
+    bounceSpeedMultiplier?: number;
+    seekAfterBounce?: boolean;
+    impactBurstVisualId?: string;
+    impactBurstCount?: number;
+    impactBurstSpreadDeg?: number;
+    impactEffectId?: string;
+    impactHazard?: HazardTemplateState;
+  }): void {
+    this.state.projectiles.push({
+      id: this.projectileId++,
+      source: spawn.source,
+      ownerId: spawn.ownerId,
+      weaponId: spawn.weaponId,
+      visualId: spawn.visualId,
+      x: spawn.x,
+      y: spawn.y,
+      dx: spawn.dx,
+      dy: spawn.dy,
+      speed: spawn.speed,
+      radius: spawn.radius,
+      damage: spawn.damage,
+      ttl: spawn.ttl,
+      homingStrength: spawn.homingStrength ?? 0,
+      splashRadius: spawn.splashRadius ?? 0,
+      splashDamageScale: spawn.splashDamageScale ?? 0,
+      bouncesRemaining: spawn.bouncesRemaining ?? 0,
+      bounceSpeedMultiplier: spawn.bounceSpeedMultiplier ?? 1,
+      seekAfterBounce: spawn.seekAfterBounce ?? false,
+      hasBounced: false,
+      impactBurstVisualId: spawn.impactBurstVisualId,
+      impactBurstCount: spawn.impactBurstCount,
+      impactBurstSpreadDeg: spawn.impactBurstSpreadDeg,
+      impactEffectId: spawn.impactEffectId,
+      impactHazard: spawn.impactHazard
+    });
+  }
+
   private spawnProjectile(
     weapon: WeaponDefinition,
     behavior: WeaponBehaviorDefinition,
@@ -569,8 +649,7 @@ export class GameSimulation {
     const angle = normalizeAngle(this.state.player.angle + angleOffset);
     const dx = Math.cos(angle);
     const dy = Math.sin(angle);
-    this.state.projectiles.push({
-      id: this.projectileId++,
+    this.spawnRuntimeProjectile({
       source: "player",
       ownerId: "player",
       weaponId: weapon.id,
@@ -589,7 +668,6 @@ export class GameSimulation {
       bouncesRemaining: behavior.bounce?.maxBounces ?? 0,
       bounceSpeedMultiplier: behavior.bounce?.speedMultiplier ?? 1,
       seekAfterBounce: behavior.bounce?.seekAfterBounce ?? false,
-      hasBounced: false,
       impactBurstVisualId: behavior.impactEffect?.projectileVisualId,
       impactBurstCount: behavior.impactEffect?.count,
       impactBurstSpreadDeg: behavior.impactEffect?.spreadAngleDeg,
@@ -612,8 +690,7 @@ export class GameSimulation {
     const angle = normalizeAngle(this.state.player.angle + angleOffset);
     const dx = Math.cos(angle);
     const dy = Math.sin(angle);
-    this.state.projectiles.push({
-      id: this.projectileId++,
+    this.spawnRuntimeProjectile({
       source: "player",
       ownerId: "player",
       weaponId: weapon.id,
@@ -625,14 +702,7 @@ export class GameSimulation {
       speed: projectile.speed,
       radius: projectile.radius,
       damage: 0,
-      ttl: projectile.life,
-      homingStrength: 0,
-      splashRadius: 0,
-      splashDamageScale: 0,
-      bouncesRemaining: 0,
-      bounceSpeedMultiplier: 1,
-      seekAfterBounce: false,
-      hasBounced: false
+      ttl: projectile.life
     });
   }
 
@@ -642,8 +712,7 @@ export class GameSimulation {
       const angle = normalizeAngle(this.state.player.angle + angleOffset);
       const dx = Math.cos(angle);
       const dy = Math.sin(angle);
-      this.state.projectiles.push({
-        id: this.projectileId++,
+      this.spawnRuntimeProjectile({
         source: "player",
         ownerId: "player",
         weaponId,
@@ -655,14 +724,7 @@ export class GameSimulation {
         speed: 8,
         radius: 0.12,
         damage: 0,
-        ttl: 0.18,
-        homingStrength: 0,
-        splashRadius: 0,
-        splashDamageScale: 0,
-        bouncesRemaining: 0,
-        bounceSpeedMultiplier: 1,
-        seekAfterBounce: false,
-        hasBounced: false
+        ttl: 0.18
       });
     }
   }
@@ -677,9 +739,151 @@ export class GameSimulation {
     };
   }
 
+  private getEnemyAttackRange(definition: EnemyDefinition): number {
+    return this.requireEnemyAttackProfile(definition.attackProfileId).range;
+  }
+
+  private canEnemyStartAttack(
+    definition: EnemyDefinition,
+    attackProfile: EnemyAttackProfileDefinition,
+    hasLineOfSight: boolean,
+    distanceToPlayer: number
+  ): boolean {
+    const requiresLineOfSight = attackProfile.requiresLineOfSight ?? true;
+    return distanceToPlayer <= this.getEnemyAttackRange(definition) && (!requiresLineOfSight || hasLineOfSight);
+  }
+
+  private resolveEnemyAttack(
+    enemy: EnemyState,
+    definition: EnemyDefinition,
+    attackProfile: EnemyAttackProfileDefinition,
+    hasLineOfSight: boolean,
+    distanceToPlayer: number,
+    events: SimulationEvents
+  ): void {
+    if (attackProfile.type === "projectile") {
+      const canFireFromMemory = !(attackProfile.requiresLineOfSight ?? true) && enemy.memoryTime > 0;
+      const canResolveProjectile = hasLineOfSight || canFireFromMemory;
+      const targetX = hasLineOfSight ? this.state.player.x : enemy.lastKnownPlayerX;
+      const targetY = hasLineOfSight ? this.state.player.y : enemy.lastKnownPlayerY;
+      const attackDistance = Math.hypot(targetX - enemy.x, targetY - enemy.y);
+      if (canResolveProjectile && attackDistance <= attackProfile.range) {
+        this.spawnEnemyProjectile(enemy, definition, attackProfile, targetX, targetY);
+        events.enemyAttack = true;
+      }
+      return;
+    }
+
+    if (hasLineOfSight && distanceToPlayer <= attackProfile.range) {
+      this.damagePlayer(attackProfile.damage, events);
+      events.enemyAttack = true;
+    }
+  }
+
+  private spawnEnemyProjectile(
+    enemy: EnemyState,
+    definition: EnemyDefinition,
+    attackProfile: EnemyAttackProfileDefinition,
+    targetX: number,
+    targetY: number
+  ): void {
+    const projectileDefId = attackProfile.projectileDefId;
+    if (!projectileDefId) {
+      return;
+    }
+
+    const projectileDefinition = this.requireProjectileDefinition(projectileDefId);
+    const aimX = targetX - enemy.x;
+    const aimY = targetY - enemy.y;
+    const aimLength = Math.hypot(aimX, aimY);
+    if (aimLength < 0.001) {
+      return;
+    }
+
+    const dx = aimX / aimLength;
+    const dy = aimY / aimLength;
+    const spawnOffset =
+      attackProfile.spawnOffset ??
+      projectileDefinition.spawnOffset ??
+      definition.radius + projectileDefinition.radius + 0.18;
+    const baseAngle = Math.atan2(dy, dx);
+    const fireCount = attackProfile.fireCount ?? 1;
+    const spreadDegrees = attackProfile.spreadDegrees ?? 0;
+    enemy.facingAngle = baseAngle;
+
+    for (let index = 0; index < fireCount; index += 1) {
+      const shotAngle = normalizeAngle(baseAngle + centeredSpreadOffset(index, fireCount, spreadDegrees));
+      const shotDx = Math.cos(shotAngle);
+      const shotDy = Math.sin(shotAngle);
+      this.spawnRuntimeProjectile({
+        source: "enemy",
+        ownerId: enemy.id,
+        weaponId: projectileDefinition.id,
+        visualId: projectileDefinition.visualId,
+        x: enemy.x + shotDx * spawnOffset,
+        y: enemy.y + shotDy * spawnOffset,
+        dx: shotDx,
+        dy: shotDy,
+        speed: attackProfile.projectileSpeed ?? 0,
+        radius: projectileDefinition.radius,
+        damage: attackProfile.damage,
+        ttl: projectileDefinition.life,
+        impactEffectId: projectileDefinition.impactEffectId
+      });
+    }
+  }
+
+  private spawnDeathPayloads(enemy: EnemyState, deathProfile: EnemyDeathProfileDefinition | null): void {
+    if (!deathProfile) {
+      return;
+    }
+
+    for (const spawnId of deathProfile.spawnEnemyIds ?? []) {
+      if (this.content.enemies.has(spawnId)) {
+        this.spawnEnemyFromDeathSpawn(spawnId, enemy.x, enemy.y, enemy.facingAngle);
+      }
+    }
+
+    for (const effectId of deathProfile.spawnEffectIds ?? []) {
+      if (this.content.effects.has(effectId)) {
+        this.spawnEffect(effectId, enemy.x, enemy.y, enemy.facingAngle);
+      }
+    }
+  }
+
+  private spawnEnemyFromDeathSpawn(
+    typeId: string,
+    x: number,
+    y: number,
+    facingAngle: number
+  ): void {
+    const enemyId = `spawned_enemy_${this.spawnedEnemyId++}`;
+    this.state.enemies.push(this.instantiateEnemyState(enemyId, typeId, x, y, facingAngle));
+    this.state.totalKills += 1;
+  }
+
+  private spawnEffect(
+    effectId: string,
+    x: number,
+    y: number,
+    facingAngle: number
+  ): void {
+    const definition = this.requireEffectDefinition(effectId);
+    this.state.effects.push({
+      id: this.effectId++,
+      effectId,
+      x,
+      y,
+      facingAngle,
+      ttl: definition.lifetime,
+      animationState: definition.animationState ?? "idle"
+    });
+  }
+
   private updateEnemies(dt: number, events: SimulationEvents): void {
     for (const enemy of this.state.enemies) {
       const definition = this.requireEnemyDefinition(enemy.typeId);
+      const attackProfile = this.requireEnemyAttackProfile(definition.attackProfileId);
 
       if (enemy.fsmState === "dead") {
         enemy.stateTime += dt;
@@ -720,12 +924,18 @@ export class GameSimulation {
           }
           break;
         case "chase":
-          if (hasLos && distanceToPlayer <= definition.meleeRange) {
+          if (this.canEnemyStartAttack(definition, attackProfile, hasLos, distanceToPlayer)) {
             this.transitionEnemy(enemy, "windup");
             break;
           }
 
-          if (hasLos || enemy.memoryTime > 0) {
+          if (
+            hasLos &&
+            attackProfile.type === "projectile" &&
+            distanceToPlayer <= (definition.preferredRange ?? attackProfile.range)
+          ) {
+            enemy.facingAngle = Math.atan2(toPlayerY, toPlayerX);
+          } else if (hasLos || enemy.memoryTime > 0) {
             this.moveEnemyToward(enemy, enemy.lastKnownPlayerX, enemy.lastKnownPlayerY, definition.moveSpeed, dt);
           } else if (distance2(enemy.x, enemy.y, enemy.spawnX, enemy.spawnY) > 0.2) {
             this.moveEnemyToward(enemy, enemy.spawnX, enemy.spawnY, definition.moveSpeed * 0.8, dt);
@@ -734,17 +944,14 @@ export class GameSimulation {
           }
           break;
         case "windup":
-          if (enemy.stateTime >= definition.windupTime) {
+          if (enemy.stateTime >= attackProfile.windupTime) {
             this.transitionEnemy(enemy, "attack");
           }
           break;
         case "attack":
           if (!enemy.attackApplied) {
             enemy.attackApplied = true;
-            if (hasLos && distanceToPlayer <= definition.meleeRange) {
-              this.damagePlayer(definition.attackDamage, events);
-              events.enemyAttack = true;
-            }
+            this.resolveEnemyAttack(enemy, definition, attackProfile, hasLos, distanceToPlayer, events);
           }
 
           if (enemy.stateTime >= ATTACK_RESOLVE_TIME) {
@@ -752,7 +959,7 @@ export class GameSimulation {
           }
           break;
         case "cooldown":
-          if (enemy.stateTime >= definition.cooldownTime) {
+          if (enemy.stateTime >= attackProfile.cooldownTime) {
             if (hasLos || enemy.memoryTime > 0) {
               this.transitionEnemy(enemy, "chase");
             } else {
@@ -797,7 +1004,7 @@ export class GameSimulation {
     enemy.y = resolved.y;
   }
 
-  private updateProjectiles(dt: number): void {
+  private updateProjectiles(dt: number, events: SimulationEvents): void {
     for (let index = this.state.projectiles.length - 1; index >= 0; index -= 1) {
       const projectile = this.state.projectiles[index];
       projectile.ttl -= dt;
@@ -826,20 +1033,35 @@ export class GameSimulation {
       projectile.x = nextX;
       projectile.y = nextY;
 
+      if (projectile.source === "enemy") {
+        if (
+          this.state.player.alive &&
+          distance2(projectile.x, projectile.y, this.state.player.x, this.state.player.y) <=
+            this.state.player.radius + projectile.radius
+        ) {
+          if (projectile.damage > 0) {
+            this.damagePlayer(projectile.damage, events);
+          }
+          this.resolveProjectileImpact(projectile, projectile.x, projectile.y);
+          this.state.projectiles.splice(index, 1);
+        }
+        continue;
+      }
+
       for (const enemy of this.state.enemies) {
         if (enemy.fsmState === "dead") {
           continue;
         }
         const definition = this.requireEnemyDefinition(enemy.typeId);
-      if (distance2(projectile.x, projectile.y, enemy.x, enemy.y) <= definition.radius + projectile.radius) {
-        if (projectile.weaponId === "artifact:morph_ovum") {
-          this.applyMorphProjectileHit(enemy);
-        } else if (projectile.damage > 0) {
-          this.damageEnemy(enemy, projectile.damage);
-        }
-        this.resolveProjectileImpact(projectile, projectile.x, projectile.y);
-        this.state.projectiles.splice(index, 1);
-        break;
+        if (distance2(projectile.x, projectile.y, enemy.x, enemy.y) <= definition.radius + projectile.radius) {
+          if (projectile.weaponId === "artifact:morph_ovum") {
+            this.applyMorphProjectileHit(enemy);
+          } else if (projectile.damage > 0) {
+            this.damageEnemy(enemy, projectile.damage);
+          }
+          this.resolveProjectileImpact(projectile, projectile.x, projectile.y);
+          this.state.projectiles.splice(index, 1);
+          break;
         }
       }
     }
@@ -863,6 +1085,17 @@ export class GameSimulation {
   }
 
   private applyHazardDamage(hazard: HazardState): void {
+    if (hazard.source === "enemy") {
+      if (
+        this.state.player.alive &&
+        distance2(hazard.x, hazard.y, this.state.player.x, this.state.player.y) <=
+          hazard.radius + this.state.player.radius
+      ) {
+        this.damagePlayer(hazard.damagePerTick);
+      }
+      return;
+    }
+
     for (const enemy of this.state.enemies) {
       if (enemy.fsmState === "dead") {
         continue;
@@ -898,6 +1131,10 @@ export class GameSimulation {
   }
 
   private resolveProjectileImpact(projectile: ProjectileState, x: number, y: number): void {
+    if (projectile.impactEffectId) {
+      this.spawnEffect(projectile.impactEffectId, x, y, Math.atan2(projectile.dy, projectile.dx));
+    }
+
     if (projectile.splashRadius > 0) {
       this.applySplashDamage(x, y, projectile.splashRadius, projectile.damage, projectile.splashDamageScale);
     }
@@ -908,6 +1145,16 @@ export class GameSimulation {
 
     if (projectile.impactHazard) {
       this.spawnHazard(projectile, x, y, projectile.impactHazard);
+    }
+  }
+
+  private updateEffects(dt: number): void {
+    for (let index = this.state.effects.length - 1; index >= 0; index -= 1) {
+      const effect = this.state.effects[index];
+      effect.ttl -= dt;
+      if (effect.ttl <= 0) {
+        this.state.effects.splice(index, 1);
+      }
     }
   }
 
@@ -946,8 +1193,7 @@ export class GameSimulation {
     const step = spread / count;
     for (let index = 0; index < count; index += 1) {
       const angle = (index * step * Math.PI) / 180;
-      this.state.projectiles.push({
-        id: this.projectileId++,
+      this.spawnRuntimeProjectile({
         source: projectile.source,
         ownerId: projectile.ownerId,
         weaponId: projectile.weaponId,
@@ -959,14 +1205,7 @@ export class GameSimulation {
         speed: 11,
         radius: 0.1,
         damage: 9,
-        ttl: 0.6,
-        homingStrength: 0,
-        splashRadius: 0,
-        splashDamageScale: 0,
-        bouncesRemaining: 0,
-        bounceSpeedMultiplier: 1,
-        seekAfterBounce: false,
-        hasBounced: false
+        ttl: 0.6
       });
     }
   }
@@ -994,7 +1233,10 @@ export class GameSimulation {
   }
 
   private applyProjectileHoming(projectile: ProjectileState, turnFactor: number): void {
-    const target = this.findNearestEnemy(projectile.x, projectile.y, 8);
+    const target =
+      projectile.source === "enemy"
+        ? { x: this.state.player.x, y: this.state.player.y }
+        : this.findNearestEnemy(projectile.x, projectile.y, 8);
     if (!target) {
       return;
     }
@@ -1038,10 +1280,14 @@ export class GameSimulation {
       return 0;
     }
 
+    const definition = this.requireEnemyDefinition(enemy.typeId);
+    const deathProfile = definition.deathProfileId
+      ? this.requireEnemyDeathProfile(definition.deathProfileId)
+      : null;
     enemy.health -= damage;
     enemy.lastKnownPlayerX = this.state.player.x;
     enemy.lastKnownPlayerY = this.state.player.y;
-    enemy.memoryTime = this.requireEnemyDefinition(enemy.typeId).loseSightGrace;
+    enemy.memoryTime = definition.loseSightGrace;
 
     if ((options?.knockbackForce ?? 0) > 0) {
       this.applyEnemyKnockback(
@@ -1057,7 +1303,8 @@ export class GameSimulation {
       enemy.alive = false;
       this.state.killCount += 1;
       this.transitionEnemy(enemy, "dead");
-      this.pushMessage("A grave thrall collapses.", 0.8);
+      this.spawnDeathPayloads(enemy, deathProfile);
+      this.pushMessage(`${definition.displayName} falls.`, 0.8);
       if (this.state.killCount >= this.state.totalKills) {
         this.pushMessage("The catacomb falls silent.", 4);
       }
@@ -1082,7 +1329,7 @@ export class GameSimulation {
     enemy.y = resolved.y;
   }
 
-  private damagePlayer(amount: number, events: SimulationEvents): void {
+  private damagePlayer(amount: number, events?: SimulationEvents): void {
     if (!this.state.player.alive) {
       return;
     }
@@ -1099,7 +1346,9 @@ export class GameSimulation {
     }
 
     this.state.player.health -= remainingDamage;
-    events.damageTaken = true;
+    if (events) {
+      events.damageTaken = true;
+    }
     if (this.state.player.health <= 0) {
       this.state.player.health = 0;
       this.state.player.alive = false;
@@ -1322,8 +1571,7 @@ export class GameSimulation {
       const step = 360 / effect.count;
       for (let index = 0; index < effect.count; index += 1) {
         const angle = (index * step * Math.PI) / 180;
-        this.state.projectiles.push({
-          id: this.projectileId++,
+        this.spawnRuntimeProjectile({
           source: "player",
           ownerId: "player",
           weaponId: weapon.id,
@@ -1335,14 +1583,7 @@ export class GameSimulation {
           speed,
           radius,
           damage: effect.damage,
-          ttl: life,
-          homingStrength: 0,
-          splashRadius: 0,
-          splashDamageScale: 0,
-          bouncesRemaining: 0,
-          bounceSpeedMultiplier: 1,
-          seekAfterBounce: false,
-          hasBounced: false
+          ttl: life
         });
       }
     }
@@ -1606,8 +1847,7 @@ export class GameSimulation {
   private spawnMorphProjectile(): void {
     const dx = Math.cos(this.state.player.angle);
     const dy = Math.sin(this.state.player.angle);
-    this.state.projectiles.push({
-      id: this.projectileId++,
+    this.spawnRuntimeProjectile({
       source: "player",
       ownerId: "player",
       weaponId: "artifact:morph_ovum",
@@ -1619,14 +1859,7 @@ export class GameSimulation {
       speed: 11,
       radius: 0.18,
       damage: 0,
-      ttl: 1.8,
-      homingStrength: 0,
-      splashRadius: 0,
-      splashDamageScale: 0,
-      bouncesRemaining: 0,
-      bounceSpeedMultiplier: 1,
-      seekAfterBounce: false,
-      hasBounced: false
+      ttl: 1.8
     });
   }
 
@@ -1649,9 +1882,14 @@ export class GameSimulation {
   }
 
   private applyMorphProjectileHit(enemy: EnemyState): void {
+    const definition = this.requireEnemyDefinition(enemy.typeId);
+    const deathProfile = definition.deathProfileId
+      ? this.requireEnemyDeathProfile(definition.deathProfileId)
+      : null;
     enemy.health = 0;
     enemy.alive = false;
     this.transitionEnemy(enemy, "dead");
+    this.spawnDeathPayloads(enemy, deathProfile);
     this.state.killCount += 1;
     this.pushMessage("The Morph Ovum warps a target out of the fight.", 1.2);
     if (this.state.killCount >= this.state.totalKills) {
@@ -1670,6 +1908,38 @@ export class GameSimulation {
     const definition = this.content.enemies.get(id);
     if (!definition) {
       throw new Error(`Unknown enemy definition: ${id}`);
+    }
+    return definition;
+  }
+
+  private requireEnemyAttackProfile(id: string): EnemyAttackProfileDefinition {
+    const definition = this.content.enemyAttackProfiles.get(id);
+    if (!definition) {
+      throw new Error(`Unknown enemy attack profile: ${id}`);
+    }
+    return definition;
+  }
+
+  private requireEnemyDeathProfile(id: string): EnemyDeathProfileDefinition {
+    const definition = this.content.enemyDeathProfiles.get(id);
+    if (!definition) {
+      throw new Error(`Unknown enemy death profile: ${id}`);
+    }
+    return definition;
+  }
+
+  private requireProjectileDefinition(id: string): EnemyProjectileDefinition {
+    const definition = this.content.projectiles.get(id);
+    if (!definition) {
+      throw new Error(`Unknown enemy projectile definition: ${id}`);
+    }
+    return definition;
+  }
+
+  private requireEffectDefinition(id: string): EffectDefinition {
+    const definition = this.content.effects.get(id);
+    if (!definition) {
+      throw new Error(`Unknown effect definition: ${id}`);
     }
     return definition;
   }

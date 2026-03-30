@@ -13,9 +13,16 @@ import {
   WebGPUEngine
 } from "@babylonjs/core";
 import { getLevelCeilingFlat, getLevelFloorFlat } from "../content/flats";
-import type { ContentDatabase, LevelDefinition, SpriteAnimationStateName } from "../content/types";
+import type {
+  ContentDatabase,
+  EnemyAttackProfileDefinition,
+  EnemyVisualProfileDefinition,
+  LevelDefinition,
+  SpriteAnimationStateName
+} from "../content/types";
 import type {
   EnemyState,
+  EffectState,
   GameSessionState,
   HazardState,
   ProjectileState
@@ -44,6 +51,7 @@ export class RetroRenderer {
   private pickupRenderSystem!: PickupRenderSystem;
   private readonly projectileSprites = new Map<number, AnimatedSpriteInstance>();
   private readonly hazardSprites = new Map<number, AnimatedSpriteInstance>();
+  private readonly effectSprites = new Map<number, AnimatedSpriteInstance>();
   private readonly weaponSprites = new Map<string, AnimatedSpriteInstance>();
   private wallMaterial!: StandardMaterial;
   private wallAtlas!: WallTextureAtlas;
@@ -118,6 +126,7 @@ export class RetroRenderer {
     this.pickupRenderSystem.sync(state.pickups, state.player.x, state.player.y);
     this.syncProjectiles(state.projectiles, state.player.x, state.player.y, dt);
     this.syncHazards(state.hazards, state.player.x, state.player.y, dt);
+    this.syncEffects(state.effects, state.player.x, state.player.y, dt);
     this.syncWeapon(state, dt);
   }
 
@@ -199,7 +208,14 @@ export class RetroRenderer {
 
   private buildSprites(): void {
     for (const enemy of this.content.level.enemies) {
-      const sprite = this.spriteLibrary.createSpriteForEntity(enemy.type, "world");
+      const definition = this.content.enemies.get(enemy.type);
+      const visualProfile = definition
+        ? this.content.enemyVisualProfiles.get(definition.visualProfileId)
+        : undefined;
+      if (!visualProfile) {
+        continue;
+      }
+      const sprite = this.spriteLibrary.createSpriteForEntity(visualProfile.entityId, "world");
       this.enemySprites.set(enemy.id, sprite);
     }
 
@@ -233,15 +249,29 @@ export class RetroRenderer {
 
   private syncEnemies(enemies: EnemyState[], viewerX: number, viewerY: number, dt: number): void {
     for (const enemy of enemies) {
-      const sprite = this.enemySprites.get(enemy.id);
-      if (!sprite) {
+      let sprite = this.enemySprites.get(enemy.id);
+      const definition = this.content.enemies.get(enemy.typeId);
+      if (!definition) {
         continue;
       }
+      const visualProfile = this.content.enemyVisualProfiles.get(definition.visualProfileId);
+      if (!visualProfile) {
+        continue;
+      }
+      const attackProfile = this.content.enemyAttackProfiles.get(definition.attackProfileId);
+      if (!attackProfile) {
+        continue;
+      }
+      if (!sprite) {
+        sprite = this.spriteLibrary.createSpriteForEntity(visualProfile.entityId, "world");
+        this.enemySprites.set(enemy.id, sprite);
+      }
 
+      sprite.setUniformScale(definition.height / sprite.baseWorldHeight);
       sprite.setVisible(true);
-      sprite.setPosition(enemy.x, enemy.y, sprite.anchorOffsetY);
+      sprite.setPosition(enemy.x, enemy.y, sprite.usesGroundPlacement ? 0 : sprite.anchorOffsetY);
       sprite.setFacingAngle(enemy.facingAngle);
-      sprite.setAnimationState(enemyAnimationState(enemy));
+      sprite.setAnimationState(enemyAnimationState(enemy, visualProfile, attackProfile));
       sprite.update(dt, viewerX, viewerY);
     }
   }
@@ -263,7 +293,7 @@ export class RetroRenderer {
       sprite.setVisible(true);
       sprite.setPosition(projectile.x, projectile.y, sprite.anchorOffsetY + 0.5);
       sprite.setFacingAngle(Math.atan2(projectile.dy, projectile.dx));
-      sprite.setAnimationState("idle");
+      sprite.setAnimationState("move");
       sprite.update(dt, viewerX, viewerY);
       liveIds.add(projectile.id);
     }
@@ -308,6 +338,39 @@ export class RetroRenderer {
     }
   }
 
+  private syncEffects(
+    effects: EffectState[],
+    viewerX: number,
+    viewerY: number,
+    dt: number
+  ): void {
+    const liveIds = new Set<number>();
+    for (const effect of effects) {
+      let sprite = this.effectSprites.get(effect.id);
+      if (!sprite) {
+        sprite = this.spriteLibrary.createSpriteForEntity(`effect:${effect.effectId}`, "world");
+        this.effectSprites.set(effect.id, sprite);
+      }
+
+      const definition = this.content.effects.get(effect.effectId);
+      const heightOffset = definition?.heightOffset ?? 0;
+      sprite.setVisible(true);
+      sprite.setPosition(effect.x, effect.y, sprite.anchorOffsetY + heightOffset);
+      sprite.setFacingAngle(effect.facingAngle);
+      sprite.setAnimationState(effect.animationState);
+      sprite.update(dt, viewerX, viewerY);
+      liveIds.add(effect.id);
+    }
+
+    for (const [id, sprite] of this.effectSprites) {
+      if (liveIds.has(id)) {
+        continue;
+      }
+      sprite.dispose();
+      this.effectSprites.delete(id);
+    }
+  }
+
   private syncWeapon(state: GameSessionState, dt: number): void {
     for (const [weaponId, sprite] of this.weaponSprites) {
       const visible = weaponId === state.weapon.currentId && state.player.alive;
@@ -329,22 +392,29 @@ export class RetroRenderer {
   }
 }
 
-function enemyAnimationState(enemy: EnemyState): SpriteAnimationStateName {
+function enemyAnimationState(
+  enemy: EnemyState,
+  visualProfile: EnemyVisualProfileDefinition,
+  attackProfile: EnemyAttackProfileDefinition
+): SpriteAnimationStateName {
   switch (enemy.fsmState) {
     case "chase":
-      return "move";
+      return visualProfile.moveState ?? "move";
     case "windup":
     case "attack":
     case "cooldown":
-      return "attack";
+      if (attackProfile.attackVisualKey && visualProfile.attackStates?.[attackProfile.attackVisualKey]) {
+        return visualProfile.attackStates[attackProfile.attackVisualKey];
+      }
+      return visualProfile.defaultAttackState ?? "attack";
     case "hurt":
-      return "hurt";
+      return visualProfile.hurtState ?? "hurt";
     case "dead":
-      return "death";
+      return visualProfile.deathState ?? "death";
     case "idle":
     case "alert":
     default:
-      return "idle";
+      return visualProfile.idleState ?? "idle";
   }
 }
 

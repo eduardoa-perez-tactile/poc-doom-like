@@ -1,0 +1,11 @@
+[
+  {
+    "id": "nitrogolem_fire",
+    "visualId": "nitrogolem_fire",
+    "radius": 0.16,
+    "life": 1.8,
+    "spawnOffset": 0.92,
+    "impactEffectId": "nitrogolem_fire_impact",
+    "notes": "Enemy projectile used by the Nitrogolem ranged attack."
+  }
+]

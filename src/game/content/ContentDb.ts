@@ -1,12 +1,22 @@
 import enemyDefs from "./data/enemies.json";
+import enemyAttackProfileDefs from "./data/enemyAttackProfiles.json";
+import enemyDeathProfileDefs from "./data/enemyDeathProfiles.json";
+import enemyVisualProfileDefs from "./data/enemyVisualProfiles.json";
+import effectDefs from "./data/effects.json";
 import levelDef from "./data/level-open-arena.json";
+import projectileDefs from "./data/projectiles.json";
 import { getFlatDef, getLevelCeilingFlat, getLevelFloorFlat } from "./flats";
 import { pickupDefs, pickupVisuals } from "./pickups";
 import { spriteManifest } from "./spriteManifest";
 import weaponDefs from "./data/weapons.json";
 import type {
   ContentDatabase,
+  EffectDefinition,
+  EnemyAttackProfileDefinition,
+  EnemyDeathProfileDefinition,
   EnemyDefinition,
+  EnemyProjectileDefinition,
+  EnemyVisualProfileDefinition,
   LevelDefinition,
   WeaponDefinition
 } from "./types";
@@ -49,6 +59,21 @@ export function createContentDb(): ContentDatabase {
     ),
     enemies: new Map(
       (enemyDefs as EnemyDefinition[]).map((definition) => [definition.id, definition])
+    ),
+    enemyAttackProfiles: new Map(
+      (enemyAttackProfileDefs as EnemyAttackProfileDefinition[]).map((definition) => [definition.id, definition])
+    ),
+    enemyDeathProfiles: new Map(
+      (enemyDeathProfileDefs as EnemyDeathProfileDefinition[]).map((definition) => [definition.id, definition])
+    ),
+    enemyVisualProfiles: new Map(
+      (enemyVisualProfileDefs as EnemyVisualProfileDefinition[]).map((definition) => [definition.id, definition])
+    ),
+    projectiles: new Map(
+      (projectileDefs as EnemyProjectileDefinition[]).map((definition) => [definition.id, definition])
+    ),
+    effects: new Map(
+      (effectDefs as EffectDefinition[]).map((definition) => [definition.id, definition])
     ),
     pickupDefs: new Map(pickupDefs.map((definition) => [definition.id, definition] as const)),
     pickupVisuals: new Map(pickupVisuals.map((definition) => [definition.id, definition] as const)),

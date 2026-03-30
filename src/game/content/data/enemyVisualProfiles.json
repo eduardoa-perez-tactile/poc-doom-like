@@ -1,0 +1,16 @@
+[
+  {
+    "id": "golem_body",
+    "entityId": "enemy:golem_body",
+    "idleState": "idle",
+    "moveState": "move",
+    "hurtState": "hurt",
+    "deathState": "death",
+    "defaultAttackState": "attack",
+    "attackStates": {
+      "melee": "attack_melee",
+      "ranged": "attack_ranged"
+    },
+    "notes": "Shared visual profile for golem-family body sprites."
+  }
+]

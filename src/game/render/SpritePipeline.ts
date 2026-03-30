@@ -152,6 +152,10 @@ export class SpriteLibrary {
     material.specularColor = Color3.Black();
     material.disableLighting = true;
     material.backFaceCulling = false;
+    if (!definition.viewModel) {
+      material.zOffset = -2;
+      material.zOffsetUnits = -2;
+    }
 
     return {
       definition,
@@ -227,6 +231,14 @@ export class AnimatedSpriteInstance {
     return this.spriteSet.definition.anchorOffsetY;
   }
 
+  get usesGroundPlacement(): boolean {
+    return this.spriteSet.definition.verticalPlacement === "grounded";
+  }
+
+  get baseWorldHeight(): number {
+    return this.spriteSet.definition.worldHeight;
+  }
+
   get viewModel() {
     return this.spriteSet.definition.viewModel;
   }
@@ -268,6 +280,12 @@ export class AnimatedSpriteInstance {
       // horizontal travel direction with the projectile velocity on the XZ plane.
       this.mesh.rotation.y = -angle;
     }
+  }
+
+  setUniformScale(scale: number): void {
+    this.mesh.scaling.x = scale;
+    this.mesh.scaling.y = scale;
+    this.syncMeshPosition();
   }
 
   update(dt: number, viewerX?: number, viewerY?: number): void {
@@ -344,13 +362,20 @@ export class AnimatedSpriteInstance {
   }
 
   private syncMeshPosition(): void {
+    const scaledWidth = this.spriteSet.definition.worldWidth * this.mesh.scaling.x;
+    const scaledHeight = this.spriteSet.definition.worldHeight * this.mesh.scaling.y;
     const pivotX = this.spriteSet.definition.pivotX ?? 0.5;
+    const pivotOffsetX = (0.5 - pivotX) * scaledWidth;
+    const placement = this.spriteSet.definition.verticalPlacement ?? "anchor";
+    const groundClearance = this.spriteSet.definition.groundClearance ?? 0;
     const pivotY = this.spriteSet.definition.pivotY ?? 0.5;
-    const pivotOffsetX = (0.5 - pivotX) * this.spriteSet.definition.worldWidth;
-    const pivotOffsetY = (pivotY - 0.5) * this.spriteSet.definition.worldHeight;
+    const meshY =
+      placement === "grounded"
+        ? this.basePosition.y + groundClearance + scaledHeight * 0.5 + this.frameOffsetY
+        : this.basePosition.y + (pivotY - 0.5) * scaledHeight + this.frameOffsetY;
     this.mesh.position.set(
       this.basePosition.x + pivotOffsetX + this.frameOffsetX,
-      this.basePosition.y + pivotOffsetY + this.frameOffsetY,
+      meshY,
       this.basePosition.z
     );
   }
@@ -376,14 +401,14 @@ function compileFrame(
   definition: SpriteFrameDefinition,
   sheet: CompiledSpriteSheet
 ): CompiledSpriteFrame {
-  const u0 = definition.x / sheet.width;
-  const u1 = (definition.x + definition.width) / sheet.width;
+  const u0 = (definition.x + 0.5) / sheet.width;
+  const u1 = (definition.x + definition.width - 0.5) / sheet.width;
   // The source atlases are defined in canvas/image space with a top-left origin.
   // DynamicTexture sampling here expects that same row ordering, so we keep the
   // vertical range in top-to-bottom sheet order and let flipY handle per-sprite
   // orientation without selecting the wrong atlas row.
-  const v0 = definition.y / sheet.height;
-  const v1 = (definition.y + definition.height) / sheet.height;
+  const v0 = (definition.y + 0.5) / sheet.height;
+  const v1 = (definition.y + definition.height - 0.5) / sheet.height;
 
   return {
     definition,

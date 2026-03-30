@@ -164,7 +164,7 @@
     },
     {
       "id": "e_thrall_2",
-      "type": "grave_thrall",
+      "type": "nitrogolem",
       "x": 25,
       "y": 2,
       "facingDeg": 180
@@ -185,7 +185,7 @@
     },
     {
       "id": "e_thrall_5",
-      "type": "grave_thrall",
+      "type": "golem",
       "x": 9,
       "y": 7,
       "facingDeg": 90
@@ -206,7 +206,7 @@
     },
     {
       "id": "e_thrall_8",
-      "type": "grave_thrall",
+      "type": "nitrogolem",
       "x": 25,
       "y": 12,
       "facingDeg": 180
@@ -227,7 +227,7 @@
     },
     {
       "id": "e_thrall_11",
-      "type": "grave_thrall",
+      "type": "golem",
       "x": 4,
       "y": 20,
       "facingDeg": 0

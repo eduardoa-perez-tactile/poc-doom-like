@@ -10,6 +10,7 @@ export type WeaponAmmoType =
   | "phoenix"
   | "firemace";
 export type EnemyAttackType = "melee" | "projectile";
+export type EnemyAttackVisualKey = string;
 export type WallTextureTypeName =
   | "Stone"
   | "Brick"
@@ -27,8 +28,11 @@ export type SpriteAnimationStateName =
   | "idle"
   | "move"
   | "attack"
+  | "attack_melee"
+  | "attack_ranged"
   | "hurt"
   | "death"
+  | "impact"
   | "select"
   | "lower";
 
@@ -124,21 +128,78 @@ export interface WeaponDefinition {
 
 export interface EnemyDefinition {
   id: string;
-  name: string;
+  displayName: string;
+  visualProfileId: string;
   health: number;
   moveSpeed: number;
   radius: number;
   height: number;
-  attackType: EnemyAttackType;
-  attackDamage: number;
   aggroRange: number;
-  meleeRange: number;
+  loseSightGrace: number;
+  preferredRange?: number;
+  hurtTime: number;
+  enemyClass?: string;
+  attackProfileId: string;
+  deathProfileId?: string;
+  isGhost?: boolean;
+  notes?: string;
+}
+
+export interface EnemyAttackProfileDefinition {
+  id: string;
+  type: EnemyAttackType;
   windupTime: number;
   cooldownTime: number;
-  loseSightGrace: number;
-  hurtTime: number;
-  projectileSpeed: number;
-  isGhost?: boolean;
+  damage: number;
+  range: number;
+  projectileDefId?: string;
+  projectileSpeed?: number;
+  attackVisualKey?: EnemyAttackVisualKey;
+  fireCount?: number;
+  spreadDegrees?: number;
+  spawnOffset?: number;
+  requiresLineOfSight?: boolean;
+  notes?: string;
+}
+
+export interface EnemyDeathProfileDefinition {
+  id: string;
+  spawnEnemyIds?: string[];
+  spawnEffectIds?: string[];
+  removeBodyAfterSeconds?: number | null;
+  leaveCorpse?: boolean;
+  notes?: string;
+}
+
+export interface EnemyVisualProfileDefinition {
+  id: string;
+  entityId: string;
+  idleState?: SpriteAnimationStateName;
+  moveState?: SpriteAnimationStateName;
+  hurtState?: SpriteAnimationStateName;
+  deathState?: SpriteAnimationStateName;
+  defaultAttackState?: SpriteAnimationStateName;
+  attackStates?: Record<string, SpriteAnimationStateName>;
+  notes?: string;
+}
+
+export interface EnemyProjectileDefinition {
+  id: string;
+  visualId: string;
+  radius: number;
+  life: number;
+  spawnOffset?: number;
+  impactEffectId?: string;
+  notes?: string;
+}
+
+export interface EffectDefinition {
+  id: string;
+  visualId: string;
+  lifetime: number;
+  animationState?: SpriteAnimationStateName;
+  heightOffset?: number;
+  notes?: string;
 }
 
 export interface GridPoint {
@@ -233,6 +294,8 @@ export interface SpriteSetDefinition {
   worldWidth: number;
   worldHeight: number;
   anchorOffsetY: number;
+  verticalPlacement?: "anchor" | "grounded";
+  groundClearance?: number;
   worldFacing?: "billboard" | "direction";
   flipX?: boolean;
   flipY?: boolean;
@@ -258,6 +321,11 @@ export interface VisualDatabaseDefinition {
 export interface ContentDatabase {
   weapons: Map<string, WeaponDefinition>;
   enemies: Map<string, EnemyDefinition>;
+  enemyAttackProfiles: Map<string, EnemyAttackProfileDefinition>;
+  enemyDeathProfiles: Map<string, EnemyDeathProfileDefinition>;
+  enemyVisualProfiles: Map<string, EnemyVisualProfileDefinition>;
+  projectiles: Map<string, EnemyProjectileDefinition>;
+  effects: Map<string, EffectDefinition>;
   pickupDefs: Map<string, PickupDef>;
   pickupVisuals: Map<string, PickupVisualDefinition>;
   level: LevelDefinition;
