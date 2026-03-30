@@ -10,6 +10,7 @@ export type WeaponAmmoType =
   | "phoenix"
   | "firemace";
 export type EnemyAttackType = "melee" | "projectile";
+export type EnemyAttackVisual = "melee" | "ranged";
 export type WallTextureTypeName =
   | "Stone"
   | "Brick"
@@ -27,8 +28,11 @@ export type SpriteAnimationStateName =
   | "idle"
   | "move"
   | "attack"
+  | "attack_melee"
+  | "attack_ranged"
   | "hurt"
   | "death"
+  | "impact"
   | "select"
   | "lower";
 
@@ -133,12 +137,36 @@ export interface EnemyDefinition {
   attackDamage: number;
   aggroRange: number;
   meleeRange: number;
+  attackRange?: number;
   windupTime: number;
   cooldownTime: number;
   loseSightGrace: number;
   hurtTime: number;
   projectileSpeed: number;
+  projectileDefId?: string;
+  attackVisual?: EnemyAttackVisual;
+  deathSpawnIds?: string[];
   isGhost?: boolean;
+  notes?: string;
+}
+
+export interface EnemyProjectileDefinition {
+  id: string;
+  visualId: string;
+  radius: number;
+  life: number;
+  spawnOffset?: number;
+  impactEffectId?: string;
+  notes?: string;
+}
+
+export interface EffectDefinition {
+  id: string;
+  visualId: string;
+  lifetime: number;
+  animationState?: SpriteAnimationStateName;
+  heightOffset?: number;
+  notes?: string;
 }
 
 export interface GridPoint {
@@ -258,6 +286,8 @@ export interface VisualDatabaseDefinition {
 export interface ContentDatabase {
   weapons: Map<string, WeaponDefinition>;
   enemies: Map<string, EnemyDefinition>;
+  projectiles: Map<string, EnemyProjectileDefinition>;
+  effects: Map<string, EffectDefinition>;
   pickupDefs: Map<string, PickupDef>;
   pickupVisuals: Map<string, PickupVisualDefinition>;
   level: LevelDefinition;

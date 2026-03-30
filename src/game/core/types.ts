@@ -106,6 +106,7 @@ export interface ProjectileState {
   impactBurstVisualId?: string;
   impactBurstCount?: number;
   impactBurstSpreadDeg?: number;
+  impactEffectId?: string;
   impactHazard?: HazardTemplateState;
 }
 
@@ -132,6 +133,16 @@ export interface HazardState {
   ttl: number;
 }
 
+export interface EffectState {
+  id: number;
+  effectId: string;
+  x: number;
+  y: number;
+  facingAngle: number;
+  ttl: number;
+  animationState: SpriteAnimationStateName;
+}
+
 export type PickupState = WorldPickupInstance;
 
 export interface SimulationMessage {
@@ -156,6 +167,7 @@ export interface GameSessionState {
   enemies: EnemyState[];
   projectiles: ProjectileState[];
   hazards: HazardState[];
+  effects: EffectState[];
   pickups: PickupState[];
   messages: SimulationMessage[];
   elapsedTime: number;
@@ -166,7 +178,7 @@ export interface GameSessionState {
 export type GameState = GameSessionState;
 
 export interface SaveGameData {
-  version: 2;
+  version: 3;
   savedAt: string;
   state: GameSessionState;
 }

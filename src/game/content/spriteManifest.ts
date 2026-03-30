@@ -53,6 +53,16 @@ function rectFrame(
   };
 }
 
+function absoluteFrame(
+  id: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): SpriteFrameDefinition {
+  return { id, x, y, width, height };
+}
+
 function cellRect(
   cellCol: number,
   cellRow: number,
@@ -98,6 +108,7 @@ function buildGolemSet(): SpriteSetDefinition {
   const idleClipIds: string[] = [];
   const walkClipIds: string[] = [];
   const meleeClipIds: string[] = [];
+  const rangedClipIds: string[] = [];
   const painClipIds: string[] = [];
 
   for (let row = 0; row < 5; row += 1) {
@@ -109,10 +120,17 @@ function buildGolemSet(): SpriteSetDefinition {
     }
 
     const meleeFrameIds: string[] = [];
-    for (let col = 4; col < 8; col += 1) {
+    for (let col = 4; col < 7; col += 1) {
       const frameId = `golem_melee_r${row}_f${col - 4}`;
       frames.push(cellFrame(frameId, col, row, GOLEM_CELL_WIDTH, GOLEM_CELL_HEIGHT));
       meleeFrameIds.push(frameId);
+    }
+
+    const rangedFrameIds: string[] = [];
+    for (let col = 7; col < 9; col += 1) {
+      const frameId = `golem_ranged_r${row}_f${col - 7}`;
+      frames.push(cellFrame(frameId, col, row, GOLEM_CELL_WIDTH, GOLEM_CELL_HEIGHT));
+      rangedFrameIds.push(frameId);
     }
 
     const painFrameId = `golem_pain_r${row}`;
@@ -121,16 +139,19 @@ function buildGolemSet(): SpriteSetDefinition {
     const idleClipId = `golem_idle_r${row}`;
     const walkClipId = `golem_walk_r${row}`;
     const meleeClipId = `golem_melee_r${row}`;
+    const rangedClipId = `golem_ranged_r${row}`;
     const painClipId = `golem_pain_r${row}`;
 
     idleClipIds.push(idleClipId);
     walkClipIds.push(walkClipId);
     meleeClipIds.push(meleeClipId);
+    rangedClipIds.push(rangedClipId);
     painClipIds.push(painClipId);
 
     clips.push({ id: idleClipId, frames: [walkFrameIds[0]], fps: 1, loop: true });
     clips.push({ id: walkClipId, frames: walkFrameIds, fps: 7, loop: true });
     clips.push({ id: meleeClipId, frames: meleeFrameIds, fps: 8, loop: false });
+    clips.push({ id: rangedClipId, frames: rangedFrameIds, fps: 8, loop: false });
     clips.push({ id: painClipId, frames: [painFrameId], fps: 1, loop: false });
   }
 
@@ -156,6 +177,8 @@ function buildGolemSet(): SpriteSetDefinition {
       { state: "idle", directionalClips: mirroredFiveDirections(idleClipIds) },
       { state: "move", directionalClips: mirroredFiveDirections(walkClipIds) },
       { state: "attack", directionalClips: mirroredFiveDirections(meleeClipIds) },
+      { state: "attack_melee", directionalClips: mirroredFiveDirections(meleeClipIds) },
+      { state: "attack_ranged", directionalClips: mirroredFiveDirections(rangedClipIds) },
       { state: "hurt", directionalClips: mirroredFiveDirections(painClipIds) },
       { state: "death", directionalClips: repeatedDirections("golem_death") }
     ]
@@ -182,9 +205,140 @@ function buildGolemSoulSet(): SpriteSetDefinition {
         frames: frames.map((frame) => frame.id),
         fps: 10,
         loop: true
+      },
+      {
+        id: "golem_soul_fade",
+        frames: frames.slice(2).map((frame) => frame.id),
+        fps: 10,
+        loop: false
       }
     ],
-    animations: [{ state: "idle", directionalClips: [{ clipId: "golem_soul_idle" }] }]
+    animations: [
+      { state: "idle", directionalClips: [{ clipId: "golem_soul_idle" }] },
+      { state: "move", directionalClips: [{ clipId: "golem_soul_idle" }] },
+      { state: "death", directionalClips: [{ clipId: "golem_soul_fade" }] }
+    ]
+  };
+}
+
+function buildNitrogolemFireSet(): SpriteSetDefinition {
+  const originX = 7 * GOLEM_CELL_WIDTH + 4;
+  const originY = 5 * GOLEM_CELL_HEIGHT + 18;
+  const cellWidth = 36;
+  const cellHeight = 34;
+  const frame = (id: string, col: number, row: number, inset = 5) =>
+    absoluteFrame(
+      id,
+      originX + col * cellWidth + inset,
+      originY + row * cellHeight + inset,
+      cellWidth - inset * 2,
+      cellHeight - inset * 2
+    );
+
+  const frames = [
+    frame("nitrogolem_fire_0", 0, 0),
+    frame("nitrogolem_fire_1", 1, 0),
+    frame("nitrogolem_fire_2", 2, 0),
+    frame("nitrogolem_fire_3", 0, 1)
+  ];
+
+  return {
+    id: "nitrogolem_fire_set",
+    sheetId: "golem_sheet",
+    defaultState: "move",
+    worldWidth: 0.68,
+    worldHeight: 0.68,
+    anchorOffsetY: 0.22,
+    flipY: true,
+    frames,
+    clips: [
+      {
+        id: "nitrogolem_fire_move",
+        frames: frames.map((frameDef) => frameDef.id),
+        fps: 14,
+        loop: true
+      }
+    ],
+    animations: [
+      { state: "idle", directionalClips: [{ clipId: "nitrogolem_fire_move" }] },
+      { state: "move", directionalClips: [{ clipId: "nitrogolem_fire_move" }] }
+    ]
+  };
+}
+
+function buildNitrogolemFireImpactSet(): SpriteSetDefinition {
+  const originX = 7 * GOLEM_CELL_WIDTH + 4;
+  const originY = 5 * GOLEM_CELL_HEIGHT + 18;
+  const cellWidth = 36;
+  const cellHeight = 34;
+  const frame = (id: string, col: number, row: number, inset = 3) =>
+    absoluteFrame(
+      id,
+      originX + col * cellWidth + inset,
+      originY + row * cellHeight + inset,
+      cellWidth - inset * 2,
+      cellHeight - inset * 2
+    );
+
+  const frames = [
+    frame("nitrogolem_fire_impact_0", 3, 1),
+    frame("nitrogolem_fire_impact_1", 3, 2),
+    frame("nitrogolem_fire_impact_2", 3, 3)
+  ];
+
+  return {
+    id: "nitrogolem_fire_impact_set",
+    sheetId: "golem_sheet",
+    defaultState: "impact",
+    worldWidth: 0.96,
+    worldHeight: 0.96,
+    anchorOffsetY: 0.2,
+    flipY: true,
+    frames,
+    clips: [
+      {
+        id: "nitrogolem_fire_impact",
+        frames: frames.map((frameDef) => frameDef.id),
+        fps: 12,
+        loop: false
+      }
+    ],
+    animations: [
+      { state: "idle", directionalClips: [{ clipId: "nitrogolem_fire_impact" }] },
+      { state: "impact", directionalClips: [{ clipId: "nitrogolem_fire_impact" }] }
+    ]
+  };
+}
+
+function buildGolemGoreSet(): SpriteSetDefinition {
+  const frames = [
+    cellFrame("golem_gore_0", 10, 1, GOLEM_CELL_WIDTH, GOLEM_CELL_HEIGHT),
+    cellFrame("golem_gore_1", 10, 2, GOLEM_CELL_WIDTH, GOLEM_CELL_HEIGHT),
+    cellFrame("golem_gore_2", 10, 3, GOLEM_CELL_WIDTH, GOLEM_CELL_HEIGHT),
+    cellFrame("golem_gore_3", 10, 4, GOLEM_CELL_WIDTH, GOLEM_CELL_HEIGHT)
+  ];
+
+  return {
+    id: "golem_gore_set",
+    sheetId: "golem_sheet",
+    defaultState: "idle",
+    worldWidth: 1.35,
+    worldHeight: 1.1,
+    anchorOffsetY: 0.28,
+    flipY: true,
+    frames,
+    clips: [
+      {
+        id: "golem_gore_clip",
+        frames: frames.map((frameDef) => frameDef.id),
+        fps: 11,
+        loop: false
+      }
+    ],
+    animations: [
+      { state: "idle", directionalClips: [{ clipId: "golem_gore_clip" }] },
+      { state: "death", directionalClips: [{ clipId: "golem_gore_clip" }] }
+    ]
   };
 }
 
@@ -717,7 +871,7 @@ export const spriteManifest: VisualDatabaseDefinition = {
       clearRects: [
         { x: 0, y: 0, width: 837, height: 15 },
         { x: 0, y: 5 * GOLEM_CELL_HEIGHT, width: 837, height: 15 },
-        { x: 0, y: 6 * GOLEM_CELL_HEIGHT, width: 837, height: 15 }
+        { x: 0, y: 6 * GOLEM_CELL_HEIGHT, width: 320, height: 15 }
       ]
     },
     {
@@ -736,6 +890,9 @@ export const spriteManifest: VisualDatabaseDefinition = {
   spriteSets: [
     buildGolemSet(),
     buildGolemSoulSet(),
+    buildNitrogolemFireSet(),
+    buildNitrogolemFireImpactSet(),
+    buildGolemGoreSet(),
     buildBandageSet(),
     buildStaffSet(),
     buildGauntletsSet(),
@@ -759,6 +916,11 @@ export const spriteManifest: VisualDatabaseDefinition = {
   ],
   entities: [
     { entityId: "grave_thrall", spriteSetId: "golem_set" },
+    { entityId: "golem", spriteSetId: "golem_set" },
+    { entityId: "nitrogolem", spriteSetId: "golem_set" },
+    { entityId: "effect:golem_soul", spriteSetId: "golem_soul_set" },
+    { entityId: "effect:golem_gore", spriteSetId: "golem_gore_set" },
+    { entityId: "effect:nitrogolem_fire_impact", spriteSetId: "nitrogolem_fire_impact_set" },
     { entityId: "pickup:ammo", spriteSetId: "golem_soul_set" },
     { entityId: "pickup:health", spriteSetId: "bandage_set" },
     { entityId: "weapon:staff", spriteSetId: "staff_set" },
@@ -777,6 +939,7 @@ export const spriteManifest: VisualDatabaseDefinition = {
     { entityId: "projectile:dragon_claw_burst", spriteSetId: "dragon_burst_set" },
     { entityId: "projectile:hellstaff", spriteSetId: "phoenix_flame_set" },
     { entityId: "projectile:hellstaff_cloud", spriteSetId: "hellstaff_cloud_set" },
+    { entityId: "projectile:nitrogolem_fire", spriteSetId: "nitrogolem_fire_set" },
     { entityId: "projectile:phoenix_rod", spriteSetId: "phoenix_flame_set" },
     { entityId: "projectile:phoenix_flame", spriteSetId: "phoenix_flame_set" },
     { entityId: "projectile:firemace", spriteSetId: "phoenix_flame_set" },

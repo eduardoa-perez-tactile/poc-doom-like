@@ -1,0 +1,26 @@
+[
+  {
+    "id": "golem_soul",
+    "visualId": "golem_soul",
+    "lifetime": 1.4,
+    "animationState": "idle",
+    "heightOffset": 0.32,
+    "notes": "Spawned spirit residue from fallen golems. Visual-only for now."
+  },
+  {
+    "id": "golem_gore",
+    "visualId": "golem_gore",
+    "lifetime": 0.65,
+    "animationState": "idle",
+    "heightOffset": 0.18,
+    "notes": "Optional gore burst hook for golem deaths."
+  },
+  {
+    "id": "nitrogolem_fire_impact",
+    "visualId": "nitrogolem_fire_impact",
+    "lifetime": 0.32,
+    "animationState": "impact",
+    "heightOffset": 0.18,
+    "notes": "Short-lived flare used when Nitrogolem fire impacts a wall or target."
+  }
+]

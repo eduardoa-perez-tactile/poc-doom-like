@@ -1,12 +1,16 @@
 import enemyDefs from "./data/enemies.json";
+import effectDefs from "./data/effects.json";
 import levelDef from "./data/level-open-arena.json";
+import projectileDefs from "./data/projectiles.json";
 import { getFlatDef, getLevelCeilingFlat, getLevelFloorFlat } from "./flats";
 import { pickupDefs, pickupVisuals } from "./pickups";
 import { spriteManifest } from "./spriteManifest";
 import weaponDefs from "./data/weapons.json";
 import type {
   ContentDatabase,
+  EffectDefinition,
   EnemyDefinition,
+  EnemyProjectileDefinition,
   LevelDefinition,
   WeaponDefinition
 } from "./types";
@@ -49,6 +53,12 @@ export function createContentDb(): ContentDatabase {
     ),
     enemies: new Map(
       (enemyDefs as EnemyDefinition[]).map((definition) => [definition.id, definition])
+    ),
+    projectiles: new Map(
+      (projectileDefs as EnemyProjectileDefinition[]).map((definition) => [definition.id, definition])
+    ),
+    effects: new Map(
+      (effectDefs as EffectDefinition[]).map((definition) => [definition.id, definition])
     ),
     pickupDefs: new Map(pickupDefs.map((definition) => [definition.id, definition] as const)),
     pickupVisuals: new Map(pickupVisuals.map((definition) => [definition.id, definition] as const)),
