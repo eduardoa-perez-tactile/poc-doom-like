@@ -921,6 +921,7 @@ export const spriteManifest: VisualDatabaseDefinition = {
     ...pickupSpriteManifest.spriteSets
   ],
   entities: [
+    { entityId: "enemy:golem_body", spriteSetId: "golem_set" },
     { entityId: "grave_thrall", spriteSetId: "golem_set" },
     { entityId: "golem", spriteSetId: "golem_set" },
     { entityId: "nitrogolem", spriteSetId: "golem_set" },

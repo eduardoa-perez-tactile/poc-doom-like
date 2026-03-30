@@ -10,7 +10,7 @@ export type WeaponAmmoType =
   | "phoenix"
   | "firemace";
 export type EnemyAttackType = "melee" | "projectile";
-export type EnemyAttackVisual = "melee" | "ranged";
+export type EnemyAttackVisualKey = string;
 export type WallTextureTypeName =
   | "Stone"
   | "Brick"
@@ -128,25 +128,58 @@ export interface WeaponDefinition {
 
 export interface EnemyDefinition {
   id: string;
-  name: string;
+  displayName: string;
+  visualProfileId: string;
   health: number;
   moveSpeed: number;
   radius: number;
   height: number;
-  attackType: EnemyAttackType;
-  attackDamage: number;
   aggroRange: number;
-  meleeRange: number;
-  attackRange?: number;
+  loseSightGrace: number;
+  preferredRange?: number;
+  hurtTime: number;
+  enemyClass?: string;
+  attackProfileId: string;
+  deathProfileId?: string;
+  isGhost?: boolean;
+  notes?: string;
+}
+
+export interface EnemyAttackProfileDefinition {
+  id: string;
+  type: EnemyAttackType;
   windupTime: number;
   cooldownTime: number;
-  loseSightGrace: number;
-  hurtTime: number;
-  projectileSpeed: number;
+  damage: number;
+  range: number;
   projectileDefId?: string;
-  attackVisual?: EnemyAttackVisual;
-  deathSpawnIds?: string[];
-  isGhost?: boolean;
+  projectileSpeed?: number;
+  attackVisualKey?: EnemyAttackVisualKey;
+  fireCount?: number;
+  spreadDegrees?: number;
+  spawnOffset?: number;
+  requiresLineOfSight?: boolean;
+  notes?: string;
+}
+
+export interface EnemyDeathProfileDefinition {
+  id: string;
+  spawnEnemyIds?: string[];
+  spawnEffectIds?: string[];
+  removeBodyAfterSeconds?: number | null;
+  leaveCorpse?: boolean;
+  notes?: string;
+}
+
+export interface EnemyVisualProfileDefinition {
+  id: string;
+  entityId: string;
+  idleState?: SpriteAnimationStateName;
+  moveState?: SpriteAnimationStateName;
+  hurtState?: SpriteAnimationStateName;
+  deathState?: SpriteAnimationStateName;
+  defaultAttackState?: SpriteAnimationStateName;
+  attackStates?: Record<string, SpriteAnimationStateName>;
   notes?: string;
 }
 
@@ -288,6 +321,9 @@ export interface VisualDatabaseDefinition {
 export interface ContentDatabase {
   weapons: Map<string, WeaponDefinition>;
   enemies: Map<string, EnemyDefinition>;
+  enemyAttackProfiles: Map<string, EnemyAttackProfileDefinition>;
+  enemyDeathProfiles: Map<string, EnemyDeathProfileDefinition>;
+  enemyVisualProfiles: Map<string, EnemyVisualProfileDefinition>;
   projectiles: Map<string, EnemyProjectileDefinition>;
   effects: Map<string, EffectDefinition>;
   pickupDefs: Map<string, PickupDef>;

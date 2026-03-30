@@ -1,0 +1,9 @@
+[
+  {
+    "id": "golem_death",
+    "spawnEffectIds": ["golem_gore", "golem_soul"],
+    "leaveCorpse": true,
+    "removeBodyAfterSeconds": null,
+    "notes": "Common golem family death payload. Soul remains a visual-only effect for now."
+  }
+]

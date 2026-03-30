@@ -13,7 +13,13 @@ import {
   WebGPUEngine
 } from "@babylonjs/core";
 import { getLevelCeilingFlat, getLevelFloorFlat } from "../content/flats";
-import type { ContentDatabase, LevelDefinition, SpriteAnimationStateName } from "../content/types";
+import type {
+  ContentDatabase,
+  EnemyAttackProfileDefinition,
+  EnemyVisualProfileDefinition,
+  LevelDefinition,
+  SpriteAnimationStateName
+} from "../content/types";
 import type {
   EnemyState,
   EffectState,
@@ -202,7 +208,14 @@ export class RetroRenderer {
 
   private buildSprites(): void {
     for (const enemy of this.content.level.enemies) {
-      const sprite = this.spriteLibrary.createSpriteForEntity(enemy.type, "world");
+      const definition = this.content.enemies.get(enemy.type);
+      const visualProfile = definition
+        ? this.content.enemyVisualProfiles.get(definition.visualProfileId)
+        : undefined;
+      if (!visualProfile) {
+        continue;
+      }
+      const sprite = this.spriteLibrary.createSpriteForEntity(visualProfile.entityId, "world");
       this.enemySprites.set(enemy.id, sprite);
     }
 
@@ -237,20 +250,28 @@ export class RetroRenderer {
   private syncEnemies(enemies: EnemyState[], viewerX: number, viewerY: number, dt: number): void {
     for (const enemy of enemies) {
       let sprite = this.enemySprites.get(enemy.id);
-      if (!sprite) {
-        sprite = this.spriteLibrary.createSpriteForEntity(enemy.typeId, "world");
-        this.enemySprites.set(enemy.id, sprite);
-      }
-
       const definition = this.content.enemies.get(enemy.typeId);
       if (!definition) {
         continue;
       }
+      const visualProfile = this.content.enemyVisualProfiles.get(definition.visualProfileId);
+      if (!visualProfile) {
+        continue;
+      }
+      const attackProfile = this.content.enemyAttackProfiles.get(definition.attackProfileId);
+      if (!attackProfile) {
+        continue;
+      }
+      if (!sprite) {
+        sprite = this.spriteLibrary.createSpriteForEntity(visualProfile.entityId, "world");
+        this.enemySprites.set(enemy.id, sprite);
+      }
+
       sprite.setUniformScale(definition.height / sprite.baseWorldHeight);
       sprite.setVisible(true);
       sprite.setPosition(enemy.x, enemy.y, sprite.usesGroundPlacement ? 0 : sprite.anchorOffsetY);
       sprite.setFacingAngle(enemy.facingAngle);
-      sprite.setAnimationState(enemyAnimationState(enemy, definition.attackVisual));
+      sprite.setAnimationState(enemyAnimationState(enemy, visualProfile, attackProfile));
       sprite.update(dt, viewerX, viewerY);
     }
   }
@@ -373,29 +394,27 @@ export class RetroRenderer {
 
 function enemyAnimationState(
   enemy: EnemyState,
-  attackVisual?: "melee" | "ranged"
+  visualProfile: EnemyVisualProfileDefinition,
+  attackProfile: EnemyAttackProfileDefinition
 ): SpriteAnimationStateName {
   switch (enemy.fsmState) {
     case "chase":
-      return "move";
+      return visualProfile.moveState ?? "move";
     case "windup":
     case "attack":
     case "cooldown":
-      if (attackVisual === "ranged") {
-        return "attack_ranged";
+      if (attackProfile.attackVisualKey && visualProfile.attackStates?.[attackProfile.attackVisualKey]) {
+        return visualProfile.attackStates[attackProfile.attackVisualKey];
       }
-      if (attackVisual === "melee") {
-        return "attack_melee";
-      }
-      return "attack";
+      return visualProfile.defaultAttackState ?? "attack";
     case "hurt":
-      return "hurt";
+      return visualProfile.hurtState ?? "hurt";
     case "dead":
-      return "death";
+      return visualProfile.deathState ?? "death";
     case "idle":
     case "alert":
     default:
-      return "idle";
+      return visualProfile.idleState ?? "idle";
   }
 }
 

@@ -1,0 +1,39 @@
+[
+  {
+    "id": "grave_thrall_melee",
+    "type": "melee",
+    "windupTime": 0.35,
+    "cooldownTime": 0.7,
+    "damage": 10,
+    "range": 1.2,
+    "attackVisualKey": "melee",
+    "requiresLineOfSight": true,
+    "notes": "Compatibility melee profile for the legacy Grave Thrall alias."
+  },
+  {
+    "id": "golem_melee",
+    "type": "melee",
+    "windupTime": 0.35,
+    "cooldownTime": 0.75,
+    "damage": 11,
+    "range": 1.25,
+    "attackVisualKey": "melee",
+    "requiresLineOfSight": true,
+    "notes": "Baseline melee strike for the golem family."
+  },
+  {
+    "id": "nitrogolem_fireball",
+    "type": "projectile",
+    "windupTime": 0.42,
+    "cooldownTime": 1.05,
+    "damage": 8,
+    "range": 8,
+    "projectileDefId": "nitrogolem_fire",
+    "projectileSpeed": 8.4,
+    "attackVisualKey": "ranged",
+    "fireCount": 1,
+    "spreadDegrees": 0,
+    "requiresLineOfSight": true,
+    "notes": "Nitrogolem ranged attack profile using the shared enemy projectile path."
+  }
+]

@@ -2,6 +2,8 @@ import { WEAPON_ORDER } from "../content/ContentDb";
 import type { PickupDef, PickupUseActionId } from "../content/pickups";
 import type {
   ContentDatabase,
+  EnemyAttackProfileDefinition,
+  EnemyDeathProfileDefinition,
   EffectDefinition,
   EnemyDefinition,
   EnemyProjectileDefinition,
@@ -738,39 +740,42 @@ export class GameSimulation {
   }
 
   private getEnemyAttackRange(definition: EnemyDefinition): number {
-    return definition.attackType === "projectile"
-      ? definition.attackRange ?? definition.aggroRange
-      : definition.meleeRange;
+    return this.requireEnemyAttackProfile(definition.attackProfileId).range;
   }
 
   private canEnemyStartAttack(
     definition: EnemyDefinition,
+    attackProfile: EnemyAttackProfileDefinition,
     hasLineOfSight: boolean,
     distanceToPlayer: number
   ): boolean {
-    return hasLineOfSight && distanceToPlayer <= this.getEnemyAttackRange(definition);
+    const requiresLineOfSight = attackProfile.requiresLineOfSight ?? true;
+    return distanceToPlayer <= this.getEnemyAttackRange(definition) && (!requiresLineOfSight || hasLineOfSight);
   }
 
   private resolveEnemyAttack(
     enemy: EnemyState,
     definition: EnemyDefinition,
+    attackProfile: EnemyAttackProfileDefinition,
     hasLineOfSight: boolean,
     distanceToPlayer: number,
     events: SimulationEvents
   ): void {
-    if (definition.attackType === "projectile") {
+    if (attackProfile.type === "projectile") {
+      const canFireFromMemory = !(attackProfile.requiresLineOfSight ?? true) && enemy.memoryTime > 0;
+      const canResolveProjectile = hasLineOfSight || canFireFromMemory;
       const targetX = hasLineOfSight ? this.state.player.x : enemy.lastKnownPlayerX;
       const targetY = hasLineOfSight ? this.state.player.y : enemy.lastKnownPlayerY;
       const attackDistance = Math.hypot(targetX - enemy.x, targetY - enemy.y);
-      if (attackDistance <= this.getEnemyAttackRange(definition) && (hasLineOfSight || enemy.memoryTime > 0)) {
-        this.spawnEnemyProjectile(enemy, definition, targetX, targetY);
+      if (canResolveProjectile && attackDistance <= attackProfile.range) {
+        this.spawnEnemyProjectile(enemy, definition, attackProfile, targetX, targetY);
         events.enemyAttack = true;
       }
       return;
     }
 
-    if (hasLineOfSight && distanceToPlayer <= definition.meleeRange) {
-      this.damagePlayer(definition.attackDamage, events);
+    if (hasLineOfSight && distanceToPlayer <= attackProfile.range) {
+      this.damagePlayer(attackProfile.damage, events);
       events.enemyAttack = true;
     }
   }
@@ -778,10 +783,11 @@ export class GameSimulation {
   private spawnEnemyProjectile(
     enemy: EnemyState,
     definition: EnemyDefinition,
+    attackProfile: EnemyAttackProfileDefinition,
     targetX: number,
     targetY: number
   ): void {
-    const projectileDefId = definition.projectileDefId;
+    const projectileDefId = attackProfile.projectileDefId;
     if (!projectileDefId) {
       return;
     }
@@ -797,35 +803,50 @@ export class GameSimulation {
     const dx = aimX / aimLength;
     const dy = aimY / aimLength;
     const spawnOffset =
+      attackProfile.spawnOffset ??
       projectileDefinition.spawnOffset ??
       definition.radius + projectileDefinition.radius + 0.18;
-    enemy.facingAngle = Math.atan2(dy, dx);
+    const baseAngle = Math.atan2(dy, dx);
+    const fireCount = attackProfile.fireCount ?? 1;
+    const spreadDegrees = attackProfile.spreadDegrees ?? 0;
+    enemy.facingAngle = baseAngle;
 
-    this.spawnRuntimeProjectile({
-      source: "enemy",
-      ownerId: enemy.id,
-      weaponId: projectileDefinition.id,
-      visualId: projectileDefinition.visualId,
-      x: enemy.x + dx * spawnOffset,
-      y: enemy.y + dy * spawnOffset,
-      dx,
-      dy,
-      speed: definition.projectileSpeed,
-      radius: projectileDefinition.radius,
-      damage: definition.attackDamage,
-      ttl: projectileDefinition.life,
-      impactEffectId: projectileDefinition.impactEffectId
-    });
+    for (let index = 0; index < fireCount; index += 1) {
+      const shotAngle = normalizeAngle(baseAngle + centeredSpreadOffset(index, fireCount, spreadDegrees));
+      const shotDx = Math.cos(shotAngle);
+      const shotDy = Math.sin(shotAngle);
+      this.spawnRuntimeProjectile({
+        source: "enemy",
+        ownerId: enemy.id,
+        weaponId: projectileDefinition.id,
+        visualId: projectileDefinition.visualId,
+        x: enemy.x + shotDx * spawnOffset,
+        y: enemy.y + shotDy * spawnOffset,
+        dx: shotDx,
+        dy: shotDy,
+        speed: attackProfile.projectileSpeed ?? 0,
+        radius: projectileDefinition.radius,
+        damage: attackProfile.damage,
+        ttl: projectileDefinition.life,
+        impactEffectId: projectileDefinition.impactEffectId
+      });
+    }
   }
 
-  private spawnDeathPayloads(enemy: EnemyState, definition: EnemyDefinition): void {
-    for (const spawnId of definition.deathSpawnIds ?? []) {
+  private spawnDeathPayloads(enemy: EnemyState, deathProfile: EnemyDeathProfileDefinition | null): void {
+    if (!deathProfile) {
+      return;
+    }
+
+    for (const spawnId of deathProfile.spawnEnemyIds ?? []) {
       if (this.content.enemies.has(spawnId)) {
         this.spawnEnemyFromDeathSpawn(spawnId, enemy.x, enemy.y, enemy.facingAngle);
-        continue;
       }
-      if (this.content.effects.has(spawnId)) {
-        this.spawnEffect(spawnId, enemy.x, enemy.y, enemy.facingAngle);
+    }
+
+    for (const effectId of deathProfile.spawnEffectIds ?? []) {
+      if (this.content.effects.has(effectId)) {
+        this.spawnEffect(effectId, enemy.x, enemy.y, enemy.facingAngle);
       }
     }
   }
@@ -862,6 +883,7 @@ export class GameSimulation {
   private updateEnemies(dt: number, events: SimulationEvents): void {
     for (const enemy of this.state.enemies) {
       const definition = this.requireEnemyDefinition(enemy.typeId);
+      const attackProfile = this.requireEnemyAttackProfile(definition.attackProfileId);
 
       if (enemy.fsmState === "dead") {
         enemy.stateTime += dt;
@@ -902,12 +924,18 @@ export class GameSimulation {
           }
           break;
         case "chase":
-          if (this.canEnemyStartAttack(definition, hasLos, distanceToPlayer)) {
+          if (this.canEnemyStartAttack(definition, attackProfile, hasLos, distanceToPlayer)) {
             this.transitionEnemy(enemy, "windup");
             break;
           }
 
-          if (hasLos || enemy.memoryTime > 0) {
+          if (
+            hasLos &&
+            attackProfile.type === "projectile" &&
+            distanceToPlayer <= (definition.preferredRange ?? attackProfile.range)
+          ) {
+            enemy.facingAngle = Math.atan2(toPlayerY, toPlayerX);
+          } else if (hasLos || enemy.memoryTime > 0) {
             this.moveEnemyToward(enemy, enemy.lastKnownPlayerX, enemy.lastKnownPlayerY, definition.moveSpeed, dt);
           } else if (distance2(enemy.x, enemy.y, enemy.spawnX, enemy.spawnY) > 0.2) {
             this.moveEnemyToward(enemy, enemy.spawnX, enemy.spawnY, definition.moveSpeed * 0.8, dt);
@@ -916,14 +944,14 @@ export class GameSimulation {
           }
           break;
         case "windup":
-          if (enemy.stateTime >= definition.windupTime) {
+          if (enemy.stateTime >= attackProfile.windupTime) {
             this.transitionEnemy(enemy, "attack");
           }
           break;
         case "attack":
           if (!enemy.attackApplied) {
             enemy.attackApplied = true;
-            this.resolveEnemyAttack(enemy, definition, hasLos, distanceToPlayer, events);
+            this.resolveEnemyAttack(enemy, definition, attackProfile, hasLos, distanceToPlayer, events);
           }
 
           if (enemy.stateTime >= ATTACK_RESOLVE_TIME) {
@@ -931,7 +959,7 @@ export class GameSimulation {
           }
           break;
         case "cooldown":
-          if (enemy.stateTime >= definition.cooldownTime) {
+          if (enemy.stateTime >= attackProfile.cooldownTime) {
             if (hasLos || enemy.memoryTime > 0) {
               this.transitionEnemy(enemy, "chase");
             } else {
@@ -1253,6 +1281,9 @@ export class GameSimulation {
     }
 
     const definition = this.requireEnemyDefinition(enemy.typeId);
+    const deathProfile = definition.deathProfileId
+      ? this.requireEnemyDeathProfile(definition.deathProfileId)
+      : null;
     enemy.health -= damage;
     enemy.lastKnownPlayerX = this.state.player.x;
     enemy.lastKnownPlayerY = this.state.player.y;
@@ -1272,8 +1303,8 @@ export class GameSimulation {
       enemy.alive = false;
       this.state.killCount += 1;
       this.transitionEnemy(enemy, "dead");
-      this.spawnDeathPayloads(enemy, definition);
-      this.pushMessage(`${definition.name} falls.`, 0.8);
+      this.spawnDeathPayloads(enemy, deathProfile);
+      this.pushMessage(`${definition.displayName} falls.`, 0.8);
       if (this.state.killCount >= this.state.totalKills) {
         this.pushMessage("The catacomb falls silent.", 4);
       }
@@ -1852,10 +1883,13 @@ export class GameSimulation {
 
   private applyMorphProjectileHit(enemy: EnemyState): void {
     const definition = this.requireEnemyDefinition(enemy.typeId);
+    const deathProfile = definition.deathProfileId
+      ? this.requireEnemyDeathProfile(definition.deathProfileId)
+      : null;
     enemy.health = 0;
     enemy.alive = false;
     this.transitionEnemy(enemy, "dead");
-    this.spawnDeathPayloads(enemy, definition);
+    this.spawnDeathPayloads(enemy, deathProfile);
     this.state.killCount += 1;
     this.pushMessage("The Morph Ovum warps a target out of the fight.", 1.2);
     if (this.state.killCount >= this.state.totalKills) {
@@ -1874,6 +1908,22 @@ export class GameSimulation {
     const definition = this.content.enemies.get(id);
     if (!definition) {
       throw new Error(`Unknown enemy definition: ${id}`);
+    }
+    return definition;
+  }
+
+  private requireEnemyAttackProfile(id: string): EnemyAttackProfileDefinition {
+    const definition = this.content.enemyAttackProfiles.get(id);
+    if (!definition) {
+      throw new Error(`Unknown enemy attack profile: ${id}`);
+    }
+    return definition;
+  }
+
+  private requireEnemyDeathProfile(id: string): EnemyDeathProfileDefinition {
+    const definition = this.content.enemyDeathProfiles.get(id);
+    if (!definition) {
+      throw new Error(`Unknown enemy death profile: ${id}`);
     }
     return definition;
   }
