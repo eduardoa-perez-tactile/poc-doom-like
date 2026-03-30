@@ -261,6 +261,8 @@ export interface SpriteSetDefinition {
   worldWidth: number;
   worldHeight: number;
   anchorOffsetY: number;
+  verticalPlacement?: "anchor" | "grounded";
+  groundClearance?: number;
   worldFacing?: "billboard" | "direction";
   flipX?: boolean;
   flipY?: boolean;

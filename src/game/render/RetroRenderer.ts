@@ -246,8 +246,9 @@ export class RetroRenderer {
       if (!definition) {
         continue;
       }
+      sprite.setUniformScale(definition.height / sprite.baseWorldHeight);
       sprite.setVisible(true);
-      sprite.setPosition(enemy.x, enemy.y, sprite.anchorOffsetY);
+      sprite.setPosition(enemy.x, enemy.y, sprite.usesGroundPlacement ? 0 : sprite.anchorOffsetY);
       sprite.setFacingAngle(enemy.facingAngle);
       sprite.setAnimationState(enemyAnimationState(enemy, definition.attackVisual));
       sprite.update(dt, viewerX, viewerY);
