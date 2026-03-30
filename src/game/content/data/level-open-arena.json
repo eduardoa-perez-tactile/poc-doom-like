@@ -44,60 +44,112 @@
   },
   "pickups": [
     {
-      "id": "p_ammo_1",
-      "kind": "ammo",
-      "amount": 12,
+      "id": "p_wand_crystal_1",
+      "defId": "WAND_CRYSTAL",
       "x": 8,
       "y": 9
     },
     {
-      "id": "p_ammo_2",
-      "kind": "ammo",
-      "amount": 12,
+      "id": "p_ethereal_arrows_1",
+      "defId": "ETHEREAL_ARROWS",
       "x": 19,
       "y": 9
     },
     {
-      "id": "p_ammo_3",
-      "kind": "ammo",
-      "amount": 10,
+      "id": "p_claw_orb_1",
+      "defId": "CLAW_ORB",
       "x": 8,
       "y": 14
     },
     {
-      "id": "p_ammo_4",
-      "kind": "ammo",
-      "amount": 10,
+      "id": "p_lesser_runes_1",
+      "defId": "LESSER_RUNES",
       "x": 19,
       "y": 14
     },
     {
-      "id": "p_health_1",
-      "kind": "health",
-      "amount": 25,
+      "id": "p_crystal_vial_1",
+      "defId": "CRYSTAL_VIAL",
       "x": 2,
       "y": 6
     },
     {
-      "id": "p_health_2",
-      "kind": "health",
-      "amount": 25,
+      "id": "p_crystal_vial_2",
+      "defId": "CRYSTAL_VIAL",
       "x": 25,
       "y": 6
     },
     {
-      "id": "p_health_3",
-      "kind": "health",
-      "amount": 25,
+      "id": "p_silver_shield_1",
+      "defId": "SILVER_SHIELD",
       "x": 2,
       "y": 17
     },
     {
-      "id": "p_health_4",
-      "kind": "health",
-      "amount": 25,
+      "id": "p_enchanted_shield_1",
+      "defId": "ENCHANTED_SHIELD",
       "x": 25,
       "y": 17
+    },
+    {
+      "id": "p_bag_of_holding_1",
+      "defId": "BAG_OF_HOLDING",
+      "x": 13,
+      "y": 11
+    },
+    {
+      "id": "p_quartz_flask_1",
+      "defId": "QUARTZ_FLASK",
+      "x": 11,
+      "y": 9
+    },
+    {
+      "id": "p_tome_1",
+      "defId": "TOME_OF_POWER",
+      "x": 16,
+      "y": 9
+    },
+    {
+      "id": "p_morph_ovum_1",
+      "defId": "MORPH_OVUM",
+      "x": 11,
+      "y": 14
+    },
+    {
+      "id": "p_timebomb_1",
+      "defId": "TIMEBOMB_OF_THE_ANCIENTS",
+      "x": 16,
+      "y": 14
+    },
+    {
+      "id": "p_green_key_1",
+      "defId": "GREEN_KEY",
+      "x": 12,
+      "y": 19
+    },
+    {
+      "id": "p_yellow_key_1",
+      "defId": "YELLOW_KEY",
+      "x": 13,
+      "y": 19
+    },
+    {
+      "id": "p_blue_key_1",
+      "defId": "BLUE_KEY",
+      "x": 14,
+      "y": 19
+    },
+    {
+      "id": "p_crossbow_1",
+      "defId": "ETHEREAL_CROSSBOW",
+      "x": 12,
+      "y": 5
+    },
+    {
+      "id": "p_dragon_claw_1",
+      "defId": "DRAGON_CLAW",
+      "x": 15,
+      "y": 5
     }
   ],
   "enemies": [

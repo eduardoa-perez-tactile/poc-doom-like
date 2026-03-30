@@ -9,12 +9,15 @@ export interface UiOverlayCallbacks {
 }
 
 export class UiOverlay {
+  private static readonly PICKUP_SHEET_WIDTH = 509;
+  private static readonly PICKUP_SHEET_HEIGHT = 303;
   private readonly root: HTMLDivElement;
   private readonly statusBanner: HTMLDivElement;
   private readonly crosshair: HTMLDivElement;
   private readonly hud: HTMLDivElement;
   private readonly hudStats: HTMLDivElement;
   private readonly hudWeapon: HTMLDivElement;
+  private readonly hudInventory: HTMLDivElement;
   private readonly menuBackdrop: HTMLDivElement;
   private readonly menuTitle: HTMLHeadingElement;
   private readonly menuBody: HTMLParagraphElement;
@@ -28,6 +31,7 @@ export class UiOverlay {
   private readonly sensitivityValue: HTMLSpanElement;
   private readonly volumeValue: HTMLSpanElement;
   private readonly pixelScaleValue: HTMLSpanElement;
+  private pickupSheetUrl: string | null = null;
 
   constructor(
     parent: HTMLElement,
@@ -42,6 +46,7 @@ export class UiOverlay {
       <div class="hud" data-role="hud">
         <div class="panel" data-role="hud-stats"></div>
         <div class="panel" data-role="hud-weapon"></div>
+        <div class="panel" data-role="hud-inventory"></div>
       </div>
       <div class="menu-backdrop" data-role="menu-backdrop">
         <div class="menu-panel">
@@ -81,6 +86,7 @@ export class UiOverlay {
     this.hud = this.requireElement<HTMLDivElement>('[data-role="hud"]');
     this.hudStats = this.requireElement<HTMLDivElement>('[data-role="hud-stats"]');
     this.hudWeapon = this.requireElement<HTMLDivElement>('[data-role="hud-weapon"]');
+    this.hudInventory = this.requireElement<HTMLDivElement>('[data-role="hud-inventory"]');
     this.menuBackdrop = this.requireElement<HTMLDivElement>('[data-role="menu-backdrop"]');
     this.menuTitle = this.requireElement<HTMLHeadingElement>('[data-role="menu-title"]');
     this.menuBody = this.requireElement<HTMLParagraphElement>('[data-role="menu-body"]');
@@ -123,14 +129,32 @@ export class UiOverlay {
     this.statusBanner.textContent = viewModel.message;
     this.hudStats.innerHTML = `
       <div><strong>Health</strong> ${viewModel.health}</div>
+      <div><strong>Armor</strong> ${viewModel.armor}</div>
       <div><strong>Ammo</strong> ${viewModel.ammo}</div>
       <div><strong>Enemies</strong> ${viewModel.enemiesRemaining}</div>
+      <div><strong>Keys</strong> ${viewModel.keys.length > 0 ? viewModel.keys.join(" / ") : "None"}</div>
       <div><strong>Backend</strong> ${viewModel.backend.toUpperCase()}</div>
     `;
     this.hudWeapon.innerHTML = `
       <div><strong>Weapon</strong> ${viewModel.weaponName}</div>
       <div><strong>Status</strong> ${viewModel.message}</div>
     `;
+    this.hudInventory.innerHTML = `
+      <div><strong>Inventory</strong></div>
+      <div class="hud-inventory-row">
+        ${
+          viewModel.inventory.length === 0
+            ? `<span class="hud-inventory-empty">Empty</span>`
+            : viewModel.inventory
+                .map((entry, index) => this.renderInventoryEntry(entry, index === viewModel.selectedInventoryIndex))
+                .join("")
+        }
+      </div>
+    `;
+  }
+
+  setPickupSheetUrl(url: string): void {
+    this.pickupSheetUrl = url;
   }
 
   renderMenu(mode: AppMode, message: string): void {
@@ -184,5 +208,30 @@ export class UiOverlay {
       throw new Error(`Missing UI element: ${selector}`);
     }
     return element;
+  }
+
+  private renderInventoryEntry(entry: HudViewModel["inventory"][number], selected: boolean): string {
+    const classes = `hud-inventory-entry${selected ? " selected" : ""}`;
+    const icon = entry.iconFrame && this.pickupSheetUrl
+      ? `<span class="hud-icon" style="${this.iconStyle(entry.iconFrame)}"></span>`
+      : `<span class="hud-icon hud-icon-fallback">${entry.label.slice(0, 1)}</span>`;
+
+    return `
+      <span class="${classes}">
+        ${icon}
+        <span class="hud-inventory-count">${entry.count}</span>
+      </span>
+    `;
+  }
+
+  private iconStyle(frame: NonNullable<HudViewModel["inventory"][number]["iconFrame"]>): string {
+    const scale = 2;
+    return [
+      `width:${frame.width * scale}px`,
+      `height:${frame.height * scale}px`,
+      `background-image:url('${this.pickupSheetUrl}')`,
+      `background-position:-${frame.x * scale}px -${frame.y * scale}px`,
+      `background-size:${UiOverlay.PICKUP_SHEET_WIDTH * scale}px ${UiOverlay.PICKUP_SHEET_HEIGHT * scale}px`
+    ].join(";");
   }
 }

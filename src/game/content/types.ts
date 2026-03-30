@@ -1,3 +1,5 @@
+import type { PickupDef, PickupVisualDefinition, WorldPickupSpawn } from "./pickups";
+
 export type WeaponAmmoType =
   | "none"
   | "wand"
@@ -7,7 +9,6 @@ export type WeaponAmmoType =
   | "phoenix"
   | "firemace";
 export type EnemyAttackType = "melee" | "projectile";
-export type PickupKind = "health" | "ammo";
 export type WallTextureTypeName =
   | "Stone"
   | "Brick"
@@ -150,11 +151,7 @@ export interface PlayerStart {
   angleDeg: number;
 }
 
-export interface PickupSpawn extends GridPoint {
-  id: string;
-  kind: PickupKind;
-  amount: number;
-}
+export type PickupSpawn = WorldPickupSpawn;
 
 export interface EnemySpawn extends GridPoint {
   id: string;
@@ -258,6 +255,8 @@ export interface VisualDatabaseDefinition {
 export interface ContentDatabase {
   weapons: Map<string, WeaponDefinition>;
   enemies: Map<string, EnemyDefinition>;
+  pickupDefs: Map<string, PickupDef>;
+  pickupVisuals: Map<string, PickupVisualDefinition>;
   level: LevelDefinition;
   visuals: VisualDatabaseDefinition;
 }

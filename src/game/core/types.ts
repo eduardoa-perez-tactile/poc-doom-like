@@ -1,4 +1,5 @@
-import type { PickupKind, SpriteAnimationStateName, WeaponAmmoType } from "../content/types";
+import type { InventoryEntry, PlayerEffectTimers, WorldPickupInstance } from "../content/pickups";
+import type { SpriteAnimationStateName, WeaponAmmoType } from "../content/types";
 
 export type AppMode =
   | "boot"
@@ -40,10 +41,20 @@ export interface PlayerState {
   angle: number;
   health: number;
   maxHealth: number;
+  armor: number;
+  maxArmor: number;
   radius: number;
   moveSpeed: number;
   bobPhase: number;
   ammo: Record<Exclude<WeaponAmmoType, "none">, number>;
+  ammoCapacity: Record<Exclude<WeaponAmmoType, "none">, number>;
+  keys: string[];
+  inventory: InventoryEntry[];
+  inventoryCapacity: number;
+  selectedInventoryIndex: number;
+  effects: PlayerEffectTimers;
+  flags: string[];
+  mapRevealed: boolean;
   alive: boolean;
 }
 
@@ -121,14 +132,7 @@ export interface HazardState {
   ttl: number;
 }
 
-export interface PickupState {
-  id: string;
-  kind: PickupKind;
-  x: number;
-  y: number;
-  amount: number;
-  collected: boolean;
-}
+export type PickupState = WorldPickupInstance;
 
 export interface SimulationMessage {
   text: string;
@@ -170,11 +174,29 @@ export interface SaveGameData {
 export interface HudViewModel {
   visible: boolean;
   health: number;
+  armor: number;
   ammo: number;
   weaponName: string;
   enemiesRemaining: number;
   message: string;
+  keys: string[];
+  inventory: HudInventoryEntry[];
+  selectedInventoryIndex: number;
   backend: "webgpu" | "webgl";
+}
+
+export interface HudIconFrame {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface HudInventoryEntry {
+  defId: string;
+  label: string;
+  count: number;
+  iconFrame: HudIconFrame | null;
 }
 
 export interface SpriteRuntimeState {

@@ -1,3 +1,4 @@
+import { createPickupHudSheetDataUrl, getPickupAtlasClip } from "./content/pickups";
 import { createContentDb } from "./content/ContentDb";
 import { FixedStepLoop } from "./core/FixedStepLoop";
 import { createBabylonEngine } from "./core/EngineBootstrap";
@@ -60,6 +61,7 @@ export class GameApp {
     this.renderer = await RetroRenderer.create(bootstrap.engine, this.content);
     this.renderer.setPixelScale(this.settings.pixelScale);
     this.audio.setMasterVolume(this.settings.masterVolume);
+    this.ui.setPickupSheetUrl(await createPickupHudSheetDataUrl());
     this.setMode("main_menu");
     this.loop = new FixedStepLoop({
       update: (dt) => this.update(dt),
@@ -254,10 +256,27 @@ export class GameApp {
     return {
       visible: this.appMode === "in_game" || this.appMode === "death_transition",
       health: Math.ceil(state.player.health),
+      armor: Math.ceil(state.player.armor),
       ammo,
       weaponName: weapon?.name ?? state.weapon.currentId,
       enemiesRemaining,
       message: messageOverride ?? state.messages[0]?.text ?? state.level.name,
+      keys: state.player.keys,
+      inventory: state.player.inventory.map((entry) => {
+        const definition = this.content.pickupDefs.get(entry.itemDefId);
+        const iconVisual =
+          definition?.inventoryIconId ? this.content.pickupVisuals.get(definition.inventoryIconId) : null;
+        const iconFrame = iconVisual ? getPickupAtlasClip(iconVisual.atlasId).frames[0] : null;
+        return {
+          defId: entry.itemDefId,
+          label: definition?.id ?? entry.itemDefId,
+          count: entry.count,
+          iconFrame: iconFrame
+            ? { x: iconFrame.x, y: iconFrame.y, width: iconFrame.w, height: iconFrame.h }
+            : null
+        };
+      }),
+      selectedInventoryIndex: state.player.selectedInventoryIndex,
       backend: this.backend
     };
   }
@@ -266,10 +285,14 @@ export class GameApp {
     return {
       visible: false,
       health: 0,
+      armor: 0,
       ammo: 0,
       weaponName: "",
       enemiesRemaining: 0,
       message: "",
+      keys: [],
+      inventory: [],
+      selectedInventoryIndex: 0,
       backend: this.backend
     };
   }
@@ -286,6 +309,8 @@ function createNeutralInput(): InputFrame {
     lookDeltaX: 0,
     fireDown: false,
     usePressed: false,
+    inventoryPrevPressed: false,
+    inventoryNextPressed: false,
     menuPressed: false,
     toggleTome: false
   };

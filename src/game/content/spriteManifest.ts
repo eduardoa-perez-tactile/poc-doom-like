@@ -6,10 +6,12 @@ import type {
   SpriteSetDefinition,
   VisualDatabaseDefinition
 } from "./types";
+import { createPickupSpriteManifest } from "./pickups";
 
 const GOLEM_SHEET_URL = new URL("./assets/golem.png", import.meta.url).href;
 const WEAPONS_SHEET_URL = new URL("./assets/weapons.png", import.meta.url).href;
 const PROJECTILES_SHEET_URL = new URL("./assets/projectiles.png", import.meta.url).href;
+const pickupSpriteManifest = createPickupSpriteManifest();
 
 const GOLEM_CELL_WIDTH = 76;
 const GOLEM_CELL_HEIGHT = 74;
@@ -728,7 +730,8 @@ export const spriteManifest: VisualDatabaseDefinition = {
       id: "projectiles_sheet",
       imageUrl: PROJECTILES_SHEET_URL,
       chromaKeyColors: []
-    }
+    },
+    pickupSpriteManifest.sheet
   ],
   spriteSets: [
     buildGolemSet(),
@@ -751,7 +754,8 @@ export const spriteManifest: VisualDatabaseDefinition = {
     buildPhoenixProjectileSet(),
     buildPhoenixFlameSet(),
     buildFiremaceBallSet(),
-    buildFiremacePoweredBallSet()
+    buildFiremacePoweredBallSet(),
+    ...pickupSpriteManifest.spriteSets
   ],
   entities: [
     { entityId: "grave_thrall", spriteSetId: "golem_set" },
@@ -776,6 +780,7 @@ export const spriteManifest: VisualDatabaseDefinition = {
     { entityId: "projectile:phoenix_rod", spriteSetId: "phoenix_flame_set" },
     { entityId: "projectile:phoenix_flame", spriteSetId: "phoenix_flame_set" },
     { entityId: "projectile:firemace", spriteSetId: "phoenix_flame_set" },
-    { entityId: "projectile:firemace_powered", spriteSetId: "phoenix_flame_set" }
+    { entityId: "projectile:firemace_powered", spriteSetId: "phoenix_flame_set" },
+    ...pickupSpriteManifest.entities
   ]
 };

@@ -60,6 +60,10 @@ body {
   letter-spacing: 0.08em;
 }
 
+.hud .panel:last-child {
+  min-width: 240px;
+}
+
 .panel {
   min-width: 200px;
   padding: 12px 14px;
@@ -72,6 +76,52 @@ body {
 
 .panel strong {
   color: #f7c576;
+}
+
+.hud-inventory-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.hud-inventory-entry {
+  display: inline-flex;
+  align-items: end;
+  gap: 4px;
+  padding: 4px 6px;
+  border: 1px solid rgba(219, 180, 124, 0.18);
+  background: rgba(36, 15, 10, 0.55);
+}
+
+.hud-inventory-entry.selected {
+  border-color: rgba(247, 197, 118, 0.65);
+  box-shadow: 0 0 0 1px rgba(247, 197, 118, 0.18) inset;
+}
+
+.hud-icon {
+  display: inline-block;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+.hud-icon-fallback {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(247, 197, 118, 0.3);
+}
+
+.hud-inventory-count {
+  min-width: 12px;
+  font-size: 12px;
+  text-align: right;
+}
+
+.hud-inventory-empty {
+  color: rgba(241, 222, 195, 0.65);
 }
 
 .crosshair {

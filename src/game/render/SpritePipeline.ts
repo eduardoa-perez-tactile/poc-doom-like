@@ -250,6 +250,10 @@ export class AnimatedSpriteInstance {
     this.lastFrameId = "";
   }
 
+  setAnimationTime(time: number): void {
+    this.runtime.animationTime = time;
+  }
+
   setPosition(x: number, z: number, y: number): void {
     this.worldX = x;
     this.worldY = z;

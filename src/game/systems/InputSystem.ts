@@ -6,6 +6,8 @@ export interface InputFrame {
   lookDeltaX: number;
   fireDown: boolean;
   usePressed: boolean;
+  inventoryPrevPressed: boolean;
+  inventoryNextPressed: boolean;
   menuPressed: boolean;
   toggleTome: boolean;
   weaponSlot?: number;
@@ -15,6 +17,8 @@ export class InputSystem {
   private readonly heldKeys = new Set<string>();
   private lookDeltaX = 0;
   private frameUsePressed = false;
+  private frameInventoryPrevPressed = false;
+  private frameInventoryNextPressed = false;
   private frameMenuPressed = false;
   private frameToggleTome = false;
   private frameWeaponSlot?: number;
@@ -74,6 +78,8 @@ export class InputSystem {
       lookDeltaX: this.lookDeltaX,
       fireDown: this.fireDown,
       usePressed: this.frameUsePressed,
+      inventoryPrevPressed: this.frameInventoryPrevPressed,
+      inventoryNextPressed: this.frameInventoryNextPressed,
       menuPressed: this.frameMenuPressed,
       toggleTome: this.frameToggleTome,
       weaponSlot: this.frameWeaponSlot
@@ -81,6 +87,8 @@ export class InputSystem {
 
     this.lookDeltaX = 0;
     this.frameUsePressed = false;
+    this.frameInventoryPrevPressed = false;
+    this.frameInventoryNextPressed = false;
     this.frameMenuPressed = false;
     this.frameToggleTome = false;
     this.frameWeaponSlot = undefined;
@@ -93,6 +101,10 @@ export class InputSystem {
 
     if (event.code === "KeyE") {
       this.frameUsePressed = true;
+    } else if (event.code === "BracketLeft") {
+      this.frameInventoryPrevPressed = true;
+    } else if (event.code === "BracketRight") {
+      this.frameInventoryNextPressed = true;
     } else if (event.code === "KeyT") {
       this.frameToggleTome = true;
     } else if (MENU_KEYS.has(event.code)) {
