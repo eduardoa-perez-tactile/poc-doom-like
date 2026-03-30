@@ -19,10 +19,10 @@ import type {
   EnemyState,
   GameSessionState,
   HazardState,
-  PickupState,
   ProjectileState
 } from "../core/types";
 import { AnimatedSpriteInstance, SpriteLibrary } from "./SpritePipeline";
+import { PickupRenderSystem } from "./pickups/PickupRenderSystem";
 import { WallTextureAtlas } from "./WallTextureAtlas";
 import {
   pickTexture,
@@ -41,7 +41,7 @@ export class RetroRenderer {
   private readonly root: TransformNode;
   private spriteLibrary!: SpriteLibrary;
   private readonly enemySprites = new Map<string, AnimatedSpriteInstance>();
-  private readonly pickupSprites = new Map<string, AnimatedSpriteInstance>();
+  private pickupRenderSystem!: PickupRenderSystem;
   private readonly projectileSprites = new Map<number, AnimatedSpriteInstance>();
   private readonly hazardSprites = new Map<number, AnimatedSpriteInstance>();
   private readonly weaponSprites = new Map<string, AnimatedSpriteInstance>();
@@ -115,7 +115,7 @@ export class RetroRenderer {
     this.camera.rotation.y = Math.PI / 2 - state.player.angle;
 
     this.syncEnemies(state.enemies, state.player.x, state.player.y, dt);
-    this.syncPickups(state.pickups, state.player.x, state.player.y, dt);
+    this.pickupRenderSystem.sync(state.pickups, state.player.x, state.player.y);
     this.syncProjectiles(state.projectiles, state.player.x, state.player.y, dt);
     this.syncHazards(state.hazards, state.player.x, state.player.y, dt);
     this.syncWeapon(state, dt);
@@ -123,6 +123,7 @@ export class RetroRenderer {
 
   private async initializeSprites(): Promise<void> {
     this.spriteLibrary = await SpriteLibrary.create(this.scene, this.content.visuals);
+    this.pickupRenderSystem = new PickupRenderSystem(this.content, this.spriteLibrary);
     this.buildSprites();
   }
 
@@ -202,10 +203,15 @@ export class RetroRenderer {
       this.enemySprites.set(enemy.id, sprite);
     }
 
-    for (const pickup of this.content.level.pickups) {
-      const sprite = this.spriteLibrary.createSpriteForEntity(`pickup:${pickup.kind}`, "world");
-      this.pickupSprites.set(pickup.id, sprite);
-    }
+    this.pickupRenderSystem.buildSprites(this.content.level.pickups.map((pickup) => ({
+      entityId: pickup.id,
+      defId: pickup.defId,
+      position: { x: pickup.x * this.content.level.cellSize, y: pickup.y * this.content.level.cellSize, z: pickup.z ?? 0 },
+      bobPhase: 0,
+      animTime: 0,
+      picked: false,
+      respawnAtTime: null
+    })));
 
     for (const weapon of this.content.weapons.values()) {
       const sprite = this.spriteLibrary.createSpriteForEntity(`weapon:${weapon.id}`, "view", this.camera);
@@ -236,26 +242,6 @@ export class RetroRenderer {
       sprite.setPosition(enemy.x, enemy.y, sprite.anchorOffsetY);
       sprite.setFacingAngle(enemy.facingAngle);
       sprite.setAnimationState(enemyAnimationState(enemy));
-      sprite.update(dt, viewerX, viewerY);
-    }
-  }
-
-  private syncPickups(pickups: PickupState[], viewerX: number, viewerY: number, dt: number): void {
-    const time = performance.now() * 0.001;
-    for (const pickup of pickups) {
-      const sprite = this.pickupSprites.get(pickup.id);
-      if (!sprite) {
-        continue;
-      }
-
-      sprite.setVisible(!pickup.collected);
-      if (pickup.collected) {
-        continue;
-      }
-
-      sprite.setPosition(pickup.x, pickup.y, sprite.anchorOffsetY + Math.sin(time * 2 + pickup.x) * 0.04);
-      sprite.setFacingAngle(0);
-      sprite.setAnimationState("idle");
       sprite.update(dt, viewerX, viewerY);
     }
   }

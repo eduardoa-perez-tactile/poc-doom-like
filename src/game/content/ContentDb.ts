@@ -1,5 +1,6 @@
 import enemyDefs from "./data/enemies.json";
 import levelDef from "./data/level-open-arena.json";
+import { pickupDefs, pickupVisuals } from "./pickups";
 import { spriteManifest } from "./spriteManifest";
 import weaponDefs from "./data/weapons.json";
 import type {
@@ -44,6 +45,8 @@ export function createContentDb(): ContentDatabase {
     enemies: new Map(
       (enemyDefs as EnemyDefinition[]).map((definition) => [definition.id, definition])
     ),
+    pickupDefs: new Map(pickupDefs.map((definition) => [definition.id, definition] as const)),
+    pickupVisuals: new Map(pickupVisuals.map((definition) => [definition.id, definition] as const)),
     level: levelDef as LevelDefinition,
     visuals: spriteManifest
   };

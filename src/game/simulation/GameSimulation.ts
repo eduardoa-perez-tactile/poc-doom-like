@@ -1,4 +1,5 @@
 import { WEAPON_ORDER } from "../content/ContentDb";
+import type { PickupDef, PickupUseActionId } from "../content/pickups";
 import type {
   ContentDatabase,
   EnemyDefinition,
@@ -20,15 +21,23 @@ import type {
   ProjectileState
 } from "../core/types";
 import type { InputFrame } from "../systems/InputSystem";
+import { PickupSystem } from "./pickups/PickupSystem";
+import { PickupUseSystem } from "./pickups/PickupUseSystem";
 
 const ALERT_TIME = 0.12;
 const ATTACK_RESOLVE_TIME = 0.1;
 const TOME_DURATION = 20;
+const INVULNERABILITY_DURATION = 15;
+const INVISIBILITY_DURATION = 20;
+const FLIGHT_DURATION = 18;
+const TORCH_DURATION = 40;
 const WEAPON_ATTACK_ANIM_TIME = 0.14;
 const PLAYER_PROJECTILE_OFFSET = 0.58;
 
 export class GameSimulation {
   private readonly initialState: GameSessionState;
+  private readonly pickupSystem = new PickupSystem();
+  private readonly pickupUseSystem = new PickupUseSystem();
   private projectileId = 1;
   private hazardId = 1;
   state: GameSessionState;
@@ -64,6 +73,7 @@ export class GameSimulation {
     this.updateMessages(dt);
     this.updateWeaponView(dt);
     this.updateTome(dt);
+    this.updatePlayerEffects(dt);
 
     if (!input.fireDown) {
       this.state.weapon.sustainTargetId = null;
@@ -80,6 +90,12 @@ export class GameSimulation {
     if (input.toggleTome) {
       this.toggleTome();
     }
+    this.pickupUseSystem.update(input, {
+      content: this.content,
+      state: this.state,
+      cycleInventory: (direction) => this.cycleInventory(direction),
+      useSelectedInventoryItem: () => this.useSelectedInventoryItem()
+    });
 
     this.state.elapsedTime += dt;
     this.state.player.angle = normalizeAngle(
@@ -96,7 +112,15 @@ export class GameSimulation {
     this.updateEnemies(dt, events);
     this.updateProjectiles(dt);
     this.updateHazards(dt);
-    this.collectPickups(events);
+    this.pickupSystem.update(
+      dt,
+      {
+        content: this.content,
+        state: this.state,
+        tryGrantPickup: (definition, pickup) => this.tryCollectPickup(definition, pickup)
+      },
+      events
+    );
     this.updateDeadEnemies(dt);
 
     if (!this.state.player.alive) {
@@ -124,6 +148,8 @@ export class GameSimulation {
       angle: (levelDef.playerStart.angleDeg * Math.PI) / 180,
       health: 100,
       maxHealth: 100,
+      armor: 0,
+      maxArmor: 200,
       radius: 0.28 * level.cellSize,
       moveSpeed: 5.8,
       bobPhase: 0,
@@ -135,6 +161,26 @@ export class GameSimulation {
         phoenix: 20,
         firemace: 18
       },
+      ammoCapacity: {
+        wand: 200,
+        crossbow: 100,
+        claw: 200,
+        hellstaff: 100,
+        phoenix: 50,
+        firemace: 50
+      },
+      keys: [],
+      inventory: [],
+      inventoryCapacity: 16,
+      selectedInventoryIndex: 0,
+      effects: {
+        invulnerable: 0,
+        partialInvisibility: 0,
+        flight: 0,
+        torch: 0
+      },
+      flags: [],
+      mapRevealed: false,
       alive: true
     };
 
@@ -200,12 +246,17 @@ export class GameSimulation {
     position: { x: number; y: number }
   ): PickupState {
     return {
-      id: spawn.id,
-      kind: spawn.kind,
-      x: position.x,
-      y: position.y,
-      amount: spawn.amount,
-      collected: false
+      entityId: spawn.id,
+      defId: spawn.defId,
+      position: {
+        x: position.x,
+        y: position.y,
+        z: spawn.z ?? 0
+      },
+      bobPhase: (position.x + position.y) * 0.5,
+      animTime: ((position.x * 13.37 + position.y * 7.11) % 1 + 1) % 1,
+      picked: false,
+      respawnAtTime: null
     };
   }
 
@@ -237,6 +288,14 @@ export class GameSimulation {
       this.state.tome.active = false;
       this.pushMessage("The Tome of Power fades.", 1.2);
     }
+  }
+
+  private updatePlayerEffects(dt: number): void {
+    const effects = this.state.player.effects;
+    effects.invulnerable = Math.max(0, effects.invulnerable - dt);
+    effects.partialInvisibility = Math.max(0, effects.partialInvisibility - dt);
+    effects.flight = Math.max(0, effects.flight - dt);
+    effects.torch = Math.max(0, effects.torch - dt);
   }
 
   private toggleTome(): void {
@@ -772,13 +831,15 @@ export class GameSimulation {
           continue;
         }
         const definition = this.requireEnemyDefinition(enemy.typeId);
-        if (distance2(projectile.x, projectile.y, enemy.x, enemy.y) <= definition.radius + projectile.radius) {
-          if (projectile.damage > 0) {
-            this.damageEnemy(enemy, projectile.damage);
-          }
-          this.resolveProjectileImpact(projectile, projectile.x, projectile.y);
-          this.state.projectiles.splice(index, 1);
-          break;
+      if (distance2(projectile.x, projectile.y, enemy.x, enemy.y) <= definition.radius + projectile.radius) {
+        if (projectile.weaponId === "artifact:morph_ovum") {
+          this.applyMorphProjectileHit(enemy);
+        } else if (projectile.damage > 0) {
+          this.damageEnemy(enemy, projectile.damage);
+        }
+        this.resolveProjectileImpact(projectile, projectile.x, projectile.y);
+        this.state.projectiles.splice(index, 1);
+        break;
         }
       }
     }
@@ -956,35 +1017,6 @@ export class GameSimulation {
     projectile.dy /= normalized;
   }
 
-  private collectPickups(events: SimulationEvents): void {
-    for (const pickup of this.state.pickups) {
-      if (pickup.collected) {
-        continue;
-      }
-
-      if (distance2(this.state.player.x, this.state.player.y, pickup.x, pickup.y) > 0.8) {
-        continue;
-      }
-
-      pickup.collected = true;
-      events.pickup = true;
-
-      if (pickup.kind === "health") {
-        this.state.player.health = clamp(
-          this.state.player.health + pickup.amount,
-          0,
-          this.state.player.maxHealth
-        );
-        this.pushMessage(`Recovered ${pickup.amount} health.`, 1.2);
-      } else if (pickup.kind === "ammo") {
-        for (const ammoType of Object.keys(this.state.player.ammo) as Array<keyof PlayerState["ammo"]>) {
-          this.state.player.ammo[ammoType] += pickup.amount;
-        }
-        this.pushMessage(`Recovered ${pickup.amount} ammo for every relic.`, 1.2);
-      }
-    }
-  }
-
   private updateDeadEnemies(dt: number): void {
     for (const enemy of this.state.enemies) {
       if (enemy.fsmState === "dead") {
@@ -1055,7 +1087,18 @@ export class GameSimulation {
       return;
     }
 
-    this.state.player.health -= amount;
+    if (this.state.player.effects.invulnerable > 0) {
+      return;
+    }
+
+    let remainingDamage = amount;
+    if (this.state.player.armor > 0) {
+      const absorbed = Math.min(this.state.player.armor, Math.ceil(amount * 0.5));
+      this.state.player.armor -= absorbed;
+      remainingDamage -= absorbed;
+    }
+
+    this.state.player.health -= remainingDamage;
     events.damageTaken = true;
     if (this.state.player.health <= 0) {
       this.state.player.health = 0;
@@ -1321,6 +1364,301 @@ export class GameSimulation {
     return best;
   }
 
+  private tryCollectPickup(definition: PickupDef, _pickup?: unknown): boolean {
+    if (!this.canCollectPickup(definition)) {
+      return false;
+    }
+
+    this.applyPickupDefinition(definition);
+    return true;
+  }
+
+  private canCollectPickup(definition: PickupDef): boolean {
+    const grants = definition.grants;
+    if (!grants) {
+      return true;
+    }
+
+    if (grants.backpackUpgrade && !this.state.player.flags.includes("bag_of_holding")) {
+      return true;
+    }
+
+    if (grants.health) {
+      return definition.canPickupWhenFull || this.state.player.health < this.state.player.maxHealth;
+    }
+    if (grants.armor) {
+      return definition.canPickupWhenFull || this.state.player.armor < this.state.player.maxArmor;
+    }
+    if (grants.giveWeaponId && !this.state.weapon.unlocked.includes(grants.giveWeaponId)) {
+      return true;
+    }
+    if (grants.ammo) {
+      for (const [ammoType, amount] of Object.entries(grants.ammo)) {
+        const key = ammoType as keyof PlayerState["ammo"];
+        if (
+          amount &&
+          this.state.player.ammo[key] < this.state.player.ammoCapacity[key]
+        ) {
+          return true;
+        }
+      }
+    }
+    if (grants.keys) {
+      return grants.keys.some((key) => !this.state.player.keys.includes(key));
+    }
+    if (grants.inventoryItemId) {
+      const entry = this.state.player.inventory.find((item) => item.itemDefId === grants.inventoryItemId);
+      if (entry) {
+        return definition.maxCarry === undefined || entry.count < definition.maxCarry;
+      }
+      return this.state.player.inventory.length < this.state.player.inventoryCapacity;
+    }
+
+    return definition.canPickupWhenFull ?? false;
+  }
+
+  private applyPickupDefinition(definition: PickupDef): void {
+    const grants = definition.grants;
+    if (grants?.health) {
+      this.state.player.health = clamp(
+        this.state.player.health + grants.health,
+        0,
+        this.state.player.maxHealth
+      );
+    }
+    if (grants?.armor) {
+      this.state.player.armor = clamp(
+        this.state.player.armor + grants.armor,
+        0,
+        this.state.player.maxArmor
+      );
+    }
+    if (grants?.giveWeaponId) {
+      if (!this.state.weapon.unlocked.includes(grants.giveWeaponId)) {
+        this.state.weapon.unlocked.push(grants.giveWeaponId);
+      }
+    }
+    if (grants?.ammo) {
+      for (const [ammoType, amount] of Object.entries(grants.ammo)) {
+        if (!amount) {
+          continue;
+        }
+        const key = ammoType as keyof PlayerState["ammo"];
+        this.state.player.ammo[key] = clamp(
+          this.state.player.ammo[key] + amount,
+          0,
+          this.state.player.ammoCapacity[key]
+        );
+      }
+    }
+    if (grants?.keys) {
+      for (const key of grants.keys) {
+        if (!this.state.player.keys.includes(key)) {
+          this.state.player.keys.push(key);
+        }
+      }
+    }
+    if (grants?.inventoryItemId) {
+      this.addInventoryItem(grants.inventoryItemId, definition.maxCarry);
+    }
+    if (grants?.backpackUpgrade) {
+      this.applyBagOfHoldingUpgrade();
+    }
+
+    this.pushMessage(this.describePickup(definition), 1.4);
+  }
+
+  private applyBagOfHoldingUpgrade(): void {
+    if (!this.state.player.flags.includes("bag_of_holding")) {
+      this.state.player.flags.push("bag_of_holding");
+      for (const ammoType of Object.keys(this.state.player.ammoCapacity) as Array<keyof PlayerState["ammoCapacity"]>) {
+        this.state.player.ammoCapacity[ammoType] *= 2;
+      }
+      this.state.player.inventoryCapacity += 8;
+    }
+  }
+
+  private describePickup(definition: PickupDef): string {
+    switch (definition.kind) {
+      case "weapon":
+        return `Claimed ${titleCase(definition.id)}.`;
+      case "ammo":
+        return `${titleCase(definition.id)} gathered.`;
+      case "health":
+        return "Health restored.";
+      case "armor":
+        return "Armor reinforced.";
+      case "key":
+        return `${titleCase(definition.id)} recovered.`;
+      case "artifact":
+        return `${titleCase(definition.id)} stored.`;
+      case "support":
+        return "Bag of Holding secured.";
+      default:
+        return `${titleCase(definition.id)} collected.`;
+    }
+  }
+
+  private addInventoryItem(defId: string, maxCarry?: number): void {
+    const entry = this.state.player.inventory.find((item) => item.itemDefId === defId);
+    if (entry) {
+      entry.count = Math.min(maxCarry ?? Number.MAX_SAFE_INTEGER, entry.count + 1);
+      return;
+    }
+    if (this.state.player.inventory.length >= this.state.player.inventoryCapacity) {
+      return;
+    }
+    this.state.player.inventory.push({ itemDefId: defId, count: 1 });
+    this.state.player.selectedInventoryIndex = Math.max(0, this.state.player.inventory.length - 1);
+  }
+
+  private cycleInventory(direction: -1 | 1): void {
+    const inventory = this.state.player.inventory;
+    if (inventory.length === 0) {
+      this.state.player.selectedInventoryIndex = 0;
+      return;
+    }
+    this.state.player.selectedInventoryIndex =
+      (this.state.player.selectedInventoryIndex + direction + inventory.length) % inventory.length;
+    this.pushMessage(
+      `Selected ${titleCase(inventory[this.state.player.selectedInventoryIndex].itemDefId)}.`,
+      0.9
+    );
+  }
+
+  private useSelectedInventoryItem(): boolean {
+    const inventory = this.state.player.inventory;
+    if (inventory.length === 0) {
+      this.pushMessage("Inventory is empty.", 0.8);
+      return false;
+    }
+    const index = Math.max(0, Math.min(this.state.player.selectedInventoryIndex, inventory.length - 1));
+    const entry = inventory[index];
+    const definition = this.content.pickupDefs.get(entry.itemDefId);
+    if (!definition?.useAction) {
+      this.pushMessage("That item cannot be used.", 0.8);
+      return false;
+    }
+    if (!this.executeUseAction(definition.useAction)) {
+      return false;
+    }
+    entry.count -= 1;
+    if (entry.count <= 0) {
+      inventory.splice(index, 1);
+      this.state.player.selectedInventoryIndex = Math.max(0, Math.min(index, inventory.length - 1));
+    }
+    this.pushMessage(`${titleCase(definition.id)} used.`, 1.1);
+    return true;
+  }
+
+  private executeUseAction(action: PickupUseActionId): boolean {
+    switch (action) {
+      case "heal_25":
+        if (this.state.player.health >= this.state.player.maxHealth) {
+          this.pushMessage("Health is already full.", 0.8);
+          return false;
+        }
+        this.state.player.health = clamp(this.state.player.health + 25, 0, this.state.player.maxHealth);
+        return true;
+      case "restore_to_full_health":
+        if (this.state.player.health >= this.state.player.maxHealth) {
+          this.pushMessage("Health is already full.", 0.8);
+          return false;
+        }
+        this.state.player.health = this.state.player.maxHealth;
+        return true;
+      case "invulnerable_temporarily":
+        this.state.player.effects.invulnerable = INVULNERABILITY_DURATION;
+        return true;
+      case "partial_invisibility_temporarily":
+        this.state.player.effects.partialInvisibility = INVISIBILITY_DURATION;
+        return true;
+      case "flight_temporarily":
+        this.state.player.effects.flight = FLIGHT_DURATION;
+        return true;
+      case "weapon_powerup_temporarily":
+        this.state.tome.active = true;
+        this.state.tome.remaining = TOME_DURATION;
+        return true;
+      case "reveal_map":
+        this.state.player.mapRevealed = true;
+        return true;
+      case "brighten_level_temporarily":
+        this.state.player.effects.torch = TORCH_DURATION;
+        return true;
+      case "teleport_to_start": {
+        const start = this.cellCenter(this.content.level.playerStart.x, this.content.level.playerStart.y);
+        this.state.player.x = start.x;
+        this.state.player.y = start.y;
+        return true;
+      }
+      case "launch_morph_projectile":
+        this.spawnMorphProjectile();
+        return true;
+      case "place_timebomb":
+        this.placeTimebomb();
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  private spawnMorphProjectile(): void {
+    const dx = Math.cos(this.state.player.angle);
+    const dy = Math.sin(this.state.player.angle);
+    this.state.projectiles.push({
+      id: this.projectileId++,
+      source: "player",
+      ownerId: "player",
+      weaponId: "artifact:morph_ovum",
+      visualId: "morphOvumProjectile",
+      x: this.state.player.x + dx * 0.7,
+      y: this.state.player.y + dy * 0.7,
+      dx,
+      dy,
+      speed: 11,
+      radius: 0.18,
+      damage: 0,
+      ttl: 1.8,
+      homingStrength: 0,
+      splashRadius: 0,
+      splashDamageScale: 0,
+      bouncesRemaining: 0,
+      bounceSpeedMultiplier: 1,
+      seekAfterBounce: false,
+      hasBounced: false
+    });
+  }
+
+  private placeTimebomb(): void {
+    // TODO: Replace this hazard proxy with a dedicated placed-bomb entity that delays and then detonates.
+    this.state.hazards.push({
+      id: this.hazardId++,
+      source: "player",
+      ownerId: "player",
+      weaponId: "artifact:timebomb",
+      visualId: "timebombUse",
+      x: this.state.player.x + Math.cos(this.state.player.angle) * 0.4,
+      y: this.state.player.y + Math.sin(this.state.player.angle) * 0.4,
+      radius: 2.3,
+      damagePerTick: 22,
+      tickInterval: 0.45,
+      tickRemaining: 0.2,
+      ttl: 1.8
+    });
+  }
+
+  private applyMorphProjectileHit(enemy: EnemyState): void {
+    enemy.health = 0;
+    enemy.alive = false;
+    this.transitionEnemy(enemy, "dead");
+    this.state.killCount += 1;
+    this.pushMessage("The Morph Ovum warps a target out of the fight.", 1.2);
+    if (this.state.killCount >= this.state.totalKills) {
+      this.pushMessage("The catacomb falls silent.", 4);
+    }
+  }
+
   private pushMessage(text: string, ttl: number): void {
     this.state.messages.unshift({ text, ttl });
     if (this.state.messages.length > 5) {
@@ -1356,6 +1694,14 @@ function centeredSpreadOffset(index: number, count: number, angleDeg: number): n
 function angleDifference(left: number, right: number): number {
   const delta = normalizeAngle(right - left);
   return delta > Math.PI ? Math.PI * 2 - delta : delta;
+}
+
+function titleCase(value: string): string {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 interface WeaponFireResult {
