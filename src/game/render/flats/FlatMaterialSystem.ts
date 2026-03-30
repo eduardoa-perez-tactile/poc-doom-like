@@ -98,10 +98,11 @@ export class FlatMaterialSystem {
 
     const material = new StandardMaterial(`flat-${flatId.toLowerCase()}-material`, this.scene);
     material.diffuseTexture = texture;
-    material.emissiveTexture = def.emissive ? texture : null;
-    material.emissiveColor = def.emissive ? Color3.FromInts(96, 96, 96) : Color3.Black();
+    material.emissiveTexture = texture;
+    material.emissiveColor = def.emissive ? Color3.White() : Color3.FromInts(176, 176, 176);
     material.specularColor = Color3.Black();
     material.disableLighting = true;
+    material.backFaceCulling = false;
 
     const runtime: FlatRuntimeMaterial = {
       def,
