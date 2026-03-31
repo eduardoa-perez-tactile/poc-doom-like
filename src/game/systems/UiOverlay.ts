@@ -138,9 +138,12 @@ export class UiOverlay {
     this.hudWeapon.innerHTML = `
       <div><strong>Weapon</strong> ${viewModel.weaponName}</div>
       <div><strong>Status</strong> ${viewModel.message}</div>
+      <div><strong>Interact</strong> E</div>
+      <div><strong>Use Item</strong> R</div>
     `;
     this.hudInventory.innerHTML = `
       <div><strong>Inventory</strong></div>
+      <div><strong>Cycle</strong> [ / ]</div>
       <div class="hud-inventory-row">
         ${
           viewModel.inventory.length === 0

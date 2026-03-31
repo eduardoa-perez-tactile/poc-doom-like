@@ -19,10 +19,11 @@ export class PickupUseSystem {
     if (input.inventoryNextPressed) {
       context.cycleInventory(1);
     }
-    if (input.usePressed) {
-      if (!context.tryUseWorld()) {
-        context.useSelectedInventoryItem();
-      }
+    if (input.interactPressed) {
+      context.tryUseWorld();
+    }
+    if (input.useItemPressed) {
+      context.useSelectedInventoryItem();
     }
   }
 

@@ -56,9 +56,14 @@ export class RetroRenderer {
   private readonly effectSprites = new Map<number, AnimatedSpriteInstance>();
   private readonly weaponSprites = new Map<string, AnimatedSpriteInstance>();
   private wallMaterial!: StandardMaterial;
+  private doorMaterial!: StandardMaterial;
+  private lockedDoorMaterial!: StandardMaterial;
+  private doorMarkerMaterial!: StandardMaterial;
+  private lockedDoorMarkerMaterial!: StandardMaterial;
   private wallAtlas!: WallTextureAtlas;
   private flatMaterials!: FlatMaterialSystem;
   private readonly doorMeshes = new Map<string, Mesh[]>();
+  private readonly doorMarkers = new Map<string, Mesh[]>();
   private readonly teleporterMarkers = new Map<string, Mesh[]>();
   private readonly floorRegionMeshes = new Map<string, Mesh[]>();
 
@@ -157,6 +162,24 @@ export class RetroRenderer {
     this.wallMaterial.emissiveTexture = this.wallAtlas.texture;
     this.wallMaterial.specularColor = Color3.Black();
     this.wallMaterial.disableLighting = true;
+
+    this.doorMaterial = this.wallMaterial.clone("door-atlas-material");
+    this.doorMaterial.emissiveColor = Color3.FromHexString("#f2be6a");
+
+    this.lockedDoorMaterial = this.wallMaterial.clone("locked-door-atlas-material");
+    this.lockedDoorMaterial.emissiveColor = Color3.FromHexString("#d4714d");
+
+    this.doorMarkerMaterial = new StandardMaterial("door-marker-material", this.scene);
+    this.doorMarkerMaterial.diffuseColor = Color3.FromHexString("#f0c772");
+    this.doorMarkerMaterial.emissiveColor = Color3.FromHexString("#f0c772");
+    this.doorMarkerMaterial.specularColor = Color3.Black();
+    this.doorMarkerMaterial.disableLighting = true;
+
+    this.lockedDoorMarkerMaterial = new StandardMaterial("locked-door-marker-material", this.scene);
+    this.lockedDoorMarkerMaterial.diffuseColor = Color3.FromHexString("#df7f5c");
+    this.lockedDoorMarkerMaterial.emissiveColor = Color3.FromHexString("#df7f5c");
+    this.lockedDoorMarkerMaterial.specularColor = Color3.Black();
+    this.lockedDoorMarkerMaterial.disableLighting = true;
   }
 
   private buildStaticLevel(): void {
@@ -236,11 +259,29 @@ export class RetroRenderer {
           this.scene
         );
         mesh.position = new Vector3(cell.x * cellSize, 1.3, cell.y * cellSize);
-        mesh.material = this.wallMaterial;
+        mesh.material = door.locked ? this.lockedDoorMaterial : this.doorMaterial;
         mesh.parent = this.root;
         meshes.push(mesh);
       }
       this.doorMeshes.set(door.id, meshes);
+
+      const markers: Mesh[] = [];
+      for (const cell of door.gridCells) {
+        const marker = MeshBuilder.CreateBox(
+          `door-marker-${door.id}-${cell.x}-${cell.y}`,
+          {
+            width: cellSize * 0.42,
+            depth: cellSize * 0.18,
+            height: 0.16
+          },
+          this.scene
+        );
+        marker.position = new Vector3(cell.x * cellSize, 2.18, cell.y * cellSize);
+        marker.material = door.locked ? this.lockedDoorMarkerMaterial : this.doorMarkerMaterial;
+        marker.parent = this.root;
+        markers.push(marker);
+      }
+      this.doorMarkers.set(door.id, markers);
     }
 
     for (const teleporter of this.content.level.script?.teleporters ?? []) {
@@ -487,9 +528,16 @@ export class RetroRenderer {
 
   private syncDoors(state: GameSessionState): void {
     for (const [doorId, meshes] of this.doorMeshes) {
-      const isOpen = state.levelScript?.doors[doorId]?.isOpen ?? false;
+      const doorState = state.levelScript?.doors[doorId];
+      const isOpen = doorState?.isOpen ?? false;
+      const isLocked = doorState?.isLocked ?? false;
       for (const mesh of meshes) {
         mesh.setEnabled(!isOpen);
+        mesh.material = isLocked ? this.lockedDoorMaterial : this.doorMaterial;
+      }
+      for (const marker of this.doorMarkers.get(doorId) ?? []) {
+        marker.setEnabled(!isOpen);
+        marker.material = isLocked ? this.lockedDoorMarkerMaterial : this.doorMarkerMaterial;
       }
     }
   }

@@ -235,7 +235,7 @@ export class GameApp {
       case "boot":
         return `Preparing ${this.content.level.name}.`;
       case "main_menu":
-        return `Enter ${this.content.level.name}: survive the branching keep, break its seals, and reach the upper exit.`;
+        return `Enter ${this.content.level.name}: survive the branching keep, break its seals, and reach the upper exit. Interact with E, use the selected item with R.`;
       case "paused":
         return "Resume the run, restart it, or retreat to the main menu. Options stay live here.";
       default:
@@ -332,7 +332,8 @@ function createNeutralInput(): InputFrame {
     moveY: 0,
     lookDeltaX: 0,
     fireDown: false,
-    usePressed: false,
+    interactPressed: false,
+    useItemPressed: false,
     inventoryPrevPressed: false,
     inventoryNextPressed: false,
     menuPressed: false,
