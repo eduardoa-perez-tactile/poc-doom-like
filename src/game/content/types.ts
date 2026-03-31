@@ -1,6 +1,7 @@
 import type { PickupDef, PickupVisualDefinition, WorldPickupSpawn } from "./pickups";
 import type { FlatDefId } from "./flats/flatTypes";
 import type { LevelScriptDef } from "../simulation/script/LevelScriptTypes";
+import type { LevelAutomapMetadataDef } from "../simulation/map/AutomapTypes";
 
 export type WeaponAmmoType =
   | "none"
@@ -239,6 +240,7 @@ export interface LevelDefinition {
   enemies: EnemySpawn[];
   briefing: string;
   script?: LevelScriptDef;
+  map?: LevelAutomapMetadataDef;
 }
 
 export interface SpriteRectDefinition {

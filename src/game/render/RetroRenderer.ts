@@ -28,6 +28,8 @@ import type {
   HazardState,
   ProjectileState
 } from "../core/types";
+import type { AutomapRenderSnapshot } from "../simulation/map/AutomapTypes";
+import { AutomapRenderSystem } from "./AutomapRenderSystem";
 import { AnimatedSpriteInstance, SpriteLibrary } from "./SpritePipeline";
 import { FlatMaterialSystem } from "./flats/FlatMaterialSystem";
 import { PickupRenderSystem } from "./pickups/PickupRenderSystem";
@@ -48,6 +50,7 @@ export class RetroRenderer {
   readonly scene: Scene;
   private readonly camera: UniversalCamera;
   private readonly root: TransformNode;
+  private readonly automapRenderSystem: AutomapRenderSystem;
   private spriteLibrary!: SpriteLibrary;
   private readonly enemySprites = new Map<string, AnimatedSpriteInstance>();
   private pickupRenderSystem!: PickupRenderSystem;
@@ -69,7 +72,8 @@ export class RetroRenderer {
 
   constructor(
     private readonly engine: Engine | WebGPUEngine,
-    private readonly content: ContentDatabase
+    private readonly content: ContentDatabase,
+    automapCanvas: HTMLCanvasElement
   ) {
     this.scene = new Scene(engine);
     this.scene.clearColor = Color4.FromHexString(`${content.level.skyColor}ff`);
@@ -87,23 +91,27 @@ export class RetroRenderer {
     new HemisphericLight("key-light", new Vector3(0.2, 1, 0.1), this.scene).intensity = 0.6;
 
     this.root = new TransformNode("world-root", this.scene);
+    this.automapRenderSystem = new AutomapRenderSystem(automapCanvas);
   }
 
   static async create(
     engine: Engine | WebGPUEngine,
-    content: ContentDatabase
+    content: ContentDatabase,
+    automapCanvas: HTMLCanvasElement
   ): Promise<RetroRenderer> {
-    const renderer = new RetroRenderer(engine, content);
+    const renderer = new RetroRenderer(engine, content, automapCanvas);
     await renderer.initializeWallTextures();
     renderer.flatMaterials = await FlatMaterialSystem.create(renderer.scene, content.level);
     renderer.buildStaticLevel();
     await renderer.initializeSprites();
+    renderer.resize();
     renderer.setAttractCamera();
     return renderer;
   }
 
   setPixelScale(scale: number): void {
     this.engine.setHardwareScalingLevel(scale);
+    this.resize();
   }
 
   setAttractCamera(): void {
@@ -118,6 +126,11 @@ export class RetroRenderer {
 
   resize(): void {
     this.engine.resize();
+    this.automapRenderSystem.resize(
+      this.engine.getRenderWidth() / this.engine.getHardwareScalingLevel(),
+      this.engine.getRenderHeight() / this.engine.getHardwareScalingLevel(),
+      window.devicePixelRatio || 1
+    );
   }
 
   dispose(): void {
@@ -125,7 +138,7 @@ export class RetroRenderer {
     this.scene.dispose();
   }
 
-  sync(state: GameSessionState, dt: number): void {
+  sync(state: GameSessionState, automapSnapshot: AutomapRenderSnapshot | null, dt: number): void {
     this.flatMaterials.update(dt);
     this.camera.position.x = state.player.x;
     this.camera.position.z = state.player.y;
@@ -141,6 +154,11 @@ export class RetroRenderer {
     this.syncHazards(state.hazards, state.player.x, state.player.y, dt);
     this.syncEffects(state.effects, state.player.x, state.player.y, dt);
     this.syncWeapon(state, dt);
+    this.automapRenderSystem.render(automapSnapshot);
+  }
+
+  setAutomapActive(active: boolean): void {
+    this.automapRenderSystem.setActive(active);
   }
 
   private async initializeSprites(): Promise<void> {

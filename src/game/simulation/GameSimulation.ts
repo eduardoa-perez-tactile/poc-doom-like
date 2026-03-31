@@ -25,11 +25,19 @@ import type {
   ProjectileState
 } from "../core/types";
 import type { InputFrame } from "../systems/InputSystem";
+import { AutomapBuilder } from "./map/AutomapBuilder";
+import { AutomapDiscoverySystem } from "./map/AutomapDiscoverySystem";
+import { AutomapStateSystem } from "./map/AutomapStateSystem";
 import { PickupSystem } from "./pickups/PickupSystem";
 import { PickupUseSystem } from "./pickups/PickupUseSystem";
 import { createInitialLevelScriptRuntime } from "./script/LevelScriptRuntime";
 import { LevelScriptSystem, type LevelScriptCallbacks } from "./script/LevelScriptSystem";
 import type { LevelScriptRuntimeState, ScriptFrameEvents, Vec2 } from "./script/LevelScriptTypes";
+import type {
+  AutomapPickupState,
+  AutomapRenderSnapshot,
+  LevelMapBuildResult
+} from "./map/AutomapTypes";
 
 const ALERT_TIME = 0.12;
 const ATTACK_RESOLVE_TIME = 0.1;
@@ -43,9 +51,14 @@ const PLAYER_PROJECTILE_OFFSET = 0.58;
 
 export class GameSimulation {
   private readonly initialState: GameSessionState;
+  private readonly automapBuild: LevelMapBuildResult;
+  private readonly automapStateSystem = new AutomapStateSystem();
+  private readonly automapDiscoverySystem = new AutomapDiscoverySystem();
   private readonly pickupSystem = new PickupSystem();
   private readonly pickupUseSystem = new PickupUseSystem();
   private readonly scriptSystem: LevelScriptSystem | null;
+  private readonly automapPickupStates: Record<string, AutomapPickupState> = {};
+  private readonly automapRenderSnapshot: AutomapRenderSnapshot;
   private projectileId = 1;
   private hazardId = 1;
   private effectId = 1;
@@ -55,7 +68,21 @@ export class GameSimulation {
   state: GameSessionState;
 
   constructor(private readonly content: ContentDatabase) {
+    this.automapBuild = new AutomapBuilder().build(content);
     this.scriptSystem = content.level.script ? new LevelScriptSystem(content.level.script) : null;
+    this.automapRenderSnapshot = {
+      definition: this.automapBuild.definition,
+      runtime: this.automapStateSystem.createInitialState(),
+      playerX: 0,
+      playerY: 0,
+      playerAngle: 0,
+      doors: {},
+      teleporters: {},
+      secrets: {},
+      switches: {},
+      flags: {},
+      pickups: this.automapPickupStates
+    };
     this.initialState = this.buildInitialState();
     this.state = structuredClone(this.initialState);
   }
@@ -67,10 +94,16 @@ export class GameSimulation {
     this.spawnedEnemyId = 1;
     this.spawnedPickupId = 1;
     this.currentScriptEvents = null;
+    for (const key of Object.keys(this.automapPickupStates)) {
+      delete this.automapPickupStates[key];
+    }
     this.state = structuredClone(this.initialState);
   }
 
   applySavedState(state: GameSessionState): void {
+    for (const key of Object.keys(this.automapPickupStates)) {
+      delete this.automapPickupStates[key];
+    }
     this.state = structuredClone(state);
   }
 
@@ -92,6 +125,7 @@ export class GameSimulation {
     this.updateWeaponView(dt);
     this.updateTome(dt);
     this.updatePlayerEffects(dt);
+    this.automapStateSystem.update(this.state.automap, input, dt);
 
     if (!input.fireDown) {
       this.state.weapon.sustainTargetId = null;
@@ -123,11 +157,16 @@ export class GameSimulation {
     });
 
     this.state.elapsedTime += dt;
+    const movementLockedByAutomap = this.state.automap.isOpen && !this.state.automap.followPlayer;
     this.state.player.angle = normalizeAngle(
-      this.state.player.angle - input.lookDeltaX * 0.0022 * 60 * dt
+      this.state.player.angle - (movementLockedByAutomap ? 0 : input.lookDeltaX) * 0.0022 * 60 * dt
     );
 
-    this.updatePlayerMovement(dt, input);
+    this.updatePlayerMovement(
+      dt,
+      movementLockedByAutomap ? 0 : input.moveX,
+      movementLockedByAutomap ? 0 : input.moveY
+    );
     this.updateWeaponCooldown(dt);
 
     if (input.fireDown) {
@@ -148,6 +187,13 @@ export class GameSimulation {
       events
     );
     this.updateLevelScript(dt);
+    this.automapDiscoverySystem.update(
+      this.state.automap,
+      this.state.level,
+      this.state.player,
+      this.automapBuild.definition,
+      this.automapBuild.cache
+    );
     this.updateDeadEnemies(dt);
 
     if (!this.state.player.alive) {
@@ -209,9 +255,9 @@ export class GameSimulation {
         torch: 0
       },
       flags: [],
-      mapRevealed: false,
       alive: true
     };
+    const automap = this.automapStateSystem.createInitialState();
 
     const enemies = levelDef.enemies.map((spawn) => this.createEnemyState(spawn));
     const pickups = levelDef.pickups.map((spawn) =>
@@ -220,9 +266,10 @@ export class GameSimulation {
     const unlocked = WEAPON_ORDER.filter((id) => this.content.weapons.has(id));
     const initialWeaponId = unlocked[0] ?? "staff";
 
-    return {
+    const initialState: GameSessionState = {
       level,
       levelScript: createInitialLevelScriptRuntime(levelDef.script),
+      automap,
       player,
       tome: {
         active: false,
@@ -250,6 +297,15 @@ export class GameSimulation {
       totalSecrets: levelDef.script?.secrets?.length ?? 0,
       levelCompleted: false
     };
+    this.automapDiscoverySystem.update(
+      initialState.automap,
+      level,
+      player,
+      this.automapBuild.definition,
+      this.automapBuild.cache
+    );
+
+    return initialState;
   }
 
   private createEnemyState(spawn: EnemySpawn): EnemyState {
@@ -357,13 +413,13 @@ export class GameSimulation {
     );
   }
 
-  private updatePlayerMovement(dt: number, input: InputFrame): void {
+  private updatePlayerMovement(dt: number, moveX: number, moveY: number): void {
     const forwardX = Math.cos(this.state.player.angle);
     const forwardY = Math.sin(this.state.player.angle);
     const rightX = forwardY;
     const rightY = -forwardX;
-    const rawX = forwardX * input.moveY + rightX * input.moveX;
-    const rawY = forwardY * input.moveY + rightY * input.moveX;
+    const rawX = forwardX * moveY + rightX * moveX;
+    const rawY = forwardY * moveY + rightY * moveX;
     const length = length2(rawX, rawY);
 
     if (length < 0.0001) {
@@ -1854,7 +1910,10 @@ export class GameSimulation {
         this.state.tome.remaining = TOME_DURATION;
         return true;
       case "reveal_map":
-        this.state.player.mapRevealed = true;
+        if (!this.automapStateSystem.revealFullMap(this.state.automap)) {
+          this.pushMessage("The map is already revealed.", 0.8);
+          return false;
+        }
         return true;
       case "brighten_level_temporarily":
         this.state.player.effects.torch = TORCH_DURATION;
@@ -1939,6 +1998,27 @@ export class GameSimulation {
 
   getLevelScriptDebugState(): LevelScriptRuntimeState | null {
     return this.scriptSystem?.getDebugSnapshot(this.state) ?? null;
+  }
+
+  getAutomapRenderSnapshot(): AutomapRenderSnapshot {
+    this.automapRenderSnapshot.runtime = this.state.automap;
+    this.automapRenderSnapshot.playerX = this.state.player.x;
+    this.automapRenderSnapshot.playerY = this.state.player.y;
+    this.automapRenderSnapshot.playerAngle = this.state.player.angle;
+    this.automapRenderSnapshot.doors = this.state.levelScript?.doors ?? {};
+    this.automapRenderSnapshot.teleporters = this.state.levelScript?.teleporters ?? {};
+    this.automapRenderSnapshot.secrets = this.state.levelScript?.secrets ?? {};
+    this.automapRenderSnapshot.switches = this.state.levelScript?.switches ?? {};
+    this.automapRenderSnapshot.flags = this.state.levelScript?.flags ?? {};
+
+    for (const pickup of this.state.pickups) {
+      this.automapPickupStates[pickup.entityId] = {
+        defId: pickup.defId,
+        picked: pickup.picked
+      };
+    }
+
+    return this.automapRenderSnapshot;
   }
 
   private updateLevelScript(dt: number): void {

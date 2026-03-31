@@ -16,6 +16,7 @@ const DEATH_TO_MENU_DELAY = 0.75;
 export class GameApp {
   private readonly shell: HTMLDivElement;
   private readonly canvas: HTMLCanvasElement;
+  private readonly automapCanvas: HTMLCanvasElement;
   private readonly settingsStore = new SettingsStore();
   private readonly audio = new AudioSystem();
   private readonly content = createContentDb(resolveRequestedLevelId());
@@ -35,7 +36,10 @@ export class GameApp {
     this.shell.className = "game-shell";
     this.canvas = document.createElement("canvas");
     this.canvas.className = "game-canvas";
+    this.automapCanvas = document.createElement("canvas");
+    this.automapCanvas.className = "automap-canvas";
     this.shell.appendChild(this.canvas);
+    this.shell.appendChild(this.automapCanvas);
     parent.appendChild(this.shell);
 
     this.input = new InputSystem(this.canvas);
@@ -59,8 +63,9 @@ export class GameApp {
   async start(): Promise<void> {
     const bootstrap = await createBabylonEngine(this.canvas);
     this.backend = bootstrap.backend;
-    this.renderer = await RetroRenderer.create(bootstrap.engine, this.content);
+    this.renderer = await RetroRenderer.create(bootstrap.engine, this.content, this.automapCanvas);
     this.renderer.setPixelScale(this.settings.pixelScale);
+    this.renderer.setAutomapActive(false);
     this.audio.setMasterVolume(this.settings.masterVolume);
     this.ui.setPickupSheetUrl(await createPickupHudSheetDataUrl());
     this.setMode("main_menu");
@@ -110,9 +115,9 @@ export class GameApp {
     }
 
     const canControl = this.input.isPointerLocked();
-    const simInput = canControl ? input : createNeutralInput();
+    const simInput = canControl ? input : createNeutralInput(input);
     const events = this.session.update(dt, simInput);
-    this.renderer.sync(this.session.state, dt);
+    this.renderer.sync(this.session.state, this.session.getAutomapRenderSnapshot(), dt);
     this.ui.updateHud(
       this.createHudViewModel(
         canControl ? undefined : "Click the viewport to capture the mouse."
@@ -148,7 +153,7 @@ export class GameApp {
 
   private updateDeathTransition(dt: number): void {
     if (this.session && this.renderer) {
-      this.renderer.sync(this.session.state, dt);
+      this.renderer.sync(this.session.state, this.session.getAutomapRenderSnapshot(), dt);
       this.ui.updateHud(this.createHudViewModel("You have fallen."));
     }
 
@@ -169,7 +174,7 @@ export class GameApp {
     this.bindDebugHelpers();
     this.deathTimer = 0;
     if (this.renderer) {
-      this.renderer.sync(this.session.state, 1 / 60);
+      this.renderer.sync(this.session.state, this.session.getAutomapRenderSnapshot(), 1 / 60);
     }
     this.setMode("starting_run");
     await this.audio.unlock();
@@ -181,7 +186,7 @@ export class GameApp {
     this.bindDebugHelpers();
     this.deathTimer = 0;
     if (this.renderer) {
-      this.renderer.sync(this.session.state, 1 / 60);
+      this.renderer.sync(this.session.state, this.session.getAutomapRenderSnapshot(), 1 / 60);
     }
     await this.audio.unlock();
     this.setMode("in_game");
@@ -221,6 +226,7 @@ export class GameApp {
 
   private setMode(mode: AppMode): void {
     this.appMode = mode;
+    this.renderer?.setAutomapActive(mode === "in_game");
     this.ui.applySettings(this.settings);
     this.ui.renderMenu(mode, this.menuMessageForMode(mode));
     if (mode === "main_menu") {
@@ -280,6 +286,7 @@ export class GameApp {
         };
       }),
       selectedInventoryIndex: state.player.selectedInventoryIndex,
+      automapOpen: state.automap.isOpen,
       backend: this.backend
     };
   }
@@ -296,6 +303,7 @@ export class GameApp {
       keys: [],
       inventory: [],
       selectedInventoryIndex: 0,
+      automapOpen: false,
       backend: this.backend
     };
   }
@@ -326,7 +334,7 @@ function resolveRequestedLevelId(): string {
   return new URLSearchParams(window.location.search).get("level") ?? DEFAULT_LEVEL_ID;
 }
 
-function createNeutralInput(): InputFrame {
+function createNeutralInput(source?: InputFrame): InputFrame {
   return {
     moveX: 0,
     moveY: 0,
@@ -336,7 +344,15 @@ function createNeutralInput(): InputFrame {
     useItemPressed: false,
     inventoryPrevPressed: false,
     inventoryNextPressed: false,
-    menuPressed: false,
-    toggleTome: false
+    menuPressed: source?.menuPressed ?? false,
+    toggleTome: false,
+    toggleAutomap: source?.toggleAutomap ?? false,
+    toggleAutomapFollow: source?.toggleAutomapFollow ?? false,
+    toggleAutomapRotate: source?.toggleAutomapRotate ?? false,
+    automapZoomIn: source?.automapZoomIn ?? false,
+    automapZoomOut: source?.automapZoomOut ?? false,
+    automapPanX: source?.automapPanX ?? 0,
+    automapPanY: source?.automapPanY ?? 0,
+    weaponSlot: undefined
   };
 }

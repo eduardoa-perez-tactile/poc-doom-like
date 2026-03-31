@@ -293,6 +293,22 @@
     }
   ],
   "briefing": "Break the lower seals, claim the yellow key, climb into the upper arena, and finish the keep before the exit seal gives way.",
+  "map": {
+    "doorKinds": {
+      "secret_west_door": "secret",
+      "exit_seal_gate": "exit"
+    },
+    "markers": [
+      {
+        "id": "hidden_secret_cache_reward",
+        "kind": "pickup",
+        "cell": { "x": 4, "y": 21 },
+        "pickupDefId": "MYSTIC_URN",
+        "visibleWhen": "discovered",
+        "hideOnMapAlways": true
+      }
+    ]
+  },
   "script": {
     "id": "dspairils_keep_flow",
     "flags": {
