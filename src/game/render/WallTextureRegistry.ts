@@ -11,6 +11,7 @@ export enum WallTextureType {
   Metal = "Metal",
   Decorative = "Decorative",
   Door = "Door",
+  Portal = "Portal",
   Lava = "Lava",
   Water = "Water",
   Moss = "Moss",
@@ -83,7 +84,8 @@ export const WallTextureRegistry: Record<WallTextureType, number[]> = {
   [WallTextureType.Wood]: [7, 8, 9, 10, 17],
   [WallTextureType.Metal]: [11, 12],
   [WallTextureType.Decorative]: [13, 14, 15, 16, 28],
-  [WallTextureType.Door]: [17, 18],
+  [WallTextureType.Door]: [18],
+  [WallTextureType.Portal]: [31],
   [WallTextureType.Lava]: [19, 20],
   [WallTextureType.Water]: [21, 22, 23],
   [WallTextureType.Moss]: [24, 25, 26],
@@ -110,6 +112,8 @@ export function wallTextureTypeFromName(name: WallTextureTypeName | undefined): 
       return WallTextureType.Decorative;
     case "Door":
       return WallTextureType.Door;
+    case "Portal":
+      return WallTextureType.Portal;
     case "Lava":
       return WallTextureType.Lava;
     case "Water":

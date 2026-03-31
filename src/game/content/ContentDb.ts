@@ -3,9 +3,10 @@ import enemyAttackProfileDefs from "./data/enemyAttackProfiles.json";
 import enemyDeathProfileDefs from "./data/enemyDeathProfiles.json";
 import enemyVisualProfileDefs from "./data/enemyVisualProfiles.json";
 import effectDefs from "./data/effects.json";
-import levelDef from "./data/level-open-arena.json";
+import levelDef from "./data/level-dspairil-keep.json";
 import projectileDefs from "./data/projectiles.json";
 import { getFlatDef, getLevelCeilingFlat, getLevelFloorFlat } from "./flats";
+import { validateLevelScript } from "./LevelScriptValidation";
 import { pickupDefs, pickupVisuals } from "./pickups";
 import { spriteManifest } from "./spriteManifest";
 import weaponDefs from "./data/weapons.json";
@@ -53,13 +54,21 @@ export function createContentDb(): ContentDatabase {
     return definition;
   });
 
+  const pickupMap = new Map(pickupDefs.map((definition) => [definition.id, definition] as const));
+  const enemyMap = new Map(
+    (enemyDefs as EnemyDefinition[]).map((definition) => [definition.id, definition] as const)
+  );
+  validateLevelScript(level, {
+    level,
+    pickups: pickupMap,
+    enemies: enemyMap
+  });
+
   return {
     weapons: new Map(
       sortedWeapons.map((definition) => [definition.id, definition])
     ),
-    enemies: new Map(
-      (enemyDefs as EnemyDefinition[]).map((definition) => [definition.id, definition])
-    ),
+    enemies: enemyMap,
     enemyAttackProfiles: new Map(
       (enemyAttackProfileDefs as EnemyAttackProfileDefinition[]).map((definition) => [definition.id, definition])
     ),
@@ -75,7 +84,7 @@ export function createContentDb(): ContentDatabase {
     effects: new Map(
       (effectDefs as EffectDefinition[]).map((definition) => [definition.id, definition])
     ),
-    pickupDefs: new Map(pickupDefs.map((definition) => [definition.id, definition] as const)),
+    pickupDefs: pickupMap,
     pickupVisuals: new Map(pickupVisuals.map((definition) => [definition.id, definition] as const)),
     level,
     visuals: spriteManifest

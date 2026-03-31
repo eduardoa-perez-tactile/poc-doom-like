@@ -1,4 +1,5 @@
 import {
+  Mesh,
   Color3,
   Color4,
   Engine,
@@ -56,6 +57,8 @@ export class RetroRenderer {
   private wallMaterial!: StandardMaterial;
   private wallAtlas!: WallTextureAtlas;
   private flatMaterials!: FlatMaterialSystem;
+  private readonly doorMeshes = new Map<string, Mesh[]>();
+  private readonly teleporterMarkers = new Map<string, Mesh[]>();
 
   constructor(
     private readonly engine: Engine | WebGPUEngine,
@@ -123,6 +126,8 @@ export class RetroRenderer {
     this.camera.rotation.y = Math.PI / 2 - state.player.angle;
 
     this.syncEnemies(state.enemies, state.player.x, state.player.y, dt);
+    this.syncDoors(state);
+    this.syncTeleporters(state);
     this.pickupRenderSystem.sync(state.pickups, state.player.x, state.player.y);
     this.syncProjectiles(state.projectiles, state.player.x, state.player.y, dt);
     this.syncHazards(state.hazards, state.player.x, state.player.y, dt);
@@ -156,6 +161,13 @@ export class RetroRenderer {
     const width = grid[0]?.length ?? 0;
     const height = grid.length;
     const chosenWallTiles = new Map<string, number>();
+    const doorCellToId = new Map<string, string>();
+
+    for (const door of this.content.level.script?.doors ?? []) {
+      for (const cell of door.gridCells) {
+        doorCellToId.set(`${cell.x},${cell.y}`, door.id);
+      }
+    }
 
     const ground = MeshBuilder.CreateGround(
       "ground",
@@ -184,6 +196,9 @@ export class RetroRenderer {
         if (!isWallCell(grid[y][x])) {
           continue;
         }
+        if (doorCellToId.has(`${x},${y}`)) {
+          continue;
+        }
 
         const textureType = resolveWallTextureType(this.content.level, x, y);
         const tileIndex = pickTexture(textureType, x, y, [
@@ -203,6 +218,57 @@ export class RetroRenderer {
         wall.material = this.wallMaterial;
         wall.parent = this.root;
       }
+    }
+
+    for (const door of this.content.level.script?.doors ?? []) {
+      const meshes: Mesh[] = [];
+      for (const cell of door.gridCells) {
+        const textureType = resolveWallTextureType(this.content.level, cell.x, cell.y);
+        const tileIndex = pickTexture(textureType, cell.x, cell.y, []);
+        const uv = this.wallAtlas.getTileUV(tileIndex);
+        const faceUV = Array.from({ length: 6 }, () => new Vector4(uv.u0, uv.v0, uv.u1, uv.v1));
+        const mesh = MeshBuilder.CreateBox(
+          `door-${door.id}-${cell.x}-${cell.y}`,
+          { width: cellSize, depth: cellSize, height: 2.6, faceUV },
+          this.scene
+        );
+        mesh.position = new Vector3(cell.x * cellSize, 1.3, cell.y * cellSize);
+        mesh.material = this.wallMaterial;
+        mesh.parent = this.root;
+        meshes.push(mesh);
+      }
+      this.doorMeshes.set(door.id, meshes);
+    }
+
+    for (const teleporter of this.content.level.script?.teleporters ?? []) {
+      const meshes: Mesh[] = [];
+      const tileIndex = pickTexture(WallTextureType.Portal, teleporter.fromRegion.x, teleporter.fromRegion.y);
+      const uv = this.wallAtlas.getTileUV(tileIndex);
+      const faceUV = Array.from({ length: 6 }, () => new Vector4(uv.u0, uv.v0, uv.u1, uv.v1));
+
+      for (let dy = 0; dy < teleporter.fromRegion.h; dy += 1) {
+        for (let dx = 0; dx < teleporter.fromRegion.w; dx += 1) {
+          const cellX = teleporter.fromRegion.x + dx;
+          const cellY = teleporter.fromRegion.y + dy;
+          const marker = MeshBuilder.CreateBox(
+            `teleporter-${teleporter.id}-${cellX}-${cellY}`,
+            {
+              width: cellSize * 0.72,
+              depth: cellSize * 0.72,
+              height: 0.04,
+              faceUV
+            },
+            this.scene
+          );
+          marker.position = new Vector3(cellX * cellSize, 0.02, cellY * cellSize);
+          marker.material = this.wallMaterial;
+          marker.parent = this.root;
+          marker.setEnabled(false);
+          meshes.push(marker);
+        }
+      }
+
+      this.teleporterMarkers.set(teleporter.id, meshes);
     }
   }
 
@@ -388,6 +454,24 @@ export class RetroRenderer {
       );
       sprite.setAnimationState(state.weapon.viewAnimation, state.weapon.viewAnimationRevision);
       sprite.update(dt);
+    }
+  }
+
+  private syncDoors(state: GameSessionState): void {
+    for (const [doorId, meshes] of this.doorMeshes) {
+      const isOpen = state.levelScript?.doors[doorId]?.isOpen ?? false;
+      for (const mesh of meshes) {
+        mesh.setEnabled(!isOpen);
+      }
+    }
+  }
+
+  private syncTeleporters(state: GameSessionState): void {
+    for (const [teleporterId, meshes] of this.teleporterMarkers) {
+      const visible = state.levelScript?.teleporters[teleporterId]?.revealed ?? true;
+      for (const mesh of meshes) {
+        mesh.setEnabled(visible);
+      }
     }
   }
 }

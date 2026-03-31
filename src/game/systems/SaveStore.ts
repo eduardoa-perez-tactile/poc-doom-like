@@ -5,7 +5,7 @@ const SAVE_KEY = "wyrmwake-save-slot-1";
 export class SaveStore {
   save(state: GameState): void {
     const payload: SaveGameData = {
-      version: 3,
+      version: 4,
       savedAt: new Date().toISOString(),
       state
     };
@@ -20,7 +20,7 @@ export class SaveStore {
 
     try {
       const parsed = JSON.parse(raw) as SaveGameData;
-      return parsed.version === 3 ? parsed : null;
+      return parsed.version === 4 ? parsed : null;
     } catch {
       return null;
     }

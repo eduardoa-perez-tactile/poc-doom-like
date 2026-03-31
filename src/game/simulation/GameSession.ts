@@ -29,4 +29,8 @@ export class GameSession {
   applySavedState(state: GameSessionState): void {
     this.simulation.applySavedState(state);
   }
+
+  getLevelScriptDebugState() {
+    return this.simulation.getLevelScriptDebugState();
+  }
 }

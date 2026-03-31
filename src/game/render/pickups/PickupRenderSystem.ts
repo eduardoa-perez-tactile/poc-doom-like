@@ -31,6 +31,7 @@ export class PickupRenderSystem {
   }
 
   sync(pickups: PickupState[], viewerX: number, viewerY: number): void {
+    this.buildSprites(pickups);
     for (const pickup of pickups) {
       const sprite = this.sprites.get(pickup.entityId);
       if (!sprite) {

@@ -7,6 +7,7 @@ export interface PickupUseSystemContext {
   content: ContentDatabase;
   state: GameSessionState;
   cycleInventory(direction: -1 | 1): void;
+  tryUseWorld(): boolean;
   useSelectedInventoryItem(): boolean;
 }
 
@@ -19,7 +20,9 @@ export class PickupUseSystem {
       context.cycleInventory(1);
     }
     if (input.usePressed) {
-      context.useSelectedInventoryItem();
+      if (!context.tryUseWorld()) {
+        context.useSelectedInventoryItem();
+      }
     }
   }
 

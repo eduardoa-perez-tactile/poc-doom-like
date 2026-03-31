@@ -214,7 +214,7 @@ export const pickupDefs = [
     id: "GREEN_KEY",
     kind: "key",
     visualId: "greenKey",
-    grants: { keys: ["green"] },
+    grants: { keys: ["GREEN_KEY"] },
     canPickupWhenFull: true,
     pickupSoundId: "pickup_key"
   },
@@ -222,7 +222,7 @@ export const pickupDefs = [
     id: "YELLOW_KEY",
     kind: "key",
     visualId: "yellowKey",
-    grants: { keys: ["yellow"] },
+    grants: { keys: ["YELLOW_KEY"] },
     canPickupWhenFull: true,
     pickupSoundId: "pickup_key"
   },
@@ -230,7 +230,7 @@ export const pickupDefs = [
     id: "BLUE_KEY",
     kind: "key",
     visualId: "blueKey",
-    grants: { keys: ["blue"] },
+    grants: { keys: ["BLUE_KEY"] },
     canPickupWhenFull: true,
     pickupSoundId: "pickup_key"
   },
