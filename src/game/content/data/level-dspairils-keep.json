@@ -293,6 +293,11 @@
     }
   ],
   "briefing": "Break the lower seals, claim the yellow key, climb into the upper arena, and finish the keep before the exit seal gives way.",
+  "objectives": [
+    "Break the lower branch seals and recover the yellow key.",
+    "Climb through the upper arena into the inner keep.",
+    "Kill D'Spairil and reach the northern exit seal."
+  ],
   "map": {
     "doorKinds": {
       "secret_west_door": "secret",

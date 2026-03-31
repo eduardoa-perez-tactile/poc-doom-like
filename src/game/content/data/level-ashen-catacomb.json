@@ -28,24 +28,21 @@
   "pickups": [
     {
       "id": "p_ammo_1",
-      "kind": "ammo",
-      "amount": 12,
+      "defId": "WAND_CRYSTAL",
       "x": 9,
       "y": 2
     },
     {
       "id": "p_ammo_2",
-      "kind": "ammo",
-      "amount": 10,
+      "defId": "WAND_CRYSTAL",
       "x": 3,
       "y": 7
     },
     {
       "id": "p_health_1",
-      "kind": "health",
-      "amount": 25,
+      "defId": "CRYSTAL_VIAL",
       "x": 9,
-      "y": 8
+      "y": 9
     }
   ],
   "enemies": [
@@ -66,7 +63,7 @@
     {
       "id": "e_thrall_3",
       "type": "grave_thrall",
-      "x": 10,
+      "x": 9,
       "y": 7,
       "facingDeg": 180
     },
@@ -74,9 +71,60 @@
       "id": "e_thrall_4",
       "type": "grave_thrall",
       "x": 2,
-      "y": 8,
+      "y": 9,
       "facingDeg": 0
     }
   ],
-  "briefing": "Break into the catacomb, keep moving, and survive the grave thralls."
+  "briefing": "Break into the catacomb, keep moving, and purge the grave thralls before the far seal yields.",
+  "objectives": [
+    "Purge every grave thrall in the catacomb.",
+    "Push into the far exit seal once the room falls silent."
+  ],
+  "script": {
+    "id": "ashen_catacomb_flow",
+    "regions": [
+      {
+        "id": "catacomb_floor",
+        "rect": { "x": 1, "y": 1, "w": 11, "h": 9 },
+        "debugLabel": "Catacomb Floor"
+      },
+      {
+        "id": "exit_seal",
+        "rect": { "x": 9, "y": 8, "w": 2, "h": 2 },
+        "debugLabel": "Exit Seal"
+      }
+    ],
+    "triggers": [
+      {
+        "id": "catacomb_clear",
+        "kind": "all_enemies_dead_in_region",
+        "regionId": "catacomb_floor",
+        "once": true,
+        "actions": [
+          {
+            "kind": "show_message",
+            "message": "The catacomb falls silent. The far seal loosens."
+          }
+        ]
+      },
+      {
+        "id": "catacomb_exit",
+        "kind": "enter_region",
+        "regionId": "exit_seal",
+        "once": true,
+        "conditions": [
+          {
+            "kind": "all_enemies_dead_in_region",
+            "regionId": "catacomb_floor"
+          }
+        ],
+        "actions": [
+          {
+            "kind": "complete_level",
+            "message": "The catacomb is purged."
+          }
+        ]
+      }
+    ]
+  }
 }

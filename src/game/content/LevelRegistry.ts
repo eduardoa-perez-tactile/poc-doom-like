@@ -1,3 +1,5 @@
+import levelAshenCatacomb from "./data/level-ashen-catacomb.json";
+import levelDspairilKeepTest from "./data/level-dspairil-keep.json";
 import levelDspairilsKeep from "./data/level-dspairils-keep.json";
 import levelOpenArena from "./data/level-open-arena.json";
 import type { LevelDefinition } from "./types";
@@ -5,6 +7,8 @@ import type { LevelDefinition } from "./types";
 export const DEFAULT_LEVEL_ID = "level-dspairils-keep";
 
 const REGISTERED_LEVELS = [
+  levelAshenCatacomb as LevelDefinition,
+  levelDspairilKeepTest as LevelDefinition,
   levelDspairilsKeep as LevelDefinition,
   levelOpenArena as LevelDefinition
 ] as const;
