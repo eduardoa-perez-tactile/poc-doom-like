@@ -1,6 +1,7 @@
 import type { InventoryEntry, PlayerEffectTimers, WorldPickupInstance } from "../content/pickups";
 import type { SpriteAnimationStateName, WeaponAmmoType } from "../content/types";
 import type { LevelScriptRuntimeState } from "../simulation/script/LevelScriptTypes";
+import type { AutomapRuntimeState } from "../simulation/map/AutomapTypes";
 
 export type AppMode =
   | "boot"
@@ -55,7 +56,6 @@ export interface PlayerState {
   selectedInventoryIndex: number;
   effects: PlayerEffectTimers;
   flags: string[];
-  mapRevealed: boolean;
   alive: boolean;
 }
 
@@ -163,6 +163,7 @@ export interface LevelState {
 export interface GameSessionState {
   level: LevelState;
   levelScript: LevelScriptRuntimeState | null;
+  automap: AutomapRuntimeState;
   player: PlayerState;
   tome: TomeRuntimeState;
   weapon: WeaponRuntimeState;
@@ -183,7 +184,7 @@ export interface GameSessionState {
 export type GameState = GameSessionState;
 
 export interface SaveGameData {
-  version: 4;
+  version: 5;
   savedAt: string;
   state: GameSessionState;
 }
@@ -199,6 +200,7 @@ export interface HudViewModel {
   keys: string[];
   inventory: HudInventoryEntry[];
   selectedInventoryIndex: number;
+  automapOpen: boolean;
   backend: "webgpu" | "webgl";
 }
 

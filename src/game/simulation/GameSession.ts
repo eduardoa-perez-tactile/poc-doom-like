@@ -2,6 +2,7 @@ import type { ContentDatabase } from "../content/types";
 import type { GameSessionState } from "../core/types";
 import type { InputFrame } from "../systems/InputSystem";
 import { GameSimulation, type SimulationEvents } from "./GameSimulation";
+import type { AutomapRenderSnapshot } from "./map/AutomapTypes";
 
 export class GameSession {
   private readonly simulation: GameSimulation;
@@ -32,5 +33,9 @@ export class GameSession {
 
   getLevelScriptDebugState() {
     return this.simulation.getLevelScriptDebugState();
+  }
+
+  getAutomapRenderSnapshot(): AutomapRenderSnapshot {
+    return this.simulation.getAutomapRenderSnapshot();
   }
 }

@@ -124,7 +124,7 @@ export class UiOverlay {
 
   updateHud(viewModel: HudViewModel): void {
     this.hud.classList.toggle("hidden", !viewModel.visible);
-    this.crosshair.classList.toggle("hidden", !viewModel.visible);
+    this.crosshair.classList.toggle("hidden", !viewModel.visible || viewModel.automapOpen);
     this.statusBanner.classList.toggle("hidden", !viewModel.visible && viewModel.message.length === 0);
     this.statusBanner.textContent = viewModel.message;
     this.hudStats.innerHTML = `

@@ -1,4 +1,15 @@
 const MENU_KEYS = new Set(["Escape"]);
+const AUTOMAP_PREVENT_DEFAULT_KEYS = new Set([
+  "Tab",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "Equal",
+  "Minus",
+  "NumpadAdd",
+  "NumpadSubtract"
+]);
 
 export interface InputFrame {
   moveX: number;
@@ -11,6 +22,13 @@ export interface InputFrame {
   inventoryNextPressed: boolean;
   menuPressed: boolean;
   toggleTome: boolean;
+  toggleAutomap: boolean;
+  toggleAutomapFollow: boolean;
+  toggleAutomapRotate: boolean;
+  automapZoomIn: boolean;
+  automapZoomOut: boolean;
+  automapPanX: number;
+  automapPanY: number;
   weaponSlot?: number;
 }
 
@@ -23,6 +41,11 @@ export class InputSystem {
   private frameInventoryNextPressed = false;
   private frameMenuPressed = false;
   private frameToggleTome = false;
+  private frameToggleAutomap = false;
+  private frameToggleAutomapFollow = false;
+  private frameToggleAutomapRotate = false;
+  private frameAutomapZoomIn = false;
+  private frameAutomapZoomOut = false;
   private frameWeaponSlot?: number;
   private pointerLocked = false;
   private pointerLockLost = false;
@@ -85,6 +108,17 @@ export class InputSystem {
       inventoryNextPressed: this.frameInventoryNextPressed,
       menuPressed: this.frameMenuPressed,
       toggleTome: this.frameToggleTome,
+      toggleAutomap: this.frameToggleAutomap,
+      toggleAutomapFollow: this.frameToggleAutomapFollow,
+      toggleAutomapRotate: this.frameToggleAutomapRotate,
+      automapZoomIn: this.frameAutomapZoomIn,
+      automapZoomOut: this.frameAutomapZoomOut,
+      automapPanX:
+        ((this.heldKeys.has("KeyD") || this.heldKeys.has("ArrowRight")) ? 1 : 0) -
+        ((this.heldKeys.has("KeyA") || this.heldKeys.has("ArrowLeft")) ? 1 : 0),
+      automapPanY:
+        ((this.heldKeys.has("KeyW") || this.heldKeys.has("ArrowUp")) ? 1 : 0) -
+        ((this.heldKeys.has("KeyS") || this.heldKeys.has("ArrowDown")) ? 1 : 0),
       weaponSlot: this.frameWeaponSlot
     };
 
@@ -95,6 +129,11 @@ export class InputSystem {
     this.frameInventoryNextPressed = false;
     this.frameMenuPressed = false;
     this.frameToggleTome = false;
+    this.frameToggleAutomap = false;
+    this.frameToggleAutomapFollow = false;
+    this.frameToggleAutomapRotate = false;
+    this.frameAutomapZoomIn = false;
+    this.frameAutomapZoomOut = false;
     this.frameWeaponSlot = undefined;
 
     return frame;
@@ -103,16 +142,32 @@ export class InputSystem {
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     this.heldKeys.add(event.code);
 
+    if (AUTOMAP_PREVENT_DEFAULT_KEYS.has(event.code)) {
+      event.preventDefault();
+    }
+
     if (event.code === "KeyE") {
       this.frameInteractPressed = true;
     } else if (event.code === "KeyR") {
-      this.frameUseItemPressed = true;
+      if (event.shiftKey) {
+        this.frameToggleAutomapRotate = true;
+      } else {
+        this.frameUseItemPressed = true;
+      }
     } else if (event.code === "BracketLeft") {
       this.frameInventoryPrevPressed = true;
     } else if (event.code === "BracketRight") {
       this.frameInventoryNextPressed = true;
     } else if (event.code === "KeyT") {
       this.frameToggleTome = true;
+    } else if (event.code === "Tab") {
+      this.frameToggleAutomap = true;
+    } else if (event.code === "KeyF") {
+      this.frameToggleAutomapFollow = true;
+    } else if (event.code === "Equal" || event.code === "NumpadAdd") {
+      this.frameAutomapZoomIn = true;
+    } else if (event.code === "Minus" || event.code === "NumpadSubtract") {
+      this.frameAutomapZoomOut = true;
     } else if (MENU_KEYS.has(event.code)) {
       this.frameMenuPressed = true;
       event.preventDefault();
