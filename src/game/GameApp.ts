@@ -1,8 +1,9 @@
 import { createPickupHudSheetDataUrl, getPickupAtlasClip } from "./content/pickups";
 import { createContentDb } from "./content/ContentDb";
-import { DEFAULT_LEVEL_ID } from "./content/LevelRegistry";
+import { DEFAULT_LEVEL_ID, getRegisteredLevel, listRegisteredLevels } from "./content/LevelRegistry";
+import type { LevelDefinition } from "./content/types";
 import { FixedStepLoop } from "./core/FixedStepLoop";
-import { createBabylonEngine } from "./core/EngineBootstrap";
+import { createBabylonEngine, type EngineBootstrapResult } from "./core/EngineBootstrap";
 import type { AppMode, HudViewModel, SettingsState } from "./core/types";
 import { RetroRenderer } from "./render/RetroRenderer";
 import { GameSession } from "./simulation/GameSession";
@@ -19,16 +20,19 @@ export class GameApp {
   private readonly automapCanvas: HTMLCanvasElement;
   private readonly settingsStore = new SettingsStore();
   private readonly audio = new AudioSystem();
-  private readonly content = createContentDb(resolveRequestedLevelId());
+  private readonly availableLevels = listRegisteredLevels();
   private readonly settings: SettingsState;
   private readonly input: InputSystem;
   private readonly ui: UiOverlay;
+  private content = createContentDb(resolveRequestedLevelId());
   private loop: FixedStepLoop | null = null;
   private renderer: RetroRenderer | null = null;
+  private engine: EngineBootstrapResult["engine"] | null = null;
   private backend: "webgpu" | "webgl" = "webgl";
   private appMode: AppMode = "boot";
   private session: GameSession | null = null;
   private deathTimer = 0;
+  private selectedLevelId = this.content.level.id;
 
   constructor(parent: HTMLElement) {
     this.settings = this.settingsStore.load();
@@ -47,6 +51,7 @@ export class GameApp {
       onStartRun: () => {
         void this.startRun();
       },
+      onSelectLevel: (levelId) => this.selectLevel(levelId),
       onResume: () => {
         void this.resumeGame();
       },
@@ -56,12 +61,14 @@ export class GameApp {
       onMainMenu: () => this.returnToMainMenu(),
       onApplySettings: (settings) => this.applySettings(settings)
     });
+    this.ui.setLevelOptions(this.availableLevels, this.selectedLevelId);
 
     window.addEventListener("resize", this.onResize);
   }
 
   async start(): Promise<void> {
     const bootstrap = await createBabylonEngine(this.canvas);
+    this.engine = bootstrap.engine;
     this.backend = bootstrap.backend;
     this.renderer = await RetroRenderer.create(bootstrap.engine, this.content, this.automapCanvas);
     this.renderer.setPixelScale(this.settings.pixelScale);
@@ -170,13 +177,14 @@ export class GameApp {
   }
 
   private async startRun(): Promise<void> {
+    this.setMode("starting_run");
+    await this.ensureSelectedLevelLoaded();
     this.session = new GameSession(this.content);
     this.bindDebugHelpers();
     this.deathTimer = 0;
     if (this.renderer) {
       this.renderer.sync(this.session.state, this.session.getAutomapRenderSnapshot(), 1 / 60);
     }
-    this.setMode("starting_run");
     await this.audio.unlock();
     this.setMode("in_game");
   }
@@ -237,11 +245,12 @@ export class GameApp {
   }
 
   private menuMessageForMode(mode: AppMode): string {
+    const menuLevel = this.getMenuLevelDefinition();
     switch (mode) {
       case "boot":
-        return `Preparing ${this.content.level.name}.`;
+        return `Preparing ${menuLevel.name}.`;
       case "main_menu":
-        return `Enter ${this.content.level.name}: survive the branching keep, break its seals, and reach the upper exit. Interact with E, use the selected item with R.`;
+        return `${menuLevel.briefing} Interact with E, use the selected item with R.`;
       case "paused":
         return "Resume the run, restart it, or retreat to the main menu. Options stay live here.";
       default:
@@ -324,6 +333,34 @@ export class GameApp {
       getLevelScriptState: () => this.session?.getLevelScriptDebugState() ?? null
     };
   }
+
+  private selectLevel(levelId: string): void {
+    if (levelId === this.selectedLevelId) {
+      return;
+    }
+
+    this.selectedLevelId = levelId;
+    this.ui.setLevelOptions(this.availableLevels, this.selectedLevelId);
+    this.ui.renderMenu(this.appMode, this.menuMessageForMode(this.appMode));
+    syncLevelQueryParam(levelId);
+  }
+
+  private getMenuLevelDefinition(): LevelDefinition {
+    return getRegisteredLevel(this.selectedLevelId);
+  }
+
+  private async ensureSelectedLevelLoaded(): Promise<void> {
+    if (this.content.level.id === this.selectedLevelId || !this.engine) {
+      return;
+    }
+
+    this.content = createContentDb(this.selectedLevelId);
+    const nextRenderer = await RetroRenderer.create(this.engine, this.content, this.automapCanvas);
+    nextRenderer.setPixelScale(this.settings.pixelScale);
+    nextRenderer.setAutomapActive(this.appMode === "in_game");
+    this.renderer?.dispose();
+    this.renderer = nextRenderer;
+  }
 }
 
 function resolveRequestedLevelId(): string {
@@ -332,6 +369,20 @@ function resolveRequestedLevelId(): string {
   }
 
   return new URLSearchParams(window.location.search).get("level") ?? DEFAULT_LEVEL_ID;
+}
+
+function syncLevelQueryParam(levelId: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const url = new URL(window.location.href);
+  if (levelId === DEFAULT_LEVEL_ID) {
+    url.searchParams.delete("level");
+  } else {
+    url.searchParams.set("level", levelId);
+  }
+  window.history.replaceState({}, "", url);
 }
 
 function createNeutralInput(source?: InputFrame): InputFrame {
