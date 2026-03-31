@@ -19,6 +19,7 @@ export type WallTextureTypeName =
   | "Metal"
   | "Decorative"
   | "Door"
+  | "Portal"
   | "Lava"
   | "Water"
   | "Moss"

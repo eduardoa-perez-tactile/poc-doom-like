@@ -58,6 +58,7 @@ export class RetroRenderer {
   private wallAtlas!: WallTextureAtlas;
   private flatMaterials!: FlatMaterialSystem;
   private readonly doorMeshes = new Map<string, Mesh[]>();
+  private readonly teleporterMarkers = new Map<string, Mesh[]>();
 
   constructor(
     private readonly engine: Engine | WebGPUEngine,
@@ -126,6 +127,7 @@ export class RetroRenderer {
 
     this.syncEnemies(state.enemies, state.player.x, state.player.y, dt);
     this.syncDoors(state);
+    this.syncTeleporters(state);
     this.pickupRenderSystem.sync(state.pickups, state.player.x, state.player.y);
     this.syncProjectiles(state.projectiles, state.player.x, state.player.y, dt);
     this.syncHazards(state.hazards, state.player.x, state.player.y, dt);
@@ -236,6 +238,37 @@ export class RetroRenderer {
         meshes.push(mesh);
       }
       this.doorMeshes.set(door.id, meshes);
+    }
+
+    for (const teleporter of this.content.level.script?.teleporters ?? []) {
+      const meshes: Mesh[] = [];
+      const tileIndex = pickTexture(WallTextureType.Portal, teleporter.fromRegion.x, teleporter.fromRegion.y);
+      const uv = this.wallAtlas.getTileUV(tileIndex);
+      const faceUV = Array.from({ length: 6 }, () => new Vector4(uv.u0, uv.v0, uv.u1, uv.v1));
+
+      for (let dy = 0; dy < teleporter.fromRegion.h; dy += 1) {
+        for (let dx = 0; dx < teleporter.fromRegion.w; dx += 1) {
+          const cellX = teleporter.fromRegion.x + dx;
+          const cellY = teleporter.fromRegion.y + dy;
+          const marker = MeshBuilder.CreateBox(
+            `teleporter-${teleporter.id}-${cellX}-${cellY}`,
+            {
+              width: cellSize * 0.72,
+              depth: cellSize * 0.72,
+              height: 0.04,
+              faceUV
+            },
+            this.scene
+          );
+          marker.position = new Vector3(cellX * cellSize, 0.02, cellY * cellSize);
+          marker.material = this.wallMaterial;
+          marker.parent = this.root;
+          marker.setEnabled(false);
+          meshes.push(marker);
+        }
+      }
+
+      this.teleporterMarkers.set(teleporter.id, meshes);
     }
   }
 
@@ -429,6 +462,15 @@ export class RetroRenderer {
       const isOpen = state.levelScript?.doors[doorId]?.isOpen ?? false;
       for (const mesh of meshes) {
         mesh.setEnabled(!isOpen);
+      }
+    }
+  }
+
+  private syncTeleporters(state: GameSessionState): void {
+    for (const [teleporterId, meshes] of this.teleporterMarkers) {
+      const visible = state.levelScript?.teleporters[teleporterId]?.revealed ?? true;
+      for (const mesh of meshes) {
+        mesh.setEnabled(visible);
       }
     }
   }

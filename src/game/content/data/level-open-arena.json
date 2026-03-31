@@ -42,7 +42,7 @@
     "#": "Stone",
     "B": "Brick",
     "M": "Metal",
-    "D": "Decorative"
+    "D": "Door"
   },
   "pickups": [
     {
