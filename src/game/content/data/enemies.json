@@ -49,5 +49,22 @@
     "attackProfileId": "nitrogolem_fireball",
     "deathProfileId": "golem_death",
     "notes": "Ranged golem variant that reuses the common body visuals."
+  },
+  {
+    "id": "dspairil",
+    "displayName": "D'Spairil",
+    "visualProfileId": "dspairil_body",
+    "health": 220,
+    "moveSpeed": 2.35,
+    "radius": 0.42,
+    "height": 1.95,
+    "aggroRange": 16,
+    "loseSightGrace": 2,
+    "preferredRange": 8,
+    "hurtTime": 0.16,
+    "enemyClass": "boss",
+    "attackProfileId": "dspairil_arcane_barrage",
+    "deathProfileId": "golem_death",
+    "notes": "Late-map boss definition for D'Spairil using the current shared sprite set with a dedicated barrage profile."
   }
 ]

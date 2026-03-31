@@ -42,6 +42,7 @@ import {
 } from "./WallTextureRegistry";
 
 const PLAYER_EYE_HEIGHT = 1.2;
+const FLOOR_REGION_MESH_HEIGHT = 0.44;
 
 export class RetroRenderer {
   readonly scene: Scene;
@@ -59,6 +60,7 @@ export class RetroRenderer {
   private flatMaterials!: FlatMaterialSystem;
   private readonly doorMeshes = new Map<string, Mesh[]>();
   private readonly teleporterMarkers = new Map<string, Mesh[]>();
+  private readonly floorRegionMeshes = new Map<string, Mesh[]>();
 
   constructor(
     private readonly engine: Engine | WebGPUEngine,
@@ -128,6 +130,7 @@ export class RetroRenderer {
     this.syncEnemies(state.enemies, state.player.x, state.player.y, dt);
     this.syncDoors(state);
     this.syncTeleporters(state);
+    this.syncFloorRegions(state, dt);
     this.pickupRenderSystem.sync(state.pickups, state.player.x, state.player.y);
     this.syncProjectiles(state.projectiles, state.player.x, state.player.y, dt);
     this.syncHazards(state.hazards, state.player.x, state.player.y, dt);
@@ -269,6 +272,31 @@ export class RetroRenderer {
       }
 
       this.teleporterMarkers.set(teleporter.id, meshes);
+    }
+
+    for (const floorRegion of this.content.level.script?.floorRegions ?? []) {
+      const meshes: Mesh[] = [];
+      for (const cell of floorRegion.blockingCells ?? []) {
+        const mesh = MeshBuilder.CreateBox(
+          `floor-region-${floorRegion.id}-${cell.x}-${cell.y}`,
+          {
+            width: cellSize,
+            depth: cellSize,
+            height: FLOOR_REGION_MESH_HEIGHT
+          },
+          this.scene
+        );
+        mesh.position = new Vector3(
+          cell.x * cellSize,
+          floorRegionCenterY(floorRegion.initialHeight ?? 0),
+          cell.y * cellSize
+        );
+        mesh.material = this.flatMaterials.getFlatMaterial(getLevelFloorFlat(this.content.level));
+        mesh.parent = this.root;
+        mesh.setEnabled((floorRegion.initialHeight ?? 0) >= 0);
+        meshes.push(mesh);
+      }
+      this.floorRegionMeshes.set(floorRegion.id, meshes);
     }
   }
 
@@ -474,6 +502,17 @@ export class RetroRenderer {
       }
     }
   }
+
+  private syncFloorRegions(state: GameSessionState, dt: number): void {
+    for (const [regionId, meshes] of this.floorRegionMeshes) {
+      const targetHeight = state.levelScript?.floorRegions[regionId]?.height ?? 0;
+      const targetY = floorRegionCenterY(targetHeight);
+      for (const mesh of meshes) {
+        mesh.setEnabled(targetHeight >= 0 || mesh.position.y > -FLOOR_REGION_MESH_HEIGHT);
+        mesh.position.y += (targetY - mesh.position.y) * Math.min(1, dt * 10);
+      }
+    }
+  }
 }
 
 function enemyAnimationState(
@@ -525,4 +564,8 @@ function resolveWallTextureType(level: LevelDefinition, x: number, y: number): W
   ];
   const wallNeighborCount = neighbors.reduce((count, neighbor) => count + Number(isWallCell(neighbor)), 0);
   return wallNeighborCount >= 3 ? WallTextureType.Brick : WallTextureType.Decorative;
+}
+
+function floorRegionCenterY(height: number): number {
+  return (height * FLOOR_REGION_MESH_HEIGHT) - FLOOR_REGION_MESH_HEIGHT * 0.5;
 }
