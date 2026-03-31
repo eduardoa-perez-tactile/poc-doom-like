@@ -102,6 +102,11 @@
     }
   ],
   "briefing": "Recover the yellow key, break the switch chain, ride the hidden warp, clear the arena, and reach the exit seal.",
+  "objectives": [
+    "Recover the yellow key and open the main gate.",
+    "Trigger the switch chain to reveal the hidden warp.",
+    "Clear the arena and reach the exit seal."
+  ],
   "script": {
     "id": "keep_flow",
     "flags": {

@@ -22,6 +22,7 @@ import type {
   ProjectileState,
   ResolvedWeaponContext
 } from "../core/types";
+import type { RunLoadoutState } from "../progression/types";
 import type { InputFrame } from "../systems/InputSystem";
 import { AutomapBuilder } from "./map/AutomapBuilder";
 import { AutomapDiscoverySystem } from "./map/AutomapDiscoverySystem";
@@ -57,6 +58,7 @@ import {
   resolveWeaponContext,
   spendResolvedWeaponAmmo
 } from "./weapons/WeaponResolver";
+import type { GameSessionOptions } from "./GameSession";
 
 const ALERT_TIME = 0.12;
 const ATTACK_RESOLVE_TIME = 0.1;
@@ -81,7 +83,10 @@ export class GameSimulation {
   private currentScriptEvents: ScriptFrameEvents | null = null;
   state: GameSessionState;
 
-  constructor(private readonly content: ContentDatabase) {
+  constructor(
+    private readonly content: ContentDatabase,
+    private readonly options: GameSessionOptions = {}
+  ) {
     this.automapBuild = new AutomapBuilder().build(content);
     this.scriptSystem = content.level.script ? new LevelScriptSystem(content.level.script) : null;
     this.automapRenderSnapshot = {
@@ -124,6 +129,17 @@ export class GameSimulation {
 
   createSaveState(): GameSessionState {
     return structuredClone(this.state);
+  }
+
+  createRunLoadoutState(): RunLoadoutState {
+    return {
+      health: this.state.player.resources.health,
+      armor: this.state.player.resources.armor,
+      ammo: { ...this.state.player.resources.ammo },
+      inventory: this.state.player.resources.inventory.map((entry) => ({ ...entry })),
+      unlockedWeaponIds: [...this.state.weapon.unlocked],
+      currentWeaponId: this.state.weapon.currentId
+    };
   }
 
   update(dt: number, input: InputFrame): SimulationEvents {
@@ -237,6 +253,8 @@ export class GameSimulation {
       angle: (levelDef.playerStart.angleDeg * Math.PI) / 180,
       cellSize: level.cellSize
     });
+    player.runtimeModifiers = [...(this.options.playerModifiers ?? [])];
+    recomputePlayerDerivedState(player);
     const automap = this.automapStateSystem.createInitialState();
 
     const enemies = levelDef.enemies.map((spawn) => this.createEnemyState(spawn));
@@ -250,7 +268,25 @@ export class GameSimulation {
     if (unlocked.length === 0 && authoredWeapons[0]) {
       unlocked.push(authoredWeapons[0].id);
     }
-    const initialWeaponId = unlocked[0] ?? "staff";
+    const initialLoadout = this.options.loadout;
+    const resolvedUnlocked = initialLoadout?.unlockedWeaponIds.length
+      ? [...initialLoadout.unlockedWeaponIds]
+      : unlocked;
+    const initialWeaponId = initialLoadout?.currentWeaponId && resolvedUnlocked.includes(initialLoadout.currentWeaponId)
+      ? initialLoadout.currentWeaponId
+      : resolvedUnlocked[0] ?? "staff";
+    if (initialLoadout) {
+      player.resources.health = initialLoadout.health;
+      player.resources.armor = initialLoadout.armor;
+      player.resources.ammo = { ...initialLoadout.ammo };
+      player.resources.inventory = initialLoadout.inventory.map((entry) => ({ ...entry }));
+      player.resources.selectedInventoryIndex = Math.min(
+        player.resources.selectedInventoryIndex,
+        Math.max(0, player.resources.inventory.length - 1)
+      );
+      player.resources.keys = [];
+      recomputePlayerDerivedState(player);
+    }
 
     const initialState: GameSessionState = {
       level,
@@ -259,7 +295,7 @@ export class GameSimulation {
       player,
       weapon: {
         currentId: initialWeaponId,
-        unlocked,
+        unlocked: resolvedUnlocked,
         cooldownRemaining: 0,
         viewAnimation: "idle",
         viewAnimationTime: 0,

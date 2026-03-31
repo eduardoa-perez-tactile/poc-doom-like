@@ -23,6 +23,7 @@ export interface InputFrame {
   inventoryNextPressed: boolean;
   menuPressed: boolean;
   toggleTome: boolean;
+  toggleObjectives: boolean;
   toggleAutomap: boolean;
   toggleAutomapLabels: boolean;
   toggleAutomapFollow: boolean;
@@ -43,6 +44,7 @@ export class InputSystem {
   private frameInventoryNextPressed = false;
   private frameMenuPressed = false;
   private frameToggleTome = false;
+  private frameToggleObjectives = false;
   private frameToggleAutomap = false;
   private frameToggleAutomapLabels = false;
   private frameToggleAutomapFollow = false;
@@ -111,6 +113,7 @@ export class InputSystem {
       inventoryNextPressed: this.frameInventoryNextPressed,
       menuPressed: this.frameMenuPressed,
       toggleTome: this.frameToggleTome,
+      toggleObjectives: this.frameToggleObjectives,
       toggleAutomap: this.frameToggleAutomap,
       toggleAutomapLabels: this.frameToggleAutomapLabels,
       toggleAutomapFollow: this.frameToggleAutomapFollow,
@@ -133,6 +136,7 @@ export class InputSystem {
     this.frameInventoryNextPressed = false;
     this.frameMenuPressed = false;
     this.frameToggleTome = false;
+    this.frameToggleObjectives = false;
     this.frameToggleAutomap = false;
     this.frameToggleAutomapLabels = false;
     this.frameToggleAutomapFollow = false;
@@ -165,6 +169,8 @@ export class InputSystem {
       this.frameInventoryNextPressed = true;
     } else if (event.code === "KeyT") {
       this.frameToggleTome = true;
+    } else if (event.code === "KeyO") {
+      this.frameToggleObjectives = true;
     } else if (event.code === "Tab") {
       this.frameToggleAutomap = true;
     } else if (event.code === "KeyL") {

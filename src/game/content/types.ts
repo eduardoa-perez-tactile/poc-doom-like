@@ -118,6 +118,24 @@ export interface WeaponBehaviorDefinition {
 
 export type WeaponBehaviorDef = WeaponBehaviorDefinition;
 
+export interface WeaponBehaviorOverrides {
+  damageBonus?: number;
+  cooldownScale?: number;
+  ammoCostDelta?: number;
+  extraProjectiles?: number;
+  extraBounces?: number;
+  splashRadiusBonus?: number;
+  hazardDurationBonus?: number;
+  spreadCountBonus?: number;
+  impactBurstCountBonus?: number;
+  projectileSpeedScale?: number;
+  homingStrengthBonus?: number;
+}
+
+export interface WeaponRuntimeTuning extends WeaponBehaviorOverrides {
+  weaponId: WeaponId;
+}
+
 export interface WeaponDefinition {
   id: WeaponId;
   name: string;
@@ -167,6 +185,15 @@ export interface EnemyAttackProfileDefinition {
   spawnOffset?: number;
   requiresLineOfSight?: boolean;
   notes?: string;
+}
+
+export interface EnemyRuntimeTuning {
+  healthScale?: number;
+  moveSpeedScale?: number;
+  attackDamageScale?: number;
+  attackCooldownScale?: number;
+  projectileSpeedScale?: number;
+  aggroRangeScale?: number;
 }
 
 export interface EnemyDeathProfileDefinition {
@@ -243,8 +270,16 @@ export interface LevelDefinition {
   pickups: PickupSpawn[];
   enemies: EnemySpawn[];
   briefing: string;
+  objectives?: string[];
   script?: LevelScriptDef;
   map?: LevelAutomapMetadataDef;
+}
+
+export interface ContentRuntimeTuning {
+  weaponTunings?: WeaponRuntimeTuning[];
+  enemyTuning?: EnemyRuntimeTuning | null;
+  additionalEnemySpawns?: EnemySpawn[];
+  disabledPickupDefIds?: string[];
 }
 
 export interface SpriteRectDefinition {

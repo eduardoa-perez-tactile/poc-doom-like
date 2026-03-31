@@ -134,6 +134,11 @@
   ],
   "enemies": [],
   "briefing": "Push north through the south corridor, wake the arena, unlock the center keep, and break the final seal before escaping through the northern gate.",
+  "objectives": [
+    "Wake the arena and survive the outer wave.",
+    "Unlock the center keep and break the final seal.",
+    "Escape through the northern exit gate."
+  ],
   "map": {
     "doorKinds": {
       "exit_gate": "exit"

@@ -34,7 +34,10 @@ type NumericDerivedStat =
   | "moveSpeed"
   | "radius"
   | "inventoryCapacity"
-  | "armorAbsorbRatio";
+  | "armorAbsorbRatio"
+  | "weaponDamageScale"
+  | "weaponCooldownScale"
+  | "ammoUseScale";
 
 type BooleanDerivedStat =
   | "invulnerable"
@@ -135,6 +138,7 @@ export function createInitialPlayerState(params: {
     bobPhase: 0,
     alive: true,
     flags: [],
+    runtimeModifiers: [],
     progression: createDefaultPlayerProgression(params.cellSize),
     resources: createDefaultPlayerResources(),
     effects: createDefaultPlayerEffects(),
@@ -168,7 +172,10 @@ export function recomputePlayerDerivedState(
   player: PlayerState,
   externalModifiers: readonly StatModifier[] = []
 ): void {
-  player.derived = computeDerivedStats(player.progression, player.effects, externalModifiers);
+  player.derived = computeDerivedStats(player.progression, player.effects, [
+    ...player.runtimeModifiers,
+    ...externalModifiers
+  ]);
   clampPlayerResources(player);
 }
 
@@ -199,6 +206,9 @@ export function computeDerivedStats(
     progression.baseStats.armorAbsorbRatio,
     modifiers
   );
+  derived.weaponDamageScale = resolveNumericStat("weaponDamageScale", 1, modifiers);
+  derived.weaponCooldownScale = resolveNumericStat("weaponCooldownScale", 1, modifiers);
+  derived.ammoUseScale = resolveNumericStat("ammoUseScale", 1, modifiers);
 
   for (const ammoType of AMMO_TYPES) {
     derived.ammoCapacity[ammoType] = resolveAmmoCapacityStat(

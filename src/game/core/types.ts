@@ -12,6 +12,9 @@ export type AppMode =
   | "boot"
   | "main_menu"
   | "starting_run"
+  | "run_map"
+  | "reward_choice"
+  | "run_result"
   | "in_game"
   | "death_transition"
   | "paused";
@@ -78,6 +81,8 @@ export type StatModifierSource =
   | "powerup"
   | "weapon"
   | "level"
+  | "meta"
+  | "run"
   | "debug";
 
 export type StatModifierMode = "add" | "mul" | "set" | "max";
@@ -92,7 +97,10 @@ export type StatModifier =
         | "moveSpeed"
         | "radius"
         | "inventoryCapacity"
-        | "armorAbsorbRatio";
+        | "armorAbsorbRatio"
+        | "weaponDamageScale"
+        | "weaponCooldownScale"
+        | "ammoUseScale";
       mode: StatModifierMode;
       value: number;
     }
@@ -135,6 +143,7 @@ export interface PlayerState {
   bobPhase: number;
   alive: boolean;
   flags: string[];
+  runtimeModifiers: StatModifier[];
   progression: PlayerProgressionState;
   resources: PlayerRuntimeResources;
   effects: PlayerEffectTimers;
@@ -287,6 +296,8 @@ export interface HudViewModel {
   inventory: HudInventoryEntry[];
   selectedInventoryIndex: number;
   automapOpen: boolean;
+  objectivesVisible: boolean;
+  objectives: string[];
   backend: "webgpu" | "webgl";
 }
 
