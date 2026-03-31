@@ -20,13 +20,8 @@ export type PickupKind =
   | "key"
   | "support";
 
-export type PickupAmmoType =
-  | "wand"
-  | "crossbow"
-  | "claw"
-  | "hellstaff"
-  | "phoenix"
-  | "firemace";
+export type PickupAmmoType = AmmoType;
+export type PickupUpgradeId = "bag_of_holding";
 
 export type PickupVisualId = string;
 export type PickupDefId = string;
@@ -51,7 +46,7 @@ export interface PickupGrantSet {
   keys?: string[];
   flags?: string[];
   inventoryItemId?: string;
-  backpackUpgrade?: boolean;
+  upgradeId?: PickupUpgradeId;
 }
 
 export interface PickupDef {
@@ -97,11 +92,14 @@ export type PowerupTimerId =
   | "invulnerable"
   | "partialInvisibility"
   | "flight"
-  | "torch";
+  | "torch"
+  | "tomeOfPower";
 
 export interface PlayerEffectTimers {
   invulnerable: number;
   partialInvisibility: number;
   flight: number;
   torch: number;
+  tomeOfPower: number;
 }
+import type { AmmoType } from "../types";

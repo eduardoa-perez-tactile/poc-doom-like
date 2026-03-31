@@ -35,7 +35,7 @@ export class ConditionEvaluator {
       case "flag_clear":
         return !context.runtime.flags[condition.flag];
       case "has_key":
-        return context.state.player.keys.some(
+        return context.state.player.resources.keys.some(
           (ownedKey) => normalizeKeyId(ownedKey) === normalizeKeyId(condition.keyId)
         );
       case "secret_found":
