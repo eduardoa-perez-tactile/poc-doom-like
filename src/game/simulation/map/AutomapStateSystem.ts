@@ -1,9 +1,9 @@
 import type { InputFrame } from "../../systems/InputSystem";
 import type { AutomapRuntimeState } from "./AutomapTypes";
 
-const DEFAULT_ZOOM = 18;
-const MIN_ZOOM = 6;
-const MAX_ZOOM = 54;
+const DEFAULT_ZOOM = 9;
+const MIN_ZOOM = 3;
+const MAX_ZOOM = 27;
 const ZOOM_STEP = 1.14;
 const PAN_SPEED = 24;
 
@@ -11,6 +11,7 @@ export class AutomapStateSystem {
   createInitialState(): AutomapRuntimeState {
     return {
       isOpen: false,
+      labelsOpen: false,
       followPlayer: true,
       rotateWithPlayer: false,
       zoom: DEFAULT_ZOOM,
@@ -26,14 +27,22 @@ export class AutomapStateSystem {
     if (input.toggleAutomap) {
       runtime.isOpen = !runtime.isOpen;
       if (runtime.isOpen) {
+        runtime.labelsOpen = false;
         runtime.followPlayer = true;
         runtime.panX = 0;
         runtime.panY = 0;
+      } else {
+        runtime.labelsOpen = false;
       }
     }
 
     if (!runtime.isOpen) {
+      runtime.labelsOpen = false;
       return;
+    }
+
+    if (input.toggleAutomapLabels) {
+      runtime.labelsOpen = !runtime.labelsOpen;
     }
 
     if (input.toggleAutomapFollow) {

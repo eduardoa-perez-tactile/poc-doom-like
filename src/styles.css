@@ -59,17 +59,30 @@ body {
   left: 16px;
   right: 16px;
   bottom: 16px;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(240px, 320px);
   justify-content: space-between;
   align-items: end;
-  gap: 16px;
+  gap: 16px 20px;
   font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
-.hud .panel:last-child {
+.hud-panel-stats,
+.hud-panel-weapon {
+  grid-column: 1;
+}
+
+.hud-panel-inventory {
+  grid-column: 2;
+  grid-row: 1 / span 2;
   min-width: 240px;
+}
+
+.hud-panel-weapon {
+  justify-self: start;
+  max-width: 260px;
 }
 
 .panel {
@@ -177,6 +190,22 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 12px;
+}
+
+@media (max-width: 860px) {
+  .hud {
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+
+  .hud-panel-stats,
+  .hud-panel-weapon,
+  .hud-panel-inventory {
+    grid-column: 1;
+    grid-row: auto;
+    min-width: 0;
+    max-width: none;
+  }
 }
 
 .menu-backdrop {

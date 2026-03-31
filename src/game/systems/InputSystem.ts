@@ -1,6 +1,7 @@
 const MENU_KEYS = new Set(["Escape"]);
 const AUTOMAP_PREVENT_DEFAULT_KEYS = new Set([
   "Tab",
+  "KeyL",
   "ArrowUp",
   "ArrowDown",
   "ArrowLeft",
@@ -23,6 +24,7 @@ export interface InputFrame {
   menuPressed: boolean;
   toggleTome: boolean;
   toggleAutomap: boolean;
+  toggleAutomapLabels: boolean;
   toggleAutomapFollow: boolean;
   toggleAutomapRotate: boolean;
   automapZoomIn: boolean;
@@ -42,6 +44,7 @@ export class InputSystem {
   private frameMenuPressed = false;
   private frameToggleTome = false;
   private frameToggleAutomap = false;
+  private frameToggleAutomapLabels = false;
   private frameToggleAutomapFollow = false;
   private frameToggleAutomapRotate = false;
   private frameAutomapZoomIn = false;
@@ -109,6 +112,7 @@ export class InputSystem {
       menuPressed: this.frameMenuPressed,
       toggleTome: this.frameToggleTome,
       toggleAutomap: this.frameToggleAutomap,
+      toggleAutomapLabels: this.frameToggleAutomapLabels,
       toggleAutomapFollow: this.frameToggleAutomapFollow,
       toggleAutomapRotate: this.frameToggleAutomapRotate,
       automapZoomIn: this.frameAutomapZoomIn,
@@ -130,6 +134,7 @@ export class InputSystem {
     this.frameMenuPressed = false;
     this.frameToggleTome = false;
     this.frameToggleAutomap = false;
+    this.frameToggleAutomapLabels = false;
     this.frameToggleAutomapFollow = false;
     this.frameToggleAutomapRotate = false;
     this.frameAutomapZoomIn = false;
@@ -162,6 +167,8 @@ export class InputSystem {
       this.frameToggleTome = true;
     } else if (event.code === "Tab") {
       this.frameToggleAutomap = true;
+    } else if (event.code === "KeyL") {
+      this.frameToggleAutomapLabels = true;
     } else if (event.code === "KeyF") {
       this.frameToggleAutomapFollow = true;
     } else if (event.code === "Equal" || event.code === "NumpadAdd") {
