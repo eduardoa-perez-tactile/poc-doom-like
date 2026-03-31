@@ -80,12 +80,17 @@ export class DoorSystem {
 
     if (state.isLocked) {
       const requiredKeyId = door.requiredKeyId ? normalizeKeyId(door.requiredKeyId) : null;
-      const hasKey = requiredKeyId
-        ? context.playerKeys.some((ownedKey) => normalizeKeyId(ownedKey) === requiredKeyId)
-        : true;
+      if (!requiredKeyId) {
+        context.pushMessage("The way is sealed.", 1.2);
+        return true;
+      }
+
+      const hasKey = context.playerKeys.some(
+        (ownedKey) => normalizeKeyId(ownedKey) === requiredKeyId
+      );
       if (!hasKey) {
         context.pushMessage(
-          requiredKeyId ? `${requiredKeyId.replaceAll("_", " ")} is required.` : "The way is sealed.",
+          `${requiredKeyId.replaceAll("_", " ")} is required.`,
           1.2
         );
         return true;

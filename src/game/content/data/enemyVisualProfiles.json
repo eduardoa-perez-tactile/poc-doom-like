@@ -12,5 +12,19 @@
       "ranged": "attack_ranged"
     },
     "notes": "Shared visual profile for golem-family body sprites."
+  },
+  {
+    "id": "dspairil_body",
+    "entityId": "enemy:golem_body",
+    "idleState": "idle",
+    "moveState": "move",
+    "hurtState": "hurt",
+    "deathState": "death",
+    "defaultAttackState": "attack_ranged",
+    "attackStates": {
+      "melee": "attack_melee",
+      "ranged": "attack_ranged"
+    },
+    "notes": "Dedicated boss profile id for D'Spairil while the project still reuses golem-family sprite art."
   }
 ]

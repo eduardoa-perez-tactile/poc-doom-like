@@ -3,9 +3,9 @@ import enemyAttackProfileDefs from "./data/enemyAttackProfiles.json";
 import enemyDeathProfileDefs from "./data/enemyDeathProfiles.json";
 import enemyVisualProfileDefs from "./data/enemyVisualProfiles.json";
 import effectDefs from "./data/effects.json";
-import levelDef from "./data/level-dspairil-keep.json";
 import projectileDefs from "./data/projectiles.json";
 import { getFlatDef, getLevelCeilingFlat, getLevelFloorFlat } from "./flats";
+import { getRegisteredLevel } from "./LevelRegistry";
 import { validateLevelScript } from "./LevelScriptValidation";
 import { pickupDefs, pickupVisuals } from "./pickups";
 import { spriteManifest } from "./spriteManifest";
@@ -18,7 +18,6 @@ import type {
   EnemyDefinition,
   EnemyProjectileDefinition,
   EnemyVisualProfileDefinition,
-  LevelDefinition,
   WeaponDefinition
 } from "./types";
 
@@ -33,8 +32,8 @@ export const WEAPON_ORDER = [
   "firemace"
 ] as const;
 
-export function createContentDb(): ContentDatabase {
-  const level = levelDef as LevelDefinition;
+export function createContentDb(levelId?: string): ContentDatabase {
+  const level = getRegisteredLevel(levelId);
   getFlatDef(getLevelFloorFlat(level));
   getFlatDef(getLevelCeilingFlat(level));
 

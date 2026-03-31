@@ -1,5 +1,6 @@
 import { createPickupHudSheetDataUrl, getPickupAtlasClip } from "./content/pickups";
 import { createContentDb } from "./content/ContentDb";
+import { DEFAULT_LEVEL_ID } from "./content/LevelRegistry";
 import { FixedStepLoop } from "./core/FixedStepLoop";
 import { createBabylonEngine } from "./core/EngineBootstrap";
 import type { AppMode, HudViewModel, SettingsState } from "./core/types";
@@ -17,7 +18,7 @@ export class GameApp {
   private readonly canvas: HTMLCanvasElement;
   private readonly settingsStore = new SettingsStore();
   private readonly audio = new AudioSystem();
-  private readonly content = createContentDb();
+  private readonly content = createContentDb(resolveRequestedLevelId());
   private readonly settings: SettingsState;
   private readonly input: InputSystem;
   private readonly ui: UiOverlay;
@@ -232,9 +233,9 @@ export class GameApp {
   private menuMessageForMode(mode: AppMode): string {
     switch (mode) {
       case "boot":
-        return "Preparing the catacomb.";
+        return `Preparing ${this.content.level.name}.`;
       case "main_menu":
-        return "Enter a single-level prototype: move fast, manage ammo, and survive the grave thralls.";
+        return `Enter ${this.content.level.name}: survive the branching keep, break its seals, and reach the upper exit. Interact with E, use the selected item with R.`;
       case "paused":
         return "Resume the run, restart it, or retreat to the main menu. Options stay live here.";
       default:
@@ -317,13 +318,22 @@ export class GameApp {
   }
 }
 
+function resolveRequestedLevelId(): string {
+  if (typeof window === "undefined") {
+    return DEFAULT_LEVEL_ID;
+  }
+
+  return new URLSearchParams(window.location.search).get("level") ?? DEFAULT_LEVEL_ID;
+}
+
 function createNeutralInput(): InputFrame {
   return {
     moveX: 0,
     moveY: 0,
     lookDeltaX: 0,
     fireDown: false,
-    usePressed: false,
+    interactPressed: false,
+    useItemPressed: false,
     inventoryPrevPressed: false,
     inventoryNextPressed: false,
     menuPressed: false,

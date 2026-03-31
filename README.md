@@ -49,6 +49,9 @@ npm run preview
 - `WASD`: move
 - mouse: turn
 - left click: fire
+- `E`: interact / use doors and switches
+- `R`: use selected inventory item
+- `[` / `]`: cycle inventory
 - `1` / `2`: switch weapon
 - `Esc`: pause or release pointer lock
 

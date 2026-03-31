@@ -35,5 +35,20 @@
     "spreadDegrees": 0,
     "requiresLineOfSight": true,
     "notes": "Nitrogolem ranged attack profile using the shared enemy projectile path."
+  },
+  {
+    "id": "dspairil_arcane_barrage",
+    "type": "projectile",
+    "windupTime": 0.5,
+    "cooldownTime": 1.35,
+    "damage": 12,
+    "range": 12,
+    "projectileDefId": "nitrogolem_fire",
+    "projectileSpeed": 10.5,
+    "attackVisualKey": "ranged",
+    "fireCount": 3,
+    "spreadDegrees": 18,
+    "requiresLineOfSight": true,
+    "notes": "Boss-grade arcane spread used by D'Spairil's current in-engine stand-in."
   }
 ]

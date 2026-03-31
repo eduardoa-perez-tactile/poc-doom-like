@@ -5,7 +5,8 @@ export interface InputFrame {
   moveY: number;
   lookDeltaX: number;
   fireDown: boolean;
-  usePressed: boolean;
+  interactPressed: boolean;
+  useItemPressed: boolean;
   inventoryPrevPressed: boolean;
   inventoryNextPressed: boolean;
   menuPressed: boolean;
@@ -16,7 +17,8 @@ export interface InputFrame {
 export class InputSystem {
   private readonly heldKeys = new Set<string>();
   private lookDeltaX = 0;
-  private frameUsePressed = false;
+  private frameInteractPressed = false;
+  private frameUseItemPressed = false;
   private frameInventoryPrevPressed = false;
   private frameInventoryNextPressed = false;
   private frameMenuPressed = false;
@@ -77,7 +79,8 @@ export class InputSystem {
       moveY: (this.heldKeys.has("KeyW") ? 1 : 0) - (this.heldKeys.has("KeyS") ? 1 : 0),
       lookDeltaX: this.lookDeltaX,
       fireDown: this.fireDown,
-      usePressed: this.frameUsePressed,
+      interactPressed: this.frameInteractPressed,
+      useItemPressed: this.frameUseItemPressed,
       inventoryPrevPressed: this.frameInventoryPrevPressed,
       inventoryNextPressed: this.frameInventoryNextPressed,
       menuPressed: this.frameMenuPressed,
@@ -86,7 +89,8 @@ export class InputSystem {
     };
 
     this.lookDeltaX = 0;
-    this.frameUsePressed = false;
+    this.frameInteractPressed = false;
+    this.frameUseItemPressed = false;
     this.frameInventoryPrevPressed = false;
     this.frameInventoryNextPressed = false;
     this.frameMenuPressed = false;
@@ -100,7 +104,9 @@ export class InputSystem {
     this.heldKeys.add(event.code);
 
     if (event.code === "KeyE") {
-      this.frameUsePressed = true;
+      this.frameInteractPressed = true;
+    } else if (event.code === "KeyR") {
+      this.frameUseItemPressed = true;
     } else if (event.code === "BracketLeft") {
       this.frameInventoryPrevPressed = true;
     } else if (event.code === "BracketRight") {
