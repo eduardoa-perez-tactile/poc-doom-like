@@ -268,19 +268,19 @@ export class GameApp {
     const enemiesRemaining = state.enemies.filter((enemy) => enemy.fsmState !== "dead").length;
     const ammo =
       weapon && weapon.ammoType !== "none"
-        ? state.player.ammo[weapon.ammoType]
+        ? state.player.resources.ammo[weapon.ammoType]
         : 0;
 
     return {
       visible: this.appMode === "in_game" || this.appMode === "death_transition",
-      health: Math.ceil(state.player.health),
-      armor: Math.ceil(state.player.armor),
+      health: Math.ceil(state.player.resources.health),
+      armor: Math.ceil(state.player.resources.armor),
       ammo,
       weaponName: weapon?.name ?? state.weapon.currentId,
       enemiesRemaining,
       message: messageOverride ?? state.messages[0]?.text ?? state.level.name,
-      keys: state.player.keys,
-      inventory: state.player.inventory.map((entry) => {
+      keys: state.player.resources.keys,
+      inventory: state.player.resources.inventory.map((entry) => {
         const definition = this.content.pickupDefs.get(entry.itemDefId);
         const iconVisual =
           definition?.inventoryIconId ? this.content.pickupVisuals.get(definition.inventoryIconId) : null;
@@ -294,7 +294,7 @@ export class GameApp {
             : null
         };
       }),
-      selectedInventoryIndex: state.player.selectedInventoryIndex,
+      selectedInventoryIndex: state.player.resources.selectedInventoryIndex,
       automapOpen: state.automap.isOpen,
       backend: this.backend
     };

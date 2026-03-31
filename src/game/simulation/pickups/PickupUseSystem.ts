@@ -28,11 +28,17 @@ export class PickupUseSystem {
   }
 
   getSelectedInventoryDefId(state: GameSessionState): string | null {
-    if (state.player.inventory.length === 0) {
+    if (state.player.resources.inventory.length === 0) {
       return null;
     }
-    const index = Math.max(0, Math.min(state.player.selectedInventoryIndex, state.player.inventory.length - 1));
-    const entry = state.player.inventory[index];
+    const index = Math.max(
+      0,
+      Math.min(
+        state.player.resources.selectedInventoryIndex,
+        state.player.resources.inventory.length - 1
+      )
+    );
+    const entry = state.player.resources.inventory[index];
     return getPickupDef(entry.itemDefId).id;
   }
 }

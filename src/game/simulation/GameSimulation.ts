@@ -1,4 +1,3 @@
-import { WEAPON_ORDER } from "../content/ContentDb";
 import type { PickupDef, PickupUseActionId } from "../content/pickups";
 import type {
   ContentDatabase,
@@ -9,8 +8,7 @@ import type {
   EnemyProjectileDefinition,
   EnemySpawn,
   PickupSpawn,
-  WeaponBehaviorDefinition,
-  WeaponDefinition
+  WeaponBehaviorDefinition
 } from "../content/types";
 import { clamp, distance2, length2, normalizeAngle } from "../core/math";
 import type {
@@ -21,15 +19,31 @@ import type {
   HazardTemplateState,
   LevelState,
   PickupState,
-  PlayerState,
-  ProjectileState
+  ProjectileState,
+  ResolvedWeaponContext
 } from "../core/types";
 import type { InputFrame } from "../systems/InputSystem";
 import { AutomapBuilder } from "./map/AutomapBuilder";
 import { AutomapDiscoverySystem } from "./map/AutomapDiscoverySystem";
 import { AutomapStateSystem } from "./map/AutomapStateSystem";
+import {
+  executeArtifactUseAction
+} from "./pickups/ArtifactUseSystem";
+import {
+  applyPickupDefinition as applyPickupGrants,
+  canCollectPickup as canPickupBeCollected
+} from "./pickups/PickupApplicationSystem";
 import { PickupSystem } from "./pickups/PickupSystem";
 import { PickupUseSystem } from "./pickups/PickupUseSystem";
+import { applyDamageToPlayer } from "./player/PlayerDamageSystem";
+import {
+  PLAYER_EFFECT_DURATIONS,
+  createInitialPlayerState,
+  healPlayer,
+  recomputePlayerDerivedState,
+  tickPlayerEffects,
+  toggleTimedPlayerEffect
+} from "./player/PlayerStatSystem";
 import { createInitialLevelScriptRuntime } from "./script/LevelScriptRuntime";
 import { LevelScriptSystem, type LevelScriptCallbacks } from "./script/LevelScriptSystem";
 import type { LevelScriptRuntimeState, ScriptFrameEvents, Vec2 } from "./script/LevelScriptTypes";
@@ -38,14 +52,14 @@ import type {
   AutomapRenderSnapshot,
   LevelMapBuildResult
 } from "./map/AutomapTypes";
+import {
+  hasAmmoForResolvedWeapon,
+  resolveWeaponContext,
+  spendResolvedWeaponAmmo
+} from "./weapons/WeaponResolver";
 
 const ALERT_TIME = 0.12;
 const ATTACK_RESOLVE_TIME = 0.1;
-const TOME_DURATION = 20;
-const INVULNERABILITY_DURATION = 15;
-const INVISIBILITY_DURATION = 20;
-const FLIGHT_DURATION = 18;
-const TORCH_DURATION = 40;
 const WEAPON_ATTACK_ANIM_TIME = 0.14;
 const PLAYER_PROJECTILE_OFFSET = 0.58;
 
@@ -105,6 +119,7 @@ export class GameSimulation {
       delete this.automapPickupStates[key];
     }
     this.state = structuredClone(state);
+    recomputePlayerDerivedState(this.state.player);
   }
 
   createSaveState(): GameSessionState {
@@ -123,7 +138,6 @@ export class GameSimulation {
 
     this.updateMessages(dt);
     this.updateWeaponView(dt);
-    this.updateTome(dt);
     this.updatePlayerEffects(dt);
     this.automapStateSystem.update(this.state.automap, input, dt);
 
@@ -217,53 +231,25 @@ export class GameSimulation {
     };
 
     const playerStart = this.cellCenter(levelDef.playerStart.x, levelDef.playerStart.y);
-    const player: PlayerState = {
+    const player = createInitialPlayerState({
       x: playerStart.x,
       y: playerStart.y,
       angle: (levelDef.playerStart.angleDeg * Math.PI) / 180,
-      health: 100,
-      maxHealth: 100,
-      armor: 0,
-      maxArmor: 200,
-      radius: 0.28 * level.cellSize,
-      moveSpeed: 5.8,
-      bobPhase: 0,
-      ammo: {
-        wand: 70,
-        crossbow: 30,
-        claw: 60,
-        hellstaff: 30,
-        phoenix: 20,
-        firemace: 18
-      },
-      ammoCapacity: {
-        wand: 200,
-        crossbow: 100,
-        claw: 200,
-        hellstaff: 100,
-        phoenix: 50,
-        firemace: 50
-      },
-      keys: [],
-      inventory: [],
-      inventoryCapacity: 16,
-      selectedInventoryIndex: 0,
-      effects: {
-        invulnerable: 0,
-        partialInvisibility: 0,
-        flight: 0,
-        torch: 0
-      },
-      flags: [],
-      alive: true
-    };
+      cellSize: level.cellSize
+    });
     const automap = this.automapStateSystem.createInitialState();
 
     const enemies = levelDef.enemies.map((spawn) => this.createEnemyState(spawn));
     const pickups = levelDef.pickups.map((spawn) =>
       this.createPickupState(spawn, this.cellCenter(spawn.x, spawn.y))
     );
-    const unlocked = WEAPON_ORDER.filter((id) => this.content.weapons.has(id));
+    const authoredWeapons = Array.from(this.content.weapons.values()).sort((left, right) => left.slot - right.slot);
+    const unlocked = authoredWeapons
+      .filter((definition) => definition.startingOwned)
+      .map((definition) => definition.id);
+    if (unlocked.length === 0 && authoredWeapons[0]) {
+      unlocked.push(authoredWeapons[0].id);
+    }
     const initialWeaponId = unlocked[0] ?? "staff";
 
     const initialState: GameSessionState = {
@@ -271,10 +257,6 @@ export class GameSimulation {
       levelScript: createInitialLevelScriptRuntime(levelDef.script),
       automap,
       player,
-      tome: {
-        active: false,
-        remaining: 0
-      },
       weapon: {
         currentId: initialWeaponId,
         unlocked,
@@ -384,31 +366,22 @@ export class GameSimulation {
     }
   }
 
-  private updateTome(dt: number): void {
-    if (!this.state.tome.active) {
-      return;
-    }
-
-    this.state.tome.remaining = Math.max(0, this.state.tome.remaining - dt);
-    if (this.state.tome.remaining <= 0) {
-      this.state.tome.active = false;
+  private updatePlayerEffects(dt: number): void {
+    const tomeWasActive = this.state.player.derived.weaponPowered;
+    tickPlayerEffects(this.state.player, dt);
+    if (tomeWasActive && !this.state.player.derived.weaponPowered) {
       this.pushMessage("The Tome of Power fades.", 1.2);
     }
   }
 
-  private updatePlayerEffects(dt: number): void {
-    const effects = this.state.player.effects;
-    effects.invulnerable = Math.max(0, effects.invulnerable - dt);
-    effects.partialInvisibility = Math.max(0, effects.partialInvisibility - dt);
-    effects.flight = Math.max(0, effects.flight - dt);
-    effects.torch = Math.max(0, effects.torch - dt);
-  }
-
   private toggleTome(): void {
-    this.state.tome.active = !this.state.tome.active;
-    this.state.tome.remaining = this.state.tome.active ? TOME_DURATION : 0;
+    const active = toggleTimedPlayerEffect(
+      this.state.player,
+      "tomeOfPower",
+      PLAYER_EFFECT_DURATIONS.tomeOfPower
+    );
     this.pushMessage(
-      this.state.tome.active ? "Tome of Power ignites." : "The Tome of Power subsides.",
+      active ? "Tome of Power ignites." : "The Tome of Power subsides.",
       1.2
     );
   }
@@ -426,10 +399,10 @@ export class GameSimulation {
       return;
     }
 
-    const velocity = this.state.player.moveSpeed / length;
+    const velocity = this.state.player.derived.moveSpeed / length;
     const nextX = this.state.player.x + rawX * velocity * dt;
     const nextY = this.state.player.y + rawY * velocity * dt;
-    const radius = this.state.player.radius;
+    const radius = this.state.player.derived.radius;
     const resolved = this.resolveMotion(this.state.player.x, this.state.player.y, nextX, nextY, radius);
     this.state.player.x = resolved.x;
     this.state.player.y = resolved.y;
@@ -460,62 +433,55 @@ export class GameSimulation {
       return null;
     }
 
-    const weapon = this.requireWeaponDefinition(this.state.weapon.currentId);
-    const behavior = this.resolveWeaponBehavior(weapon);
-    const ammoCost = this.resolveAmmoCost(weapon);
-    if (!this.hasAmmoForWeapon(weapon, ammoCost)) {
+    const weaponContext = resolveWeaponContext(this.state.weapon, this.state.player, this.content);
+    if (!hasAmmoForResolvedWeapon(weaponContext, this.state.player)) {
       this.pushMessage("Out of ammo.", 0.7);
       this.trySwitchWeapon(1);
       return null;
     }
 
-    const result = this.executeWeaponBehavior(weapon, behavior);
+    const result = this.executeWeaponBehavior(weaponContext);
     if (!result.performed) {
       return null;
     }
 
-    this.state.weapon.cooldownRemaining = this.resolveWeaponCooldown(weapon);
+    this.state.weapon.cooldownRemaining = weaponContext.cooldown;
     this.state.weapon.viewAnimation = "attack";
     this.state.weapon.viewAnimationTime = 0;
     this.state.weapon.viewAnimationRevision += 1;
     this.state.weapon.sustainTargetId = result.sustainTargetId ?? null;
-    this.consumeAmmo(weapon, ammoCost);
+    spendResolvedWeaponAmmo(weaponContext, this.state.player);
     return {
-      weaponId: weapon.id,
-      powered: this.state.tome.active
+      weaponId: weaponContext.weaponId,
+      powered: weaponContext.powered
     };
   }
 
-  private executeWeaponBehavior(
-    weapon: WeaponDefinition,
-    behavior: WeaponBehaviorDefinition
-  ): WeaponFireResult {
-    switch (behavior.kind) {
+  private executeWeaponBehavior(context: ResolvedWeaponContext): WeaponFireResult {
+    switch (context.behavior.kind) {
       case "melee_strike":
-        return this.performMeleeStrike(weapon, behavior);
+        return this.performMeleeStrike(context);
       case "melee_latch":
-        return this.performMeleeLatch(weapon, behavior);
+        return this.performMeleeLatch(context);
       case "hitscan_single":
       case "hitscan_rapid":
-        return this.performHitscanAttack(weapon, behavior);
+        return this.performHitscanAttack(context);
       case "projectile_single":
       case "projectile_spread":
       case "projectile_splash":
       case "projectile_homing":
       case "projectile_bounce":
       case "impact_spawn_hazard":
-        return this.performProjectileAttack(weapon, behavior);
+        return this.performProjectileAttack(context);
       case "beam_sustain":
-        return this.performBeamSustain(weapon, behavior);
+        return this.performBeamSustain(context);
       default:
         return { performed: false };
     }
   }
 
-  private performMeleeStrike(
-    _weapon: WeaponDefinition,
-    behavior: WeaponBehaviorDefinition
-  ): WeaponFireResult {
+  private performMeleeStrike(context: ResolvedWeaponContext): WeaponFireResult {
+    const behavior = context.behavior;
     const target = this.findBestTargetInCone(
       behavior.reach ?? 1.2,
       behavior.coneAngleDeg ?? 24,
@@ -528,7 +494,7 @@ export class GameSimulation {
 
     const directionX = target.x - this.state.player.x;
     const directionY = target.y - this.state.player.y;
-    const damageDealt = this.damageEnemy(target, behavior.damage, {
+    const damageDealt = this.damageEnemy(target, this.resolveWeaponDamage(context, behavior.damage), {
       knockbackForce: behavior.knockback ?? 0,
       knockbackX: directionX,
       knockbackY: directionY
@@ -536,10 +502,8 @@ export class GameSimulation {
     return { performed: true, sustainTargetId: null, hit: damageDealt > 0 };
   }
 
-  private performMeleeLatch(
-    _weapon: WeaponDefinition,
-    behavior: WeaponBehaviorDefinition
-  ): WeaponFireResult {
+  private performMeleeLatch(context: ResolvedWeaponContext): WeaponFireResult {
+    const behavior = context.behavior;
     const target = this.findBestTargetInCone(
       behavior.reach ?? 1.4,
       behavior.coneAngleDeg ?? 28,
@@ -550,36 +514,28 @@ export class GameSimulation {
       return { performed: true, sustainTargetId: null };
     }
 
-    const damageDealt = this.damageEnemy(target, behavior.damage);
+    const damageDealt = this.damageEnemy(target, this.resolveWeaponDamage(context, behavior.damage));
     if (damageDealt > 0 && behavior.healFactor) {
-      this.state.player.health = clamp(
-        this.state.player.health + damageDealt * behavior.healFactor,
-        0,
-        this.state.player.maxHealth
-      );
+      healPlayer(this.state.player, damageDealt * behavior.healFactor);
     }
 
     return { performed: true, sustainTargetId: target.id, hit: damageDealt > 0 };
   }
 
-  private performHitscanAttack(
-    weapon: WeaponDefinition,
-    behavior: WeaponBehaviorDefinition
-  ): WeaponFireResult {
+  private performHitscanAttack(context: ResolvedWeaponContext): WeaponFireResult {
+    const behavior = context.behavior;
     const spreadCount = behavior.spread?.count ?? 1;
     const spreadAngleDeg = behavior.spread?.angleDeg ?? 0;
     for (let index = 0; index < spreadCount; index += 1) {
       const angleOffset = spreadCount === 1 ? 0 : centeredSpreadOffset(index, spreadCount, spreadAngleDeg);
-      this.spawnVisualHitscanProjectile(weapon, behavior, angleOffset);
-      this.fireHitscanRay(weapon, behavior, angleOffset);
+      this.spawnVisualHitscanProjectile(context, angleOffset);
+      this.fireHitscanRay(context, angleOffset);
     }
     return { performed: true, sustainTargetId: null };
   }
 
-  private performProjectileAttack(
-    weapon: WeaponDefinition,
-    behavior: WeaponBehaviorDefinition
-  ): WeaponFireResult {
+  private performProjectileAttack(context: ResolvedWeaponContext): WeaponFireResult {
+    const behavior = context.behavior;
     const projectile = behavior.projectile;
     if (!projectile) {
       return { performed: false };
@@ -592,16 +548,14 @@ export class GameSimulation {
 
     for (let index = 0; index < spreadCount; index += 1) {
       const angleOffset = spreadCount === 1 ? 0 : centeredSpreadOffset(index, spreadCount, spreadAngleDeg);
-      this.spawnProjectile(weapon, behavior, angleOffset);
+      this.spawnProjectile(context, angleOffset);
     }
 
     return { performed: true, sustainTargetId: null };
   }
 
-  private performBeamSustain(
-    weapon: WeaponDefinition,
-    behavior: WeaponBehaviorDefinition
-  ): WeaponFireResult {
+  private performBeamSustain(context: ResolvedWeaponContext): WeaponFireResult {
+    const behavior = context.behavior;
     const range = behavior.range ?? 4;
     const cone = behavior.coneAngleDeg ?? 30;
     let hit = false;
@@ -613,22 +567,19 @@ export class GameSimulation {
       if (!this.enemyWithinCone(enemy, range, cone, behavior.ghostInteraction)) {
         continue;
       }
-      this.damageEnemy(enemy, behavior.damage);
+      this.damageEnemy(enemy, this.resolveWeaponDamage(context, behavior.damage));
       hit = true;
     }
 
     if (behavior.impactEffect?.kind === "flame_visual" && behavior.impactEffect.projectileVisualId) {
-      this.spawnFlameVisuals(weapon.id, behavior.impactEffect.projectileVisualId);
+      this.spawnFlameVisuals(context.weaponId, behavior.impactEffect.projectileVisualId);
     }
 
     return { performed: true, sustainTargetId: null, hit };
   }
 
-  private fireHitscanRay(
-    weapon: WeaponDefinition,
-    behavior: WeaponBehaviorDefinition,
-    angleOffset: number
-  ): void {
+  private fireHitscanRay(context: ResolvedWeaponContext, angleOffset: number): void {
+    const behavior = context.behavior;
     const step = 0.18;
     const angle = normalizeAngle(this.state.player.angle + angleOffset);
     const dx = Math.cos(angle);
@@ -639,7 +590,7 @@ export class GameSimulation {
       const sampleX = this.state.player.x + dx * distance;
       const sampleY = this.state.player.y + dy * distance;
       if (this.isWallAtWorld(sampleX, sampleY)) {
-        this.applyImpactEffect(weapon, behavior, sampleX, sampleY);
+        this.applyImpactEffect(context, sampleX, sampleY);
         return;
       }
 
@@ -654,8 +605,8 @@ export class GameSimulation {
         }
 
         if (distance2(sampleX, sampleY, enemy.x, enemy.y) <= definition.radius) {
-          this.damageEnemy(enemy, behavior.damage);
-          this.applyImpactEffect(weapon, behavior, enemy.x, enemy.y);
+          this.damageEnemy(enemy, this.resolveWeaponDamage(context, behavior.damage));
+          this.applyImpactEffect(context, enemy.x, enemy.y);
           return;
         }
       }
@@ -716,11 +667,8 @@ export class GameSimulation {
     });
   }
 
-  private spawnProjectile(
-    weapon: WeaponDefinition,
-    behavior: WeaponBehaviorDefinition,
-    angleOffset: number
-  ): void {
+  private spawnProjectile(context: ResolvedWeaponContext, angleOffset: number): void {
+    const behavior = context.behavior;
     const projectile = behavior.projectile;
     if (!projectile) {
       return;
@@ -732,7 +680,7 @@ export class GameSimulation {
     this.spawnRuntimeProjectile({
       source: "player",
       ownerId: "player",
-      weaponId: weapon.id,
+      weaponId: context.weaponId,
       visualId: projectile.visualId,
       x: this.state.player.x + dx * PLAYER_PROJECTILE_OFFSET,
       y: this.state.player.y + dy * PLAYER_PROJECTILE_OFFSET,
@@ -740,7 +688,7 @@ export class GameSimulation {
       dy,
       speed: projectile.speed,
       radius: projectile.radius,
-      damage: behavior.damage,
+      damage: this.resolveWeaponDamage(context, behavior.damage),
       ttl: projectile.life,
       homingStrength: projectile.homingStrength ?? 0,
       splashRadius: behavior.splash?.radius ?? 0,
@@ -757,11 +705,8 @@ export class GameSimulation {
     });
   }
 
-  private spawnVisualHitscanProjectile(
-    weapon: WeaponDefinition,
-    behavior: WeaponBehaviorDefinition,
-    angleOffset: number
-  ): void {
+  private spawnVisualHitscanProjectile(context: ResolvedWeaponContext, angleOffset: number): void {
+    const behavior = context.behavior;
     const projectile = behavior.projectile;
     if (!projectile) {
       return;
@@ -773,7 +718,7 @@ export class GameSimulation {
     this.spawnRuntimeProjectile({
       source: "player",
       ownerId: "player",
-      weaponId: weapon.id,
+      weaponId: context.weaponId,
       visualId: projectile.visualId,
       x: this.state.player.x + dx * PLAYER_PROJECTILE_OFFSET,
       y: this.state.player.y + dy * PLAYER_PROJECTILE_OFFSET,
@@ -1117,7 +1062,7 @@ export class GameSimulation {
         if (
           this.state.player.alive &&
           distance2(projectile.x, projectile.y, this.state.player.x, this.state.player.y) <=
-            this.state.player.radius + projectile.radius
+            this.state.player.derived.radius + projectile.radius
         ) {
           if (projectile.damage > 0) {
             this.damagePlayer(projectile.damage, events);
@@ -1169,7 +1114,7 @@ export class GameSimulation {
       if (
         this.state.player.alive &&
         distance2(hazard.x, hazard.y, this.state.player.x, this.state.player.y) <=
-          hazard.radius + this.state.player.radius
+          hazard.radius + this.state.player.derived.radius
       ) {
         this.damagePlayer(hazard.damagePerTick);
       }
@@ -1415,24 +1360,11 @@ export class GameSimulation {
       return;
     }
 
-    if (this.state.player.effects.invulnerable > 0) {
-      return;
-    }
-
-    let remainingDamage = amount;
-    if (this.state.player.armor > 0) {
-      const absorbed = Math.min(this.state.player.armor, Math.ceil(amount * 0.5));
-      this.state.player.armor -= absorbed;
-      remainingDamage -= absorbed;
-    }
-
-    this.state.player.health -= remainingDamage;
-    if (events) {
+    const result = applyDamageToPlayer(this.state.player, amount);
+    if (events && result.appliedDamage > 0) {
       events.damageTaken = true;
     }
-    if (this.state.player.health <= 0) {
-      this.state.player.health = 0;
-      this.state.player.alive = false;
+    if (result.died) {
       this.pushMessage("You have fallen.", 3);
     }
   }
@@ -1542,35 +1474,6 @@ export class GameSimulation {
     };
   }
 
-  private resolveWeaponBehavior(weapon: WeaponDefinition): WeaponBehaviorDefinition {
-    return this.state.tome.active ? weapon.poweredBehavior : weapon.baseBehavior;
-  }
-
-  private resolveAmmoCost(weapon: WeaponDefinition): number {
-    return this.state.tome.active ? weapon.ammoCostPowered : weapon.ammoCostBase;
-  }
-
-  private resolveWeaponCooldown(weapon: WeaponDefinition): number {
-    return this.state.tome.active ? weapon.cooldownPowered : weapon.cooldownBase;
-  }
-
-  private hasAmmoForWeapon(weapon: WeaponDefinition, ammoCost: number): boolean {
-    if (weapon.ammoType === "none" || ammoCost <= 0) {
-      return true;
-    }
-    return this.state.player.ammo[weapon.ammoType] >= ammoCost;
-  }
-
-  private consumeAmmo(weapon: WeaponDefinition, ammoCost: number): void {
-    if (weapon.ammoType === "none" || ammoCost <= 0) {
-      return;
-    }
-    this.state.player.ammo[weapon.ammoType] = Math.max(
-      0,
-      this.state.player.ammo[weapon.ammoType] - ammoCost
-    );
-  }
-
   private findBestTargetInCone(
     reach: number,
     coneAngleDeg: number,
@@ -1640,13 +1543,15 @@ export class GameSimulation {
     return !(ghostInteraction === "ignore" && definition.isGhost);
   }
 
-  private applyImpactEffect(
-    weapon: WeaponDefinition,
-    behavior: WeaponBehaviorDefinition,
-    x: number,
-    y: number
-  ): void {
-    const effect = behavior.impactEffect;
+  private resolveWeaponDamage(context: ResolvedWeaponContext, authoredDamage: number): number {
+    if (authoredDamage <= 0) {
+      return 0;
+    }
+    return Math.max(1, Math.round(authoredDamage * context.damageScale));
+  }
+
+  private applyImpactEffect(context: ResolvedWeaponContext, x: number, y: number): void {
+    const effect = context.behavior.impactEffect;
     if (!effect) {
       return;
     }
@@ -1661,7 +1566,7 @@ export class GameSimulation {
         this.spawnRuntimeProjectile({
           source: "player",
           ownerId: "player",
-          weaponId: weapon.id,
+          weaponId: context.weaponId,
           visualId: effect.projectileVisualId,
           x,
           y,
@@ -1669,7 +1574,7 @@ export class GameSimulation {
           dy: Math.sin(angle),
           speed,
           radius,
-          damage: effect.damage,
+          damage: this.resolveWeaponDamage(context, effect.damage),
           ttl: life
         });
       }
@@ -1693,175 +1598,50 @@ export class GameSimulation {
   }
 
   private tryCollectPickup(definition: PickupDef, _pickup?: unknown): boolean {
-    if (!this.canCollectPickup(definition)) {
+    if (
+      !canPickupBeCollected(definition, {
+        player: this.state.player,
+        weapon: this.state.weapon,
+        pushMessage: (text, ttl) => this.pushMessage(text, ttl)
+      })
+    ) {
       return false;
     }
 
-    this.applyPickupDefinition(definition);
+    applyPickupGrants(definition, {
+      player: this.state.player,
+      weapon: this.state.weapon,
+      pushMessage: (text, ttl) => this.pushMessage(text, ttl)
+    });
     this.currentScriptEvents?.pickupDefIds.push(definition.id);
     return true;
   }
 
-  private canCollectPickup(definition: PickupDef): boolean {
-    const grants = definition.grants;
-    if (!grants) {
-      return true;
-    }
-
-    if (grants.backpackUpgrade && !this.state.player.flags.includes("bag_of_holding")) {
-      return true;
-    }
-
-    if (grants.health) {
-      return definition.canPickupWhenFull || this.state.player.health < this.state.player.maxHealth;
-    }
-    if (grants.armor) {
-      return definition.canPickupWhenFull || this.state.player.armor < this.state.player.maxArmor;
-    }
-    if (grants.giveWeaponId && !this.state.weapon.unlocked.includes(grants.giveWeaponId)) {
-      return true;
-    }
-    if (grants.ammo) {
-      for (const [ammoType, amount] of Object.entries(grants.ammo)) {
-        const key = ammoType as keyof PlayerState["ammo"];
-        if (
-          amount &&
-          this.state.player.ammo[key] < this.state.player.ammoCapacity[key]
-        ) {
-          return true;
-        }
-      }
-    }
-    if (grants.keys) {
-      return grants.keys.some((key) => !this.state.player.keys.includes(key));
-    }
-    if (grants.inventoryItemId) {
-      const entry = this.state.player.inventory.find((item) => item.itemDefId === grants.inventoryItemId);
-      if (entry) {
-        return definition.maxCarry === undefined || entry.count < definition.maxCarry;
-      }
-      return this.state.player.inventory.length < this.state.player.inventoryCapacity;
-    }
-
-    return definition.canPickupWhenFull ?? false;
-  }
-
-  private applyPickupDefinition(definition: PickupDef): void {
-    const grants = definition.grants;
-    if (grants?.health) {
-      this.state.player.health = clamp(
-        this.state.player.health + grants.health,
-        0,
-        this.state.player.maxHealth
-      );
-    }
-    if (grants?.armor) {
-      this.state.player.armor = clamp(
-        this.state.player.armor + grants.armor,
-        0,
-        this.state.player.maxArmor
-      );
-    }
-    if (grants?.giveWeaponId) {
-      if (!this.state.weapon.unlocked.includes(grants.giveWeaponId)) {
-        this.state.weapon.unlocked.push(grants.giveWeaponId);
-      }
-    }
-    if (grants?.ammo) {
-      for (const [ammoType, amount] of Object.entries(grants.ammo)) {
-        if (!amount) {
-          continue;
-        }
-        const key = ammoType as keyof PlayerState["ammo"];
-        this.state.player.ammo[key] = clamp(
-          this.state.player.ammo[key] + amount,
-          0,
-          this.state.player.ammoCapacity[key]
-        );
-      }
-    }
-    if (grants?.keys) {
-      for (const key of grants.keys) {
-        if (!this.state.player.keys.includes(key)) {
-          this.state.player.keys.push(key);
-        }
-      }
-    }
-    if (grants?.inventoryItemId) {
-      this.addInventoryItem(grants.inventoryItemId, definition.maxCarry);
-    }
-    if (grants?.backpackUpgrade) {
-      this.applyBagOfHoldingUpgrade();
-    }
-
-    this.pushMessage(this.describePickup(definition), 1.4);
-  }
-
-  private applyBagOfHoldingUpgrade(): void {
-    if (!this.state.player.flags.includes("bag_of_holding")) {
-      this.state.player.flags.push("bag_of_holding");
-      for (const ammoType of Object.keys(this.state.player.ammoCapacity) as Array<keyof PlayerState["ammoCapacity"]>) {
-        this.state.player.ammoCapacity[ammoType] *= 2;
-      }
-      this.state.player.inventoryCapacity += 8;
-    }
-  }
-
-  private describePickup(definition: PickupDef): string {
-    switch (definition.kind) {
-      case "weapon":
-        return `Claimed ${titleCase(definition.id)}.`;
-      case "ammo":
-        return `${titleCase(definition.id)} gathered.`;
-      case "health":
-        return "Health restored.";
-      case "armor":
-        return "Armor reinforced.";
-      case "key":
-        return `${titleCase(definition.id)} recovered.`;
-      case "artifact":
-        return `${titleCase(definition.id)} stored.`;
-      case "support":
-        return "Bag of Holding secured.";
-      default:
-        return `${titleCase(definition.id)} collected.`;
-    }
-  }
-
-  private addInventoryItem(defId: string, maxCarry?: number): void {
-    const entry = this.state.player.inventory.find((item) => item.itemDefId === defId);
-    if (entry) {
-      entry.count = Math.min(maxCarry ?? Number.MAX_SAFE_INTEGER, entry.count + 1);
-      return;
-    }
-    if (this.state.player.inventory.length >= this.state.player.inventoryCapacity) {
-      return;
-    }
-    this.state.player.inventory.push({ itemDefId: defId, count: 1 });
-    this.state.player.selectedInventoryIndex = Math.max(0, this.state.player.inventory.length - 1);
-  }
-
   private cycleInventory(direction: -1 | 1): void {
-    const inventory = this.state.player.inventory;
+    const inventory = this.state.player.resources.inventory;
     if (inventory.length === 0) {
-      this.state.player.selectedInventoryIndex = 0;
+      this.state.player.resources.selectedInventoryIndex = 0;
       return;
     }
-    this.state.player.selectedInventoryIndex =
-      (this.state.player.selectedInventoryIndex + direction + inventory.length) % inventory.length;
+    this.state.player.resources.selectedInventoryIndex =
+      (this.state.player.resources.selectedInventoryIndex + direction + inventory.length) %
+      inventory.length;
     this.pushMessage(
-      `Selected ${titleCase(inventory[this.state.player.selectedInventoryIndex].itemDefId)}.`,
+      `Selected ${titleCase(inventory[this.state.player.resources.selectedInventoryIndex].itemDefId)}.`,
       0.9
     );
   }
 
   private useSelectedInventoryItem(): boolean {
-    const inventory = this.state.player.inventory;
+    const inventory = this.state.player.resources.inventory;
     if (inventory.length === 0) {
       this.pushMessage("Inventory is empty.", 0.8);
       return false;
     }
-    const index = Math.max(0, Math.min(this.state.player.selectedInventoryIndex, inventory.length - 1));
+    const index = Math.max(
+      0,
+      Math.min(this.state.player.resources.selectedInventoryIndex, inventory.length - 1)
+    );
     const entry = inventory[index];
     const definition = this.content.pickupDefs.get(entry.itemDefId);
     if (!definition?.useAction) {
@@ -1874,62 +1654,39 @@ export class GameSimulation {
     entry.count -= 1;
     if (entry.count <= 0) {
       inventory.splice(index, 1);
-      this.state.player.selectedInventoryIndex = Math.max(0, Math.min(index, inventory.length - 1));
+      this.state.player.resources.selectedInventoryIndex = Math.max(
+        0,
+        Math.min(index, inventory.length - 1)
+      );
     }
     this.pushMessage(`${titleCase(definition.id)} used.`, 1.1);
     return true;
   }
 
   private executeUseAction(action: PickupUseActionId): boolean {
-    switch (action) {
-      case "heal_25":
-        if (this.state.player.health >= this.state.player.maxHealth) {
-          this.pushMessage("Health is already full.", 0.8);
-          return false;
-        }
-        this.state.player.health = clamp(this.state.player.health + 25, 0, this.state.player.maxHealth);
-        return true;
-      case "restore_to_full_health":
-        if (this.state.player.health >= this.state.player.maxHealth) {
-          this.pushMessage("Health is already full.", 0.8);
-          return false;
-        }
-        this.state.player.health = this.state.player.maxHealth;
-        return true;
-      case "invulnerable_temporarily":
-        this.state.player.effects.invulnerable = INVULNERABILITY_DURATION;
-        return true;
-      case "partial_invisibility_temporarily":
-        this.state.player.effects.partialInvisibility = INVISIBILITY_DURATION;
-        return true;
-      case "flight_temporarily":
-        this.state.player.effects.flight = FLIGHT_DURATION;
-        return true;
-      case "weapon_powerup_temporarily":
-        this.state.tome.active = true;
-        this.state.tome.remaining = TOME_DURATION;
-        return true;
-      case "reveal_map":
-        if (!this.automapStateSystem.revealFullMap(this.state.automap)) {
-          this.pushMessage("The map is already revealed.", 0.8);
-          return false;
-        }
-        return true;
-      case "brighten_level_temporarily":
-        this.state.player.effects.torch = TORCH_DURATION;
-        return true;
-      case "teleport_to_start": {
+    const used = executeArtifactUseAction(action, {
+      player: this.state.player,
+      revealMap: () => this.automapStateSystem.revealFullMap(this.state.automap),
+      teleportToStart: () => {
         const start = this.cellCenter(this.content.level.playerStart.x, this.content.level.playerStart.y);
         this.state.player.x = start.x;
         this.state.player.y = start.y;
-        return true;
-      }
-      case "launch_morph_projectile":
-        this.spawnMorphProjectile();
-        return true;
-      case "place_timebomb":
-        this.placeTimebomb();
-        return true;
+      },
+      spawnMorphProjectile: () => this.spawnMorphProjectile(),
+      placeTimebomb: () => this.placeTimebomb()
+    });
+    if (used) {
+      return true;
+    }
+
+    switch (action) {
+      case "heal_25":
+      case "restore_to_full_health":
+        this.pushMessage("Health is already full.", 0.8);
+        return false;
+      case "reveal_map":
+        this.pushMessage("The map is already revealed.", 0.8);
+        return false;
       default:
         return false;
     }
@@ -2179,13 +1936,6 @@ export class GameSimulation {
     return definition;
   }
 
-  private requireWeaponDefinition(id: string): WeaponDefinition {
-    const definition = this.content.weapons.get(id);
-    if (!definition) {
-      throw new Error(`Unknown weapon definition: ${id}`);
-    }
-    return definition;
-  }
 }
 
 function centeredSpreadOffset(index: number, count: number, angleDeg: number): number {

@@ -3,14 +3,15 @@ import type { FlatDefId } from "./flats/flatTypes";
 import type { LevelScriptDef } from "../simulation/script/LevelScriptTypes";
 import type { LevelAutomapMetadataDef } from "../simulation/map/AutomapTypes";
 
-export type WeaponAmmoType =
-  | "none"
+export type WeaponId = string;
+export type AmmoType =
   | "wand"
   | "crossbow"
   | "claw"
   | "hellstaff"
   | "phoenix"
   | "firemace";
+export type WeaponAmmoType = "none" | AmmoType;
 export type EnemyAttackType = "melee" | "projectile";
 export type EnemyAttackVisualKey = string;
 export type WallTextureTypeName =
@@ -115,8 +116,10 @@ export interface WeaponBehaviorDefinition {
   impactEffect?: WeaponImpactEffectDefinition;
 }
 
+export type WeaponBehaviorDef = WeaponBehaviorDefinition;
+
 export interface WeaponDefinition {
-  id: string;
+  id: WeaponId;
   name: string;
   slot: number;
   ammoType: WeaponAmmoType;
@@ -125,6 +128,7 @@ export interface WeaponDefinition {
   cooldownBase: number;
   cooldownPowered: number;
   uiColor: string;
+  startingOwned?: boolean;
   baseBehavior: WeaponBehaviorDefinition;
   poweredBehavior: WeaponBehaviorDefinition;
 }

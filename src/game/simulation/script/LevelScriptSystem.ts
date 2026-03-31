@@ -127,7 +127,7 @@ export class LevelScriptSystem {
 
     if (
       this.doorSystem.tryUseDoor(runtime, cell, {
-        playerKeys: state.player.keys,
+        playerKeys: state.player.resources.keys,
         pushMessage: (message, ttl = 1.2) => callbacks.pushMessage(message, ttl),
         debug: callbacks.debug
       })

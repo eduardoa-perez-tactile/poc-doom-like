@@ -149,7 +149,7 @@ export const pickupDefs = [
     kind: "support",
     visualId: "bagOfHolding",
     grants: {
-      backpackUpgrade: true,
+      upgradeId: "bag_of_holding",
       ammo: {
         wand: 10,
         crossbow: 5,

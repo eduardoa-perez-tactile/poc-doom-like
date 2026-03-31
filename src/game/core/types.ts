@@ -1,5 +1,10 @@
 import type { InventoryEntry, PlayerEffectTimers, WorldPickupInstance } from "../content/pickups";
-import type { SpriteAnimationStateName, WeaponAmmoType } from "../content/types";
+import type {
+  AmmoType,
+  SpriteAnimationStateName,
+  WeaponBehaviorDefinition,
+  WeaponId
+} from "../content/types";
 import type { LevelScriptRuntimeState } from "../simulation/script/LevelScriptTypes";
 import type { AutomapRuntimeState } from "../simulation/map/AutomapTypes";
 
@@ -27,11 +32,97 @@ export interface SettingsState {
   pixelScale: number;
 }
 
-export interface WeaponRuntimeState {
-  currentId: string;
-  unlocked: string[];
+export type WeaponViewAnimation = SpriteAnimationStateName;
+
+export interface BaseStats {
+  maxHealth: number;
+  maxArmor: number;
+  moveSpeed: number;
+  radius: number;
+  inventoryCapacity: number;
+  armorAbsorbRatio: number;
+  ammoCapacity: Record<AmmoType, number>;
+}
+
+export interface PlayerRuntimeResources {
+  health: number;
+  armor: number;
+  ammo: Record<AmmoType, number>;
+  keys: string[];
+  inventory: InventoryEntry[];
+  selectedInventoryIndex: number;
+}
+
+export interface DerivedStats {
+  maxHealth: number;
+  maxArmor: number;
+  moveSpeed: number;
+  radius: number;
+  inventoryCapacity: number;
+  armorAbsorbRatio: number;
+  ammoCapacity: Record<AmmoType, number>;
+  invulnerable: boolean;
+  partialInvisibility: boolean;
+  canFly: boolean;
+  torchActive: boolean;
+  weaponPowered: boolean;
+  weaponDamageScale: number;
+  weaponCooldownScale: number;
+  ammoUseScale: number;
+}
+
+export type StatModifierSource =
+  | "base"
+  | "pickup"
+  | "artifact"
+  | "powerup"
+  | "weapon"
+  | "level"
+  | "debug";
+
+export type StatModifierMode = "add" | "mul" | "set" | "max";
+
+export type StatModifier =
+  | {
+      sourceId: string;
+      sourceType: StatModifierSource;
+      stat:
+        | "maxHealth"
+        | "maxArmor"
+        | "moveSpeed"
+        | "radius"
+        | "inventoryCapacity"
+        | "armorAbsorbRatio";
+      mode: StatModifierMode;
+      value: number;
+    }
+  | {
+      sourceId: string;
+      sourceType: StatModifierSource;
+      stat: "ammoCapacity";
+      ammoType: AmmoType;
+      mode: StatModifierMode;
+      value: number;
+    }
+  | {
+      sourceId: string;
+      sourceType: StatModifierSource;
+      stat: "invulnerable" | "partialInvisibility" | "canFly" | "torchActive" | "weaponPowered";
+      mode: "set";
+      value: boolean;
+    };
+
+export interface PlayerProgressionState {
+  baseStats: BaseStats;
+  upgradeFlags: string[];
+  permanentModifiers: StatModifier[];
+}
+
+export interface WeaponState {
+  currentId: WeaponId;
+  unlocked: WeaponId[];
   cooldownRemaining: number;
-  viewAnimation: SpriteAnimationStateName;
+  viewAnimation: WeaponViewAnimation;
   viewAnimationTime: number;
   viewAnimationRevision: number;
   sustainTargetId: string | null;
@@ -41,27 +132,13 @@ export interface PlayerState {
   x: number;
   y: number;
   angle: number;
-  health: number;
-  maxHealth: number;
-  armor: number;
-  maxArmor: number;
-  radius: number;
-  moveSpeed: number;
   bobPhase: number;
-  ammo: Record<Exclude<WeaponAmmoType, "none">, number>;
-  ammoCapacity: Record<Exclude<WeaponAmmoType, "none">, number>;
-  keys: string[];
-  inventory: InventoryEntry[];
-  inventoryCapacity: number;
-  selectedInventoryIndex: number;
-  effects: PlayerEffectTimers;
-  flags: string[];
   alive: boolean;
-}
-
-export interface TomeRuntimeState {
-  active: boolean;
-  remaining: number;
+  flags: string[];
+  progression: PlayerProgressionState;
+  resources: PlayerRuntimeResources;
+  effects: PlayerEffectTimers;
+  derived: DerivedStats;
 }
 
 export interface EnemyState {
@@ -146,6 +223,16 @@ export interface EffectState {
 
 export type PickupState = WorldPickupInstance;
 
+export interface ResolvedWeaponContext {
+  weaponId: WeaponId;
+  powered: boolean;
+  ammoType: AmmoType | null;
+  ammoCost: number;
+  cooldown: number;
+  behavior: WeaponBehaviorDefinition;
+  damageScale: number;
+}
+
 export interface SimulationMessage {
   text: string;
   ttl: number;
@@ -165,8 +252,7 @@ export interface GameSessionState {
   levelScript: LevelScriptRuntimeState | null;
   automap: AutomapRuntimeState;
   player: PlayerState;
-  tome: TomeRuntimeState;
-  weapon: WeaponRuntimeState;
+  weapon: WeaponState;
   enemies: EnemyState[];
   projectiles: ProjectileState[];
   hazards: HazardState[];
@@ -184,7 +270,7 @@ export interface GameSessionState {
 export type GameState = GameSessionState;
 
 export interface SaveGameData {
-  version: 5;
+  version: 6;
   savedAt: string;
   state: GameSessionState;
 }
