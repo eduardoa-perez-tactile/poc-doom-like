@@ -74,6 +74,7 @@ export interface LevelMapBuildResult {
 
 export interface AutomapRuntimeState {
   isOpen: boolean;
+  labelsOpen: boolean;
   followPlayer: boolean;
   rotateWithPlayer: boolean;
   zoom: number;

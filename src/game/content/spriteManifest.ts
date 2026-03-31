@@ -394,7 +394,7 @@ function buildWeaponViewSet(
   }
 
   return {
-    id: `${id}_set`,
+    id: `weapon_${id}_set`,
     sheetId: "weapons_sheet",
     defaultState: "idle",
     worldWidth,
@@ -438,7 +438,9 @@ function buildStaffSet(): SpriteSetDefinition {
 function buildGauntletsSet(): SpriteSetDefinition {
   // Row 1 covers the gauntlets strip. Powered/Tome art also lives in this region,
   // but the current pass only wires a single shared idle/attack set.
-  return buildWeaponViewSet("gauntlets", 1, 0, [1, 2, 3, 4, 5], 1.14, 0.66, {
+  // The first atlas cell reads like the pickup-style idle art in-game, so keep the
+  // held "ready" frame as the resting pose and advance from there.
+  return buildWeaponViewSet("gauntlets", 1, 1, [2, 3, 4, 5], 1.14, 0.66, {
     offsetX: 0.02,
     offsetY: -0.68,
     offsetZ: 0.95,
@@ -487,8 +489,9 @@ function buildDragonClawSet(): SpriteSetDefinition {
 
 function buildHellstaffSet(): SpriteSetDefinition {
   // Hellstaff starts one cell later than the first pass assumed:
-  // col 5 is still Dragon Claw powered FX, while the actual Hellstaff idle frame is col 6.
-  return buildWeaponViewSet("hellstaff", 3, 6, [7, 8, 9, 10, 11, 12], 1.24, 0.5, {
+  // col 5 is still Dragon Claw powered FX, while col 6 reads like the weapon's
+  // atlas/item pose. Use the next held frame as the resting viewmodel.
+  return buildWeaponViewSet("hellstaff", 3, 7, [8, 9, 10, 11, 12], 1.24, 0.5, {
     offsetX: 0.02,
     offsetY: -0.62,
     offsetZ: 0.99,
@@ -513,8 +516,9 @@ function buildPhoenixRodSet(): SpriteSetDefinition {
 
 function buildFiremaceSet(): SpriteSetDefinition {
   // Firemace also starts one cell later than the first pass assumed:
-  // col 5 is still the impact strip, while the actual Firemace idle frame is col 6.
-  return buildWeaponViewSet("firemace", 4, 6, [7, 8, 9, 10, 11], 1.18, 0.48, {
+  // col 5 is still the impact strip, while col 6 reads like the atlas/item pose.
+  // Keep the held ready frame as the resting viewmodel.
+  return buildWeaponViewSet("firemace", 4, 7, [8, 9, 10, 11], 1.18, 0.48, {
     offsetX: 0.02,
     offsetY: -0.62,
     offsetZ: 0.99,
@@ -930,14 +934,14 @@ export const spriteManifest: VisualDatabaseDefinition = {
     { entityId: "effect:nitrogolem_fire_impact", spriteSetId: "nitrogolem_fire_impact_set" },
     { entityId: "pickup:ammo", spriteSetId: "golem_soul_set" },
     { entityId: "pickup:health", spriteSetId: "bandage_set" },
-    { entityId: "weapon:staff", spriteSetId: "staff_set" },
-    { entityId: "weapon:gauntlets_of_the_necromancer", spriteSetId: "gauntlets_set" },
-    { entityId: "weapon:elven_wand", spriteSetId: "elven_wand_set" },
-    { entityId: "weapon:ethereal_crossbow", spriteSetId: "ethereal_crossbow_set" },
-    { entityId: "weapon:dragon_claw", spriteSetId: "dragon_claw_set" },
-    { entityId: "weapon:hellstaff", spriteSetId: "hellstaff_set" },
-    { entityId: "weapon:phoenix_rod", spriteSetId: "phoenix_rod_set" },
-    { entityId: "weapon:firemace", spriteSetId: "firemace_set" },
+    { entityId: "weapon:staff", spriteSetId: "weapon_staff_set" },
+    { entityId: "weapon:gauntlets_of_the_necromancer", spriteSetId: "weapon_gauntlets_set" },
+    { entityId: "weapon:elven_wand", spriteSetId: "weapon_elven_wand_set" },
+    { entityId: "weapon:ethereal_crossbow", spriteSetId: "weapon_ethereal_crossbow_set" },
+    { entityId: "weapon:dragon_claw", spriteSetId: "weapon_dragon_claw_set" },
+    { entityId: "weapon:hellstaff", spriteSetId: "weapon_hellstaff_set" },
+    { entityId: "weapon:phoenix_rod", spriteSetId: "weapon_phoenix_rod_set" },
+    { entityId: "weapon:firemace", spriteSetId: "weapon_firemace_set" },
     // Normalized projectile baseline: most live shots share the dedicated
     // projectiles sheet until each weapon gets a tuned unique projectile set.
     { entityId: "projectile:elven_wand", spriteSetId: "phoenix_flame_set" },

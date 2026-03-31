@@ -44,9 +44,9 @@ export class UiOverlay {
       <div class="status-banner" data-role="status-banner"></div>
       <div class="crosshair" data-role="crosshair"></div>
       <div class="hud" data-role="hud">
-        <div class="panel" data-role="hud-stats"></div>
-        <div class="panel" data-role="hud-weapon"></div>
-        <div class="panel" data-role="hud-inventory"></div>
+        <div class="panel hud-panel-stats" data-role="hud-stats"></div>
+        <div class="panel hud-panel-weapon" data-role="hud-weapon"></div>
+        <div class="panel hud-panel-inventory" data-role="hud-inventory"></div>
       </div>
       <div class="menu-backdrop" data-role="menu-backdrop">
         <div class="menu-panel">
@@ -125,7 +125,7 @@ export class UiOverlay {
   updateHud(viewModel: HudViewModel): void {
     this.hud.classList.toggle("hidden", !viewModel.visible);
     this.crosshair.classList.toggle("hidden", !viewModel.visible || viewModel.automapOpen);
-    this.statusBanner.classList.toggle("hidden", !viewModel.visible && viewModel.message.length === 0);
+    this.statusBanner.classList.toggle("hidden", !viewModel.visible || viewModel.message.length === 0);
     this.statusBanner.textContent = viewModel.message;
     this.hudStats.innerHTML = `
       <div><strong>Health</strong> ${viewModel.health}</div>
@@ -133,13 +133,14 @@ export class UiOverlay {
       <div><strong>Ammo</strong> ${viewModel.ammo}</div>
       <div><strong>Enemies</strong> ${viewModel.enemiesRemaining}</div>
       <div><strong>Keys</strong> ${viewModel.keys.length > 0 ? viewModel.keys.join(" / ") : "None"}</div>
+      <div><strong>Weapon</strong> ${viewModel.weaponName}</div>
       <div><strong>Backend</strong> ${viewModel.backend.toUpperCase()}</div>
     `;
     this.hudWeapon.innerHTML = `
-      <div><strong>Weapon</strong> ${viewModel.weaponName}</div>
-      <div><strong>Status</strong> ${viewModel.message}</div>
+      <div><strong>Ready</strong> ${viewModel.weaponName}</div>
       <div><strong>Interact</strong> E</div>
       <div><strong>Use Item</strong> R</div>
+      <div><strong>Map</strong> Tab</div>
     `;
     this.hudInventory.innerHTML = `
       <div><strong>Inventory</strong></div>

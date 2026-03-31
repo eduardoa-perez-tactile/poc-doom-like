@@ -347,6 +347,7 @@ function createNeutralInput(source?: InputFrame): InputFrame {
     menuPressed: source?.menuPressed ?? false,
     toggleTome: false,
     toggleAutomap: source?.toggleAutomap ?? false,
+    toggleAutomapLabels: source?.toggleAutomapLabels ?? false,
     toggleAutomapFollow: source?.toggleAutomapFollow ?? false,
     toggleAutomapRotate: source?.toggleAutomapRotate ?? false,
     automapZoomIn: source?.automapZoomIn ?? false,

@@ -176,21 +176,21 @@
       "id": "hub_thrall_1",
       "type": "grave_thrall",
       "x": 16,
-      "y": 29,
+      "y": 19,
       "facingDeg": 270
     },
     {
       "id": "hub_thrall_2",
       "type": "grave_thrall",
       "x": 20,
-      "y": 29,
+      "y": 19,
       "facingDeg": 270
     },
     {
       "id": "hub_golem_1",
       "type": "golem",
       "x": 18,
-      "y": 26,
+      "y": 18,
       "facingDeg": 270
     },
     {
