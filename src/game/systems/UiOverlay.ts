@@ -1,7 +1,9 @@
+import type { LevelDefinition } from "../content/types";
 import type { AppMode, HudViewModel, SettingsState } from "../core/types";
 
 export interface UiOverlayCallbacks {
   onStartRun(): void;
+  onSelectLevel(levelId: string): void;
   onResume(): void;
   onRestart(): void;
   onMainMenu(): void;
@@ -21,6 +23,7 @@ export class UiOverlay {
   private readonly menuBackdrop: HTMLDivElement;
   private readonly menuTitle: HTMLHeadingElement;
   private readonly menuBody: HTMLParagraphElement;
+  private readonly levelSelect: HTMLDivElement;
   private readonly startButton: HTMLButtonElement;
   private readonly resumeButton: HTMLButtonElement;
   private readonly restartButton: HTMLButtonElement;
@@ -52,6 +55,7 @@ export class UiOverlay {
         <div class="menu-panel">
           <h1 data-role="menu-title">Wyrmwake</h1>
           <p data-role="menu-body"></p>
+          <div class="menu-levels" data-role="menu-levels"></div>
           <div class="menu-grid">
             <div class="menu-row">
               <label for="mouse-sensitivity">Mouse</label>
@@ -90,6 +94,7 @@ export class UiOverlay {
     this.menuBackdrop = this.requireElement<HTMLDivElement>('[data-role="menu-backdrop"]');
     this.menuTitle = this.requireElement<HTMLHeadingElement>('[data-role="menu-title"]');
     this.menuBody = this.requireElement<HTMLParagraphElement>('[data-role="menu-body"]');
+    this.levelSelect = this.requireElement<HTMLDivElement>('[data-role="menu-levels"]');
     this.startButton = this.requireElement<HTMLButtonElement>('[data-action="start"]');
     this.resumeButton = this.requireElement<HTMLButtonElement>('[data-action="resume"]');
     this.restartButton = this.requireElement<HTMLButtonElement>('[data-action="restart"]');
@@ -120,6 +125,21 @@ export class UiOverlay {
     this.volumeInput.addEventListener("input", onSettingsChange);
     this.pixelScaleInput.addEventListener("input", onSettingsChange);
     this.applySettings(initialSettings);
+
+    this.levelSelect.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      const button = target.closest<HTMLButtonElement>("[data-level-id]");
+      const levelId = button?.dataset.levelId;
+      if (!levelId || button.disabled) {
+        return;
+      }
+
+      callbacks.onSelectLevel(levelId);
+    });
   }
 
   updateHud(viewModel: HudViewModel): void {
@@ -161,6 +181,25 @@ export class UiOverlay {
     this.pickupSheetUrl = url;
   }
 
+  setLevelOptions(
+    levels: readonly Pick<LevelDefinition, "id" | "name" | "briefing">[],
+    selectedLevelId: string
+  ): void {
+    this.levelSelect.replaceChildren(
+      ...levels.map((level) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `level-option${level.id === selectedLevelId ? " selected" : ""}`;
+        button.dataset.levelId = level.id;
+        button.innerHTML = `
+          <span class="level-option-title">${level.name}</span>
+          <span class="level-option-briefing">${level.briefing}</span>
+        `;
+        return button;
+      })
+    );
+  }
+
   renderMenu(mode: AppMode, message: string): void {
     const isMenuVisible = mode === "main_menu" || mode === "paused" || mode === "boot";
     this.menuBackdrop.classList.toggle("hidden", !isMenuVisible);
@@ -171,12 +210,14 @@ export class UiOverlay {
 
     if (mode === "paused") {
       this.menuTitle.textContent = "Paused";
+      this.levelSelect.classList.add("hidden");
       this.startButton.classList.add("hidden");
       this.resumeButton.classList.remove("hidden");
       this.restartButton.classList.remove("hidden");
       this.mainMenuButton.classList.remove("hidden");
     } else {
       this.menuTitle.textContent = "Wyrmwake";
+      this.levelSelect.classList.remove("hidden");
       this.startButton.classList.remove("hidden");
       this.resumeButton.classList.add("hidden");
       this.restartButton.classList.add("hidden");
@@ -188,6 +229,10 @@ export class UiOverlay {
       this.startButton.disabled = true;
     } else {
       this.startButton.disabled = false;
+    }
+
+    for (const button of this.levelSelect.querySelectorAll<HTMLButtonElement>("[data-level-id]")) {
+      button.disabled = mode === "boot";
     }
 
     this.menuBody.textContent = message;
