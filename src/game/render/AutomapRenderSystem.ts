@@ -15,6 +15,13 @@ interface LineStyle {
   width: number;
 }
 
+interface FrameRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 type NonPlayerMarkerKind = Exclude<MapMarkerKind, "player">;
 
 interface LegendMarkerEntry {
@@ -108,22 +115,23 @@ export class AutomapRenderSystem {
 
   private drawFrame(snapshot: AutomapRenderSnapshot): void {
     const ctx = this.context;
+    const frame = this.getFrameRect();
     ctx.strokeStyle = "rgba(235, 214, 180, 0.26)";
     ctx.lineWidth = 1;
-    ctx.strokeRect(12, 12, this.width - 24, this.height - 24);
+    ctx.strokeRect(frame.x, frame.y, frame.width, frame.height);
 
     ctx.fillStyle = "rgba(245, 227, 197, 0.82)";
     ctx.font = '12px "Trebuchet MS", Verdana, sans-serif';
     ctx.textBaseline = "top";
     ctx.fillText(
       `AUTOMAP ${snapshot.runtime.followPlayer ? "FOLLOW" : "FREE PAN"} ${snapshot.runtime.rotateWithPlayer ? "ROTATE" : "NORTH"}`,
-      20,
-      20
+      frame.x + 14,
+      frame.y + 14
     );
-    ctx.fillText("TAB CLOSE  +/- ZOOM  F FOLLOW  SHIFT+R ROTATE", 20, 38);
-    this.drawFooterHint(snapshot);
+    ctx.fillText("TAB CLOSE  +/- ZOOM  F FOLLOW  SHIFT+R ROTATE", frame.x + 14, frame.y + 32);
+    this.drawFooterHint(snapshot, frame);
     if (snapshot.runtime.labelsOpen) {
-      this.drawLegend();
+      this.drawLegend(frame);
     }
   }
 
@@ -169,7 +177,7 @@ export class AutomapRenderSystem {
     ctx.restore();
   }
 
-  private drawLegend(): void {
+  private drawLegend(frame: FrameRect): void {
     const ctx = this.context;
     const markerEntries: LegendMarkerEntry[] = [
       { kind: "marker", label: "Player", markerKind: "player", color: "#f8f2cb" },
@@ -187,7 +195,6 @@ export class AutomapRenderSystem {
       { kind: "line", label: "Open Door", stroke: "rgba(92, 196, 137, 1)", width: 1.6 }
     ];
 
-    const frameMargin = 20;
     const panelPaddingX = 14;
     const panelPaddingTop = 12;
     const panelPaddingBottom = 14;
@@ -199,9 +206,6 @@ export class AutomapRenderSystem {
     const sectionHeaderHeight = 12;
     const sectionToRowsGap = 16;
     const rowHeight = 18;
-    const headerTop = 20;
-    const headerLineHeight = 18;
-
     ctx.save();
     ctx.font = '10px "Trebuchet MS", Verdana, sans-serif';
     const markerLabelWidth = Math.max(...markerEntries.map((entry) => ctx.measureText(entry.label).width));
@@ -214,8 +218,8 @@ export class AutomapRenderSystem {
     const contentHeight = sectionHeaderHeight + sectionToRowsGap + contentRows * rowHeight;
     const boxWidth = Math.ceil(panelPaddingX * 2 + markerColumnWidth + columnGap + lineColumnWidth);
     const boxHeight = Math.ceil(panelPaddingTop + titleHeight + titleToSectionGap + contentHeight + panelPaddingBottom);
-    const boxX = this.width - boxWidth - frameMargin;
-    const boxY = headerTop + headerLineHeight * 2 + 10;
+    const boxX = frame.x + frame.width - boxWidth - 14;
+    const boxY = frame.y + 58;
     const leftColX = boxX + panelPaddingX;
     const rightColX = leftColX + markerColumnWidth + columnGap;
     const sectionTopY = boxY + panelPaddingTop + titleHeight + titleToSectionGap;
@@ -281,12 +285,12 @@ export class AutomapRenderSystem {
     ctx.restore();
   }
 
-  private drawFooterHint(snapshot: AutomapRenderSnapshot): void {
+  private drawFooterHint(snapshot: AutomapRenderSnapshot, frame: FrameRect): void {
     const ctx = this.context;
     const label = snapshot.runtime.labelsOpen
       ? "Press L to hide map labels"
       : "Press L to see map labels";
-    const y = this.height - 28;
+    const y = frame.y + frame.height - 24;
 
     ctx.save();
     ctx.font = '12px "Trebuchet MS", Verdana, sans-serif';
@@ -294,7 +298,7 @@ export class AutomapRenderSystem {
     const textWidth = ctx.measureText(label).width;
     const boxWidth = Math.ceil(textWidth + 22);
     const boxHeight = 24;
-    const x = Math.round((this.width - boxWidth) * 0.5);
+    const x = Math.round(frame.x + (frame.width - boxWidth) * 0.5);
     const boxY = y - boxHeight * 0.5;
 
     ctx.fillStyle = "rgba(18, 12, 10, 0.82)";
@@ -305,6 +309,17 @@ export class AutomapRenderSystem {
     ctx.fillStyle = "rgba(245, 227, 197, 0.9)";
     ctx.fillText(label, x + 11, y);
     ctx.restore();
+  }
+
+  private getFrameRect(): FrameRect {
+    const insetX = 6;
+    const insetY = 6;
+    return {
+      x: insetX,
+      y: insetY,
+      width: this.width - insetX * 2,
+      height: this.height - insetY * 2
+    };
   }
 
   private isLineVisible(snapshot: AutomapRenderSnapshot, line: MapLineDef): boolean {

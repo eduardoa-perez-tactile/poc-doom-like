@@ -1,9 +1,9 @@
 import type { InputFrame } from "../../systems/InputSystem";
 import type { AutomapRuntimeState } from "./AutomapTypes";
 
-const DEFAULT_ZOOM = 36;
-const MIN_ZOOM = 12;
-const MAX_ZOOM = 108;
+const DEFAULT_ZOOM = 9;
+const MIN_ZOOM = 3;
+const MAX_ZOOM = 27;
 const ZOOM_STEP = 1.14;
 const PAN_SPEED = 24;
 
