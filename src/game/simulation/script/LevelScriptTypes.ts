@@ -119,6 +119,7 @@ export interface DoorDef {
   locked?: boolean;
   oneWay?: boolean;
   openOffset?: number;
+  visualProfileId?: string;
   debugLabel?: string;
 }
 
@@ -129,6 +130,7 @@ export interface TeleporterDef {
   targetFacingRadians?: number;
   enabled?: boolean;
   revealByDefault?: boolean;
+  visualProfileId?: string;
   debugLabel?: string;
 }
 
@@ -139,6 +141,7 @@ export interface SwitchDef {
   startsEnabled?: boolean;
   actions?: ScriptActionDef[];
   conditions?: ConditionDef[];
+  visualProfileId?: string;
   debugLabel?: string;
 }
 
@@ -148,6 +151,8 @@ export interface SecretDef {
   message?: string;
   rewardActions?: ScriptActionDef[];
   once?: boolean;
+  hintCells?: Vec2[];
+  hintVisualProfileId?: string;
   debugLabel?: string;
 }
 

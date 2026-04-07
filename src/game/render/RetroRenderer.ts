@@ -1,9 +1,9 @@
 import {
-  Mesh,
   Color3,
   Color4,
   Engine,
   HemisphericLight,
+  Mesh,
   MeshBuilder,
   Scene,
   StandardMaterial,
@@ -21,6 +21,17 @@ import type {
   LevelDefinition,
   SpriteAnimationStateName
 } from "../content/types";
+import {
+  findAdjacentSolidCell,
+  getWallAtlasTileIndex,
+  LevelWallPresentationResolver,
+  WALL_ATLAS_SOURCE_TILES,
+  WALL_ATLAS_SOURCE_URL,
+  WALL_ATLAS_TILE_SIZE,
+  type DoorVisualProfile,
+  type SurfaceVisualProfile,
+  type WallVariationMode
+} from "../content/walls";
 import type {
   EnemyState,
   EffectState,
@@ -30,27 +41,42 @@ import type {
 } from "../core/types";
 import type { AutomapRenderSnapshot } from "../simulation/map/AutomapTypes";
 import { AutomapRenderSystem } from "./AutomapRenderSystem";
-import { AnimatedSpriteInstance, SpriteLibrary } from "./SpritePipeline";
 import { FlatMaterialSystem } from "./flats/FlatMaterialSystem";
 import { PickupRenderSystem } from "./pickups/PickupRenderSystem";
+import { AnimatedSpriteInstance, SpriteLibrary } from "./SpritePipeline";
 import { WallTextureAtlas } from "./WallTextureAtlas";
-import {
-  pickTexture,
-  WALL_ATLAS_SOURCE_TILES,
-  WALL_ATLAS_SOURCE_URL,
-  WALL_ATLAS_TILE_SIZE,
-  wallTextureTypeFromName,
-  WallTextureType
-} from "./WallTextureRegistry";
 
 const PLAYER_EYE_HEIGHT = 1.2;
 const FLOOR_REGION_MESH_HEIGHT = 0.44;
+const WALL_HEIGHT = 2.6;
+
+type DoorAxis = "horizontal" | "vertical";
+
+interface DoorRenderState {
+  profile: DoorVisualProfile;
+  axis: DoorAxis;
+  leaves: Mesh[];
+  frames: Mesh[];
+  locks: Mesh[];
+}
+
+interface TeleporterRenderState {
+  profile: SurfaceVisualProfile;
+  meshes: Mesh[];
+}
+
+interface SwitchRenderState {
+  profile: SurfaceVisualProfile;
+  meshes: Mesh[];
+  indicators: Mesh[];
+}
 
 export class RetroRenderer {
   readonly scene: Scene;
   private readonly camera: UniversalCamera;
   private readonly root: TransformNode;
   private readonly automapRenderSystem: AutomapRenderSystem;
+  private readonly presentationResolver: LevelWallPresentationResolver;
   private spriteLibrary!: SpriteLibrary;
   private readonly enemySprites = new Map<string, AnimatedSpriteInstance>();
   private pickupRenderSystem!: PickupRenderSystem;
@@ -58,16 +84,14 @@ export class RetroRenderer {
   private readonly hazardSprites = new Map<number, AnimatedSpriteInstance>();
   private readonly effectSprites = new Map<number, AnimatedSpriteInstance>();
   private readonly weaponSprites = new Map<string, AnimatedSpriteInstance>();
-  private wallMaterial!: StandardMaterial;
-  private doorMaterial!: StandardMaterial;
-  private lockedDoorMaterial!: StandardMaterial;
-  private doorMarkerMaterial!: StandardMaterial;
-  private lockedDoorMarkerMaterial!: StandardMaterial;
+  private readonly atlasMaterials = new Map<string, StandardMaterial>();
+  private readonly solidMaterials = new Map<string, StandardMaterial>();
   private wallAtlas!: WallTextureAtlas;
   private flatMaterials!: FlatMaterialSystem;
-  private readonly doorMeshes = new Map<string, Mesh[]>();
-  private readonly doorMarkers = new Map<string, Mesh[]>();
-  private readonly teleporterMarkers = new Map<string, Mesh[]>();
+  private wallMaterial!: StandardMaterial;
+  private readonly doorRenderStates = new Map<string, DoorRenderState>();
+  private readonly teleporterRenderStates = new Map<string, TeleporterRenderState>();
+  private readonly switchRenderStates = new Map<string, SwitchRenderState>();
   private readonly floorRegionMeshes = new Map<string, Mesh[]>();
 
   constructor(
@@ -92,6 +116,7 @@ export class RetroRenderer {
 
     this.root = new TransformNode("world-root", this.scene);
     this.automapRenderSystem = new AutomapRenderSystem(automapCanvas);
+    this.presentationResolver = new LevelWallPresentationResolver(content.level);
   }
 
   static async create(
@@ -147,6 +172,7 @@ export class RetroRenderer {
 
     this.syncEnemies(state.enemies, state.player.x, state.player.y, dt);
     this.syncDoors(state);
+    this.syncSwitches(state);
     this.syncTeleporters(state);
     this.syncFloorRegions(state, dt);
     this.pickupRenderSystem.sync(state.pickups, state.player.x, state.player.y);
@@ -180,24 +206,6 @@ export class RetroRenderer {
     this.wallMaterial.emissiveTexture = this.wallAtlas.texture;
     this.wallMaterial.specularColor = Color3.Black();
     this.wallMaterial.disableLighting = true;
-
-    this.doorMaterial = this.wallMaterial.clone("door-atlas-material");
-    this.doorMaterial.emissiveColor = Color3.FromHexString("#f2be6a");
-
-    this.lockedDoorMaterial = this.wallMaterial.clone("locked-door-atlas-material");
-    this.lockedDoorMaterial.emissiveColor = Color3.FromHexString("#d4714d");
-
-    this.doorMarkerMaterial = new StandardMaterial("door-marker-material", this.scene);
-    this.doorMarkerMaterial.diffuseColor = Color3.FromHexString("#f0c772");
-    this.doorMarkerMaterial.emissiveColor = Color3.FromHexString("#f0c772");
-    this.doorMarkerMaterial.specularColor = Color3.Black();
-    this.doorMarkerMaterial.disableLighting = true;
-
-    this.lockedDoorMarkerMaterial = new StandardMaterial("locked-door-marker-material", this.scene);
-    this.lockedDoorMarkerMaterial.diffuseColor = Color3.FromHexString("#df7f5c");
-    this.lockedDoorMarkerMaterial.emissiveColor = Color3.FromHexString("#df7f5c");
-    this.lockedDoorMarkerMaterial.specularColor = Color3.Black();
-    this.lockedDoorMarkerMaterial.disableLighting = true;
   }
 
   private buildStaticLevel(): void {
@@ -209,7 +217,7 @@ export class RetroRenderer {
 
     for (const door of this.content.level.script?.doors ?? []) {
       for (const cell of door.gridCells) {
-        doorCellToId.set(`${cell.x},${cell.y}`, door.id);
+        doorCellToId.set(cellKey(cell.x, cell.y), door.id);
       }
     }
 
@@ -230,107 +238,55 @@ export class RetroRenderer {
     );
     ceiling.position.x = ground.position.x;
     ceiling.position.z = ground.position.z;
-    ceiling.position.y = 2.6;
+    ceiling.position.y = WALL_HEIGHT;
     ceiling.rotation.x = Math.PI;
     ceiling.material = this.flatMaterials.getFlatMaterial(getLevelCeilingFlat(this.content.level));
     ceiling.parent = this.root;
 
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
-        if (!isWallCell(grid[y][x])) {
-          continue;
-        }
-        if (doorCellToId.has(`${x},${y}`)) {
+        if (!isWallCell(grid[y][x]) || doorCellToId.has(cellKey(x, y))) {
           continue;
         }
 
-        const textureType = resolveWallTextureType(this.content.level, x, y);
-        const tileIndex = pickTexture(textureType, x, y, [
-          chosenWallTiles.get(`${x - 1},${y}`) ?? -1,
-          chosenWallTiles.get(`${x},${y - 1}`) ?? -1
-        ]);
-        chosenWallTiles.set(`${x},${y}`, tileIndex);
-        const uv = this.wallAtlas.getTileUV(tileIndex);
-        const faceUV = Array.from({ length: 6 }, () => new Vector4(uv.u0, uv.v0, uv.u1, uv.v1));
-
-        const wall = MeshBuilder.CreateBox(
-          `wall-${x}-${y}`,
-          { width: cellSize, depth: cellSize, height: 2.6, faceUV },
-          this.scene
+        const presentation = this.presentationResolver.resolveWallCell(x, y);
+        const tileIndex = this.pickProfileTextureIndex(
+          presentation.profile.texturePool,
+          x,
+          y,
+          presentation.profile.variationMode ?? "hash",
+          presentation.profile.allowNeighborDeDupe ?? true,
+          [
+            chosenWallTiles.get(cellKey(x - 1, y)) ?? -1,
+            chosenWallTiles.get(cellKey(x, y - 1)) ?? -1
+          ]
         );
-        wall.position = new Vector3(x * cellSize, 1.3, y * cellSize);
-        wall.material = this.wallMaterial;
+        chosenWallTiles.set(cellKey(x, y), tileIndex);
+        const wall = this.createTexturedBox(
+          `wall-${x}-${y}`,
+          {
+            width: cellSize,
+            depth: cellSize,
+            height: WALL_HEIGHT
+          },
+          tileIndex,
+          this.getAtlasMaterial(presentation.profile.emissiveColor),
+          new Vector3(x * cellSize, WALL_HEIGHT * 0.5, y * cellSize)
+        );
         wall.parent = this.root;
       }
     }
 
     for (const door of this.content.level.script?.doors ?? []) {
-      const meshes: Mesh[] = [];
-      for (const cell of door.gridCells) {
-        const textureType = resolveWallTextureType(this.content.level, cell.x, cell.y);
-        const tileIndex = pickTexture(textureType, cell.x, cell.y, []);
-        const uv = this.wallAtlas.getTileUV(tileIndex);
-        const faceUV = Array.from({ length: 6 }, () => new Vector4(uv.u0, uv.v0, uv.u1, uv.v1));
-        const mesh = MeshBuilder.CreateBox(
-          `door-${door.id}-${cell.x}-${cell.y}`,
-          { width: cellSize, depth: cellSize, height: 2.6, faceUV },
-          this.scene
-        );
-        mesh.position = new Vector3(cell.x * cellSize, 1.3, cell.y * cellSize);
-        mesh.material = door.locked ? this.lockedDoorMaterial : this.doorMaterial;
-        mesh.parent = this.root;
-        meshes.push(mesh);
-      }
-      this.doorMeshes.set(door.id, meshes);
+      this.buildDoorPresentation(door);
+    }
 
-      const markers: Mesh[] = [];
-      for (const cell of door.gridCells) {
-        const marker = MeshBuilder.CreateBox(
-          `door-marker-${door.id}-${cell.x}-${cell.y}`,
-          {
-            width: cellSize * 0.42,
-            depth: cellSize * 0.18,
-            height: 0.16
-          },
-          this.scene
-        );
-        marker.position = new Vector3(cell.x * cellSize, 2.18, cell.y * cellSize);
-        marker.material = door.locked ? this.lockedDoorMarkerMaterial : this.doorMarkerMaterial;
-        marker.parent = this.root;
-        markers.push(marker);
-      }
-      this.doorMarkers.set(door.id, markers);
+    for (const switchDef of this.content.level.script?.switches ?? []) {
+      this.buildSwitchPresentation(switchDef);
     }
 
     for (const teleporter of this.content.level.script?.teleporters ?? []) {
-      const meshes: Mesh[] = [];
-      const tileIndex = pickTexture(WallTextureType.Portal, teleporter.fromRegion.x, teleporter.fromRegion.y);
-      const uv = this.wallAtlas.getTileUV(tileIndex);
-      const faceUV = Array.from({ length: 6 }, () => new Vector4(uv.u0, uv.v0, uv.u1, uv.v1));
-
-      for (let dy = 0; dy < teleporter.fromRegion.h; dy += 1) {
-        for (let dx = 0; dx < teleporter.fromRegion.w; dx += 1) {
-          const cellX = teleporter.fromRegion.x + dx;
-          const cellY = teleporter.fromRegion.y + dy;
-          const marker = MeshBuilder.CreateBox(
-            `teleporter-${teleporter.id}-${cellX}-${cellY}`,
-            {
-              width: cellSize * 0.72,
-              depth: cellSize * 0.72,
-              height: 0.04,
-              faceUV
-            },
-            this.scene
-          );
-          marker.position = new Vector3(cellX * cellSize, 0.02, cellY * cellSize);
-          marker.material = this.wallMaterial;
-          marker.parent = this.root;
-          marker.setEnabled(false);
-          meshes.push(marker);
-        }
-      }
-
-      this.teleporterMarkers.set(teleporter.id, meshes);
+      this.buildTeleporterPresentation(teleporter);
     }
 
     for (const floorRegion of this.content.level.script?.floorRegions ?? []) {
@@ -359,6 +315,216 @@ export class RetroRenderer {
     }
   }
 
+  private buildDoorPresentation(door: NonNullable<NonNullable<LevelDefinition["script"]>["doors"]>[number]): void {
+    const cellSize = this.content.level.cellSize;
+    const profile = this.presentationResolver.resolveDoorProfile(door);
+    const axis = resolveDoorAxis(door.gridCells);
+    const renderState: DoorRenderState = {
+      profile,
+      axis,
+      leaves: [],
+      frames: [],
+      locks: []
+    };
+
+    const framePool = profile.frameTexturePool?.length ? profile.frameTexturePool : profile.baseTexturePool;
+    const frameTileIndex = this.pickProfileTextureIndex(framePool, door.gridCells[0].x, door.gridCells[0].y, "fixed", false);
+
+    for (const cell of door.gridCells) {
+      const tileIndex = this.pickProfileTextureIndex(profile.baseTexturePool, cell.x, cell.y, "hash", false);
+      const leaf = this.createTexturedBox(
+        `door-leaf-${door.id}-${cell.x}-${cell.y}`,
+        {
+          width: cellSize * 0.9,
+          depth: cellSize * 0.9,
+          height: WALL_HEIGHT * 0.92
+        },
+        tileIndex,
+        this.getDoorLeafMaterial(profile, door.locked ?? Boolean(door.requiredKeyId)),
+        new Vector3(cell.x * cellSize, WALL_HEIGHT * 0.46, cell.y * cellSize)
+      );
+      leaf.parent = this.root;
+      renderState.leaves.push(leaf);
+    }
+
+    for (const frame of this.createDoorFrames(door.id, door.gridCells, axis, frameTileIndex)) {
+      frame.parent = this.root;
+      renderState.frames.push(frame);
+    }
+
+    if (profile.lockedMarkerStyle !== "none") {
+      for (const lockMesh of this.createDoorLockMarkers(door.id, door.gridCells, axis, profile)) {
+        lockMesh.parent = this.root;
+        renderState.locks.push(lockMesh);
+      }
+    }
+
+    this.doorRenderStates.set(door.id, renderState);
+  }
+
+  private buildSwitchPresentation(
+    switchDef: NonNullable<NonNullable<LevelDefinition["script"]>["switches"]>[number]
+  ): void {
+    const cellSize = this.content.level.cellSize;
+    const profile = this.presentationResolver.resolveSwitchProfile(switchDef);
+    const tileIndex = this.pickProfileTextureIndex(
+      profile.surfaceTexturePool,
+      switchDef.cell.x,
+      switchDef.cell.y,
+      "fixed",
+      false
+    );
+    const frameTileIndex = this.pickProfileTextureIndex(
+      profile.frameTexturePool?.length ? profile.frameTexturePool : profile.surfaceTexturePool,
+      switchDef.cell.x,
+      switchDef.cell.y,
+      "fixed",
+      false
+    );
+    const anchor = findAdjacentSolidCell(this.content.level, switchDef.cell);
+
+    const meshes: Mesh[] = [];
+    const indicators: Mesh[] = [];
+    const basePosition = new Vector3(switchDef.cell.x * cellSize, 1.05, switchDef.cell.y * cellSize);
+    let rotationY = 0;
+    let normal = new Vector3(0, 0, 1);
+
+    if (anchor?.facing === "north") {
+      basePosition.z -= cellSize * 0.39;
+      normal = new Vector3(0, 0, 1);
+    } else if (anchor?.facing === "south") {
+      basePosition.z += cellSize * 0.39;
+      normal = new Vector3(0, 0, -1);
+    } else if (anchor?.facing === "west") {
+      basePosition.x -= cellSize * 0.39;
+      rotationY = Math.PI * 0.5;
+      normal = new Vector3(1, 0, 0);
+    } else if (anchor?.facing === "east") {
+      basePosition.x += cellSize * 0.39;
+      rotationY = Math.PI * 0.5;
+      normal = new Vector3(-1, 0, 0);
+    }
+
+    const frame = this.createTexturedBox(
+      `switch-frame-${switchDef.id}`,
+      {
+        width: cellSize * 0.62,
+        depth: cellSize * 0.1,
+        height: 1.55
+      },
+      frameTileIndex,
+      this.getAtlasMaterial("#bca982"),
+      basePosition
+    );
+    frame.rotation.y = rotationY;
+    frame.parent = this.root;
+    meshes.push(frame);
+
+    const panel = this.createTexturedBox(
+      `switch-panel-${switchDef.id}`,
+      {
+        width: cellSize * 0.5,
+        depth: cellSize * 0.05,
+        height: 1.3
+      },
+      tileIndex,
+      this.getAtlasMaterial(profile.emissiveColor ?? "#d2b279"),
+      basePosition.add(normal.scale(0.04))
+    );
+    panel.rotation.y = rotationY;
+    panel.parent = this.root;
+    meshes.push(panel);
+
+    const indicator = MeshBuilder.CreateBox(
+      `switch-indicator-${switchDef.id}`,
+      {
+        width: cellSize * 0.12,
+        depth: cellSize * 0.12,
+        height: cellSize * 0.12
+      },
+      this.scene
+    );
+    indicator.position = basePosition.add(normal.scale(0.09));
+    indicator.position.y = 1.62;
+    indicator.material = this.getSolidMaterial("#f0c772");
+    indicator.rotation.y = rotationY;
+    indicator.parent = this.root;
+    indicators.push(indicator);
+
+    this.switchRenderStates.set(switchDef.id, {
+      profile,
+      meshes,
+      indicators
+    });
+  }
+
+  private buildTeleporterPresentation(
+    teleporter: NonNullable<NonNullable<LevelDefinition["script"]>["teleporters"]>[number]
+  ): void {
+    const cellSize = this.content.level.cellSize;
+    const profile = this.presentationResolver.resolveTeleporterProfile(teleporter);
+    const meshes: Mesh[] = [];
+
+    for (let dy = 0; dy < teleporter.fromRegion.h; dy += 1) {
+      for (let dx = 0; dx < teleporter.fromRegion.w; dx += 1) {
+        const cellX = teleporter.fromRegion.x + dx;
+        const cellY = teleporter.fromRegion.y + dy;
+        const padTile = this.pickProfileTextureIndex(profile.surfaceTexturePool, cellX, cellY, "hash", false);
+        const frameTile = this.pickProfileTextureIndex(
+          profile.frameTexturePool?.length ? profile.frameTexturePool : profile.surfaceTexturePool,
+          cellX,
+          cellY,
+          "fixed",
+          false
+        );
+
+        const pad = this.createTexturedBox(
+          `teleporter-pad-${teleporter.id}-${cellX}-${cellY}`,
+          {
+            width: cellSize * 0.82,
+            depth: cellSize * 0.82,
+            height: 0.08
+          },
+          padTile,
+          this.getAtlasMaterial(profile.emissiveColor ?? "#6aa6ff"),
+          new Vector3(cellX * cellSize, 0.04, cellY * cellSize)
+        );
+        pad.parent = this.root;
+        meshes.push(pad);
+
+        const beaconX = this.createTexturedBox(
+          `teleporter-beacon-x-${teleporter.id}-${cellX}-${cellY}`,
+          {
+            width: cellSize * 0.16,
+            depth: cellSize * 0.6,
+            height: 1.1
+          },
+          frameTile,
+          this.getAtlasMaterial(profile.emissiveColor ?? "#6aa6ff"),
+          new Vector3(cellX * cellSize, 0.62, cellY * cellSize)
+        );
+        beaconX.parent = this.root;
+        meshes.push(beaconX);
+
+        const beaconZ = this.createTexturedBox(
+          `teleporter-beacon-z-${teleporter.id}-${cellX}-${cellY}`,
+          {
+            width: cellSize * 0.6,
+            depth: cellSize * 0.16,
+            height: 1.1
+          },
+          frameTile,
+          this.getAtlasMaterial(profile.emissiveColor ?? "#6aa6ff"),
+          new Vector3(cellX * cellSize, 0.62, cellY * cellSize)
+        );
+        beaconZ.parent = this.root;
+        meshes.push(beaconZ);
+      }
+    }
+
+    this.teleporterRenderStates.set(teleporter.id, { profile, meshes });
+  }
+
   private buildSprites(): void {
     for (const enemy of this.content.level.enemies) {
       const definition = this.content.enemies.get(enemy.type);
@@ -375,7 +541,11 @@ export class RetroRenderer {
     this.pickupRenderSystem.buildSprites(this.content.level.pickups.map((pickup) => ({
       entityId: pickup.id,
       defId: pickup.defId,
-      position: { x: pickup.x * this.content.level.cellSize, y: pickup.y * this.content.level.cellSize, z: pickup.z ?? 0 },
+      position: {
+        x: pickup.x * this.content.level.cellSize,
+        y: pickup.y * this.content.level.cellSize,
+        z: pickup.z ?? 0
+      },
       bobPhase: 0,
       animTime: 0,
       picked: false,
@@ -545,26 +715,43 @@ export class RetroRenderer {
   }
 
   private syncDoors(state: GameSessionState): void {
-    for (const [doorId, meshes] of this.doorMeshes) {
+    for (const [doorId, renderState] of this.doorRenderStates) {
       const doorState = state.levelScript?.doors[doorId];
       const isOpen = doorState?.isOpen ?? false;
       const isLocked = doorState?.isLocked ?? false;
-      for (const mesh of meshes) {
-        mesh.setEnabled(!isOpen);
-        mesh.material = isLocked ? this.lockedDoorMaterial : this.doorMaterial;
+
+      for (const frame of renderState.frames) {
+        frame.setEnabled(true);
       }
-      for (const marker of this.doorMarkers.get(doorId) ?? []) {
-        marker.setEnabled(!isOpen);
-        marker.material = isLocked ? this.lockedDoorMarkerMaterial : this.doorMarkerMaterial;
+      for (const leaf of renderState.leaves) {
+        leaf.setEnabled(!isOpen);
+        leaf.material = this.getDoorLeafMaterial(renderState.profile, isLocked);
+      }
+      for (const lock of renderState.locks) {
+        lock.setEnabled(!isOpen && isLocked);
+      }
+    }
+  }
+
+  private syncSwitches(state: GameSessionState): void {
+    for (const [switchId, renderState] of this.switchRenderStates) {
+      const used = state.levelScript?.switches[switchId]?.used ?? false;
+      for (const indicator of renderState.indicators) {
+        indicator.material = this.getSolidMaterial(used ? "#67d37a" : "#f0c772");
       }
     }
   }
 
   private syncTeleporters(state: GameSessionState): void {
-    for (const [teleporterId, meshes] of this.teleporterMarkers) {
-      const visible = state.levelScript?.teleporters[teleporterId]?.revealed ?? true;
-      for (const mesh of meshes) {
+    for (const [teleporterId, renderState] of this.teleporterRenderStates) {
+      const teleporterState = state.levelScript?.teleporters[teleporterId];
+      const visible = teleporterState?.revealed ?? true;
+      const active = teleporterState?.enabled ?? true;
+      for (const mesh of renderState.meshes) {
         mesh.setEnabled(visible);
+        if (mesh.material instanceof StandardMaterial) {
+          mesh.material = this.getAtlasMaterial(active ? renderState.profile.emissiveColor ?? "#76b7ff" : "#586575");
+        }
       }
     }
   }
@@ -578,6 +765,229 @@ export class RetroRenderer {
         mesh.position.y += (targetY - mesh.position.y) * Math.min(1, dt * 10);
       }
     }
+  }
+
+  private createDoorFrames(
+    doorId: string,
+    gridCells: readonly { x: number; y: number }[],
+    axis: DoorAxis,
+    tileIndex: number
+  ): Mesh[] {
+    const cellSize = this.content.level.cellSize;
+    const xs = gridCells.map((cell) => cell.x);
+    const ys = gridCells.map((cell) => cell.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const midX = ((minX + maxX) * 0.5) * cellSize;
+    const midY = ((minY + maxY) * 0.5) * cellSize;
+    const frameMaterial = this.getAtlasMaterial("#b69f80");
+
+    if (axis === "horizontal") {
+      return [
+        this.createTexturedBox(
+          `door-frame-top-${doorId}`,
+          {
+            width: ((maxX - minX + 1) * cellSize) + cellSize * 0.18,
+            depth: cellSize * 0.18,
+            height: 0.22
+          },
+          tileIndex,
+          frameMaterial,
+          new Vector3(midX, WALL_HEIGHT - 0.11, minY * cellSize)
+        ),
+        this.createTexturedBox(
+          `door-frame-left-${doorId}`,
+          {
+            width: 0.22,
+            depth: cellSize * 0.18,
+            height: WALL_HEIGHT - 0.18
+          },
+          tileIndex,
+          frameMaterial,
+          new Vector3((minX * cellSize) - cellSize * 0.5 + 0.11, (WALL_HEIGHT - 0.18) * 0.5, minY * cellSize)
+        ),
+        this.createTexturedBox(
+          `door-frame-right-${doorId}`,
+          {
+            width: 0.22,
+            depth: cellSize * 0.18,
+            height: WALL_HEIGHT - 0.18
+          },
+          tileIndex,
+          frameMaterial,
+          new Vector3((maxX * cellSize) + cellSize * 0.5 - 0.11, (WALL_HEIGHT - 0.18) * 0.5, minY * cellSize)
+        )
+      ];
+    }
+
+    return [
+      this.createTexturedBox(
+        `door-frame-top-${doorId}`,
+        {
+          width: cellSize * 0.18,
+          depth: ((maxY - minY + 1) * cellSize) + cellSize * 0.18,
+          height: 0.22
+        },
+        tileIndex,
+        frameMaterial,
+        new Vector3(minX * cellSize, WALL_HEIGHT - 0.11, midY)
+      ),
+      this.createTexturedBox(
+        `door-frame-north-${doorId}`,
+        {
+          width: cellSize * 0.18,
+          depth: 0.22,
+          height: WALL_HEIGHT - 0.18
+        },
+        tileIndex,
+        frameMaterial,
+        new Vector3(minX * cellSize, (WALL_HEIGHT - 0.18) * 0.5, (minY * cellSize) - cellSize * 0.5 + 0.11)
+      ),
+      this.createTexturedBox(
+        `door-frame-south-${doorId}`,
+        {
+          width: cellSize * 0.18,
+          depth: 0.22,
+          height: WALL_HEIGHT - 0.18
+        },
+        tileIndex,
+        frameMaterial,
+        new Vector3(minX * cellSize, (WALL_HEIGHT - 0.18) * 0.5, (maxY * cellSize) + cellSize * 0.5 - 0.11)
+      )
+    ];
+  }
+
+  private createDoorLockMarkers(
+    doorId: string,
+    gridCells: readonly { x: number; y: number }[],
+    axis: DoorAxis,
+    profile: DoorVisualProfile
+  ): Mesh[] {
+    const cellSize = this.content.level.cellSize;
+    const xs = gridCells.map((cell) => cell.x);
+    const ys = gridCells.map((cell) => cell.y);
+    const center = new Vector3(
+      ((Math.min(...xs) + Math.max(...xs)) * 0.5) * cellSize,
+      WALL_HEIGHT * 0.55,
+      ((Math.min(...ys) + Math.max(...ys)) * 0.5) * cellSize
+    );
+    const color = keyColorHex(profile.keyColor);
+    const material = this.getSolidMaterial(color);
+    const forwardOffset = axis === "horizontal"
+      ? [new Vector3(0, 0, cellSize * 0.28), new Vector3(0, 0, -cellSize * 0.28)]
+      : [new Vector3(cellSize * 0.28, 0, 0), new Vector3(-cellSize * 0.28, 0, 0)];
+    const heights = [-0.28, 0, 0.28];
+    const meshes: Mesh[] = [];
+
+    for (const offset of forwardOffset) {
+      for (let index = 0; index < heights.length; index += 1) {
+        const plate = MeshBuilder.CreateBox(
+          `door-lock-${doorId}-${meshes.length}`,
+          {
+            width: cellSize * 0.18,
+            depth: cellSize * 0.08,
+            height: cellSize * 0.18
+          },
+          this.scene
+        );
+        plate.position = center.add(offset);
+        plate.position.y += heights[index];
+        if (axis === "vertical") {
+          plate.rotation.y = Math.PI * 0.5;
+        }
+        plate.material = material;
+        meshes.push(plate);
+      }
+    }
+
+    return meshes;
+  }
+
+  private getDoorLeafMaterial(profile: DoorVisualProfile, isLocked: boolean): StandardMaterial {
+    if (isLocked) {
+      return this.getAtlasMaterial(profile.emissiveColor ?? keyColorHex(profile.keyColor));
+    }
+    return this.getAtlasMaterial("#caa56a");
+  }
+
+  private createTexturedBox(
+    name: string,
+    dimensions: { width: number; depth: number; height: number },
+    tileIndex: number,
+    material: StandardMaterial,
+    position: Vector3
+  ): Mesh {
+    const uv = this.wallAtlas.getTileUV(tileIndex);
+    const faceUV = Array.from({ length: 6 }, () => new Vector4(uv.u0, uv.v0, uv.u1, uv.v1));
+    const mesh = MeshBuilder.CreateBox(name, { ...dimensions, faceUV }, this.scene);
+    mesh.position = position;
+    mesh.material = material;
+    return mesh;
+  }
+
+  private getAtlasMaterial(emissiveHex?: string | null): StandardMaterial {
+    const key = emissiveHex ?? "__base__";
+    const existing = this.atlasMaterials.get(key);
+    if (existing) {
+      return existing;
+    }
+
+    if (!emissiveHex) {
+      this.atlasMaterials.set(key, this.wallMaterial);
+      return this.wallMaterial;
+    }
+
+    const material = this.wallMaterial.clone(`wall-atlas-${key}`);
+    material.emissiveColor = Color3.FromHexString(emissiveHex);
+    this.atlasMaterials.set(key, material);
+    return material;
+  }
+
+  private getSolidMaterial(colorHex: string): StandardMaterial {
+    const existing = this.solidMaterials.get(colorHex);
+    if (existing) {
+      return existing;
+    }
+
+    const material = new StandardMaterial(`solid-${colorHex}`, this.scene);
+    material.diffuseColor = Color3.FromHexString(colorHex);
+    material.emissiveColor = Color3.FromHexString(colorHex);
+    material.specularColor = Color3.Black();
+    material.disableLighting = true;
+    this.solidMaterials.set(colorHex, material);
+    return material;
+  }
+
+  private pickProfileTextureIndex(
+    texturePool: readonly string[],
+    x: number,
+    y: number,
+    variationMode: WallVariationMode,
+    allowNeighborDeDupe: boolean,
+    neighborTextureIndices: number[] = []
+  ): number {
+    const pool = texturePool.map((tileId) => getWallAtlasTileIndex(tileId));
+    if (pool.length === 0) {
+      throw new Error("Wall presentation profile is missing texture tiles.");
+    }
+
+    if (variationMode === "fixed" || pool.length === 1) {
+      return pool[0];
+    }
+
+    const hashed = wallHash(x, y, texturePool.join(":"));
+    let textureIndex = pool[hashed % pool.length];
+    if (!allowNeighborDeDupe) {
+      return textureIndex;
+    }
+
+    const blocked = new Set(neighborTextureIndices);
+    for (let offset = 1; offset < pool.length && blocked.has(textureIndex); offset += 1) {
+      textureIndex = pool[(hashed + offset) % pool.length];
+    }
+    return textureIndex;
   }
 }
 
@@ -611,25 +1021,32 @@ function isWallCell(cell: string | undefined): boolean {
   return cell !== undefined && cell !== ".";
 }
 
-function resolveWallTextureType(level: LevelDefinition, x: number, y: number): WallTextureType {
-  const glyph = level.grid[y]?.[x];
-  const mappedType = wallTextureTypeFromName(level.wallTypes?.[glyph]);
-  if (mappedType) {
-    return mappedType;
-  }
+function resolveDoorAxis(gridCells: readonly { x: number; y: number }[]): DoorAxis {
+  const uniqueYs = new Set(gridCells.map((cell) => cell.y));
+  return uniqueYs.size === 1 ? "horizontal" : "vertical";
+}
 
-  if (x === 0 || y === 0 || x === level.grid[0].length - 1 || y === level.grid.length - 1) {
-    return WallTextureType.Stone;
+function keyColorHex(keyColor: DoorVisualProfile["keyColor"]): string {
+  switch (keyColor) {
+    case "green":
+      return "#5fd46b";
+    case "yellow":
+      return "#f3c75f";
+    case "blue":
+      return "#6ca4ff";
+    default:
+      return "#df7f5c";
   }
+}
 
-  const neighbors = [
-    level.grid[y - 1]?.[x],
-    level.grid[y + 1]?.[x],
-    level.grid[y]?.[x - 1],
-    level.grid[y]?.[x + 1]
-  ];
-  const wallNeighborCount = neighbors.reduce((count, neighbor) => count + Number(isWallCell(neighbor)), 0);
-  return wallNeighborCount >= 3 ? WallTextureType.Brick : WallTextureType.Decorative;
+function wallHash(x: number, y: number, salt: string): number {
+  let hash = (x * 73856093) ^ (y * 19349663) ^ (salt.length * 83492791);
+  hash ^= hash >>> 13;
+  return Math.abs(hash);
+}
+
+function cellKey(x: number, y: number): string {
+  return `${x},${y}`;
 }
 
 function floorRegionCenterY(height: number): number {
