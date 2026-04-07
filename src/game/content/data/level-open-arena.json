@@ -47,10 +47,18 @@
     "############################"
   ],
   "wallTypes": {
-    "#": "Stone",
-    "B": "Brick",
-    "M": "Metal",
-    "D": "Door"
+    "#": "major_structural_stone",
+    "B": "structural_brick_wall",
+    "M": "reinforced_panel_wall",
+    "D": "reinforced_panel_wall"
+  },
+  "wallSemantics": {
+    "cells": [
+      { "x": 3, "y": 5, "semantic": "landmark", "visualProfileId": "landmark_skull_sanctum" },
+      { "x": 24, "y": 5, "semantic": "landmark", "visualProfileId": "landmark_arcane_window" },
+      { "x": 13, "y": 1, "semantic": "landmark", "visualProfileId": "landmark_arcane_window" },
+      { "x": 13, "y": 19, "semantic": "major_wall", "visualProfileId": "major_structural_stone" }
+    ]
   },
   "pickups": [
     {
@@ -190,6 +198,7 @@
         ],
         "locked": true,
         "startsOpen": false,
+        "visualProfileId": "door_occult_reinforced",
         "debugLabel": "Center Keep Seals"
       },
       {
@@ -200,6 +209,7 @@
         ],
         "locked": true,
         "startsOpen": false,
+        "visualProfileId": "door_exit_seal",
         "debugLabel": "Northern Exit Gate"
       }
     ],
@@ -211,6 +221,7 @@
         "targetFacingRadians": 3.141592653589793,
         "enabled": false,
         "revealByDefault": false,
+        "visualProfileId": "teleporter_arcane_pad",
         "debugLabel": "West Ring Relay"
       },
       {
@@ -220,6 +231,7 @@
         "targetFacingRadians": 0,
         "enabled": false,
         "revealByDefault": false,
+        "visualProfileId": "teleporter_arcane_pad",
         "debugLabel": "East Ring Relay"
       },
       {
@@ -229,6 +241,7 @@
         "targetFacingRadians": 3.141592653589793,
         "enabled": false,
         "revealByDefault": false,
+        "visualProfileId": "teleporter_stained_glass",
         "debugLabel": "Northwest Relay"
       },
       {
@@ -238,6 +251,7 @@
         "targetFacingRadians": 0,
         "enabled": false,
         "revealByDefault": false,
+        "visualProfileId": "teleporter_stained_glass",
         "debugLabel": "Northeast Relay"
       },
       {
@@ -247,6 +261,7 @@
         "targetFacingRadians": 4.71238898038469,
         "enabled": false,
         "revealByDefault": false,
+        "visualProfileId": "teleporter_stained_glass",
         "debugLabel": "Center Keep Relay"
       }
     ],

@@ -39,10 +39,17 @@
     "############################"
   ],
   "wallTypes": {
-    "#": "Stone",
-    "B": "Brick",
-    "M": "Metal",
-    "D": "Door"
+    "#": "major_structural_stone",
+    "B": "structural_brick_wall",
+    "M": "reinforced_panel_wall",
+    "D": "reinforced_panel_wall"
+  },
+  "wallSemantics": {
+    "cells": [
+      { "x": 3, "y": 2, "semantic": "landmark", "visualProfileId": "landmark_skull_sanctum" },
+      { "x": 22, "y": 2, "semantic": "landmark", "visualProfileId": "landmark_arcane_window" },
+      { "x": 18, "y": 16, "semantic": "landmark", "visualProfileId": "landmark_skull_sanctum" }
+    ]
   },
   "pickups": [
     {
@@ -142,6 +149,7 @@
         "requiredKeyId": "YELLOW_KEY",
         "locked": true,
         "startsOpen": false,
+        "visualProfileId": "door_locked_yellow",
         "debugLabel": "Yellow Gate"
       },
       {
@@ -154,6 +162,7 @@
         ],
         "locked": true,
         "startsOpen": false,
+        "visualProfileId": "door_occult_reinforced",
         "debugLabel": "Upper Switch Door"
       },
       {
@@ -166,6 +175,7 @@
         ],
         "locked": true,
         "startsOpen": false,
+        "visualProfileId": "door_exit_seal",
         "debugLabel": "Arena Exit"
       }
     ],
@@ -177,6 +187,7 @@
         "targetFacingRadians": 0,
         "enabled": false,
         "revealByDefault": false,
+        "visualProfileId": "teleporter_stained_glass",
         "debugLabel": "Hidden Warp"
       }
     ],
@@ -185,6 +196,7 @@
         "id": "obsidian_switch",
         "cell": { "x": 18, "y": 16 },
         "once": true,
+        "visualProfileId": "switch_skull_panel",
         "actions": [
           { "kind": "open_door", "doorId": "switch_door_upper" },
           { "kind": "unlock_door", "doorId": "switch_door_upper" },
@@ -207,6 +219,11 @@
           }
         ],
         "once": true,
+        "hintCells": [
+          { "x": 2, "y": 16 },
+          { "x": 3, "y": 16 }
+        ],
+        "hintVisualProfileId": "secret_moss_hint",
         "debugLabel": "Crypt Secret"
       }
     ],

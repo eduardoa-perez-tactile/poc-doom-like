@@ -25,6 +25,16 @@
     "#...........#",
     "#############"
   ],
+  "wallTypes": {
+    "#": "major_structural_stone"
+  },
+  "wallSemantics": {
+    "cells": [
+      { "x": 1, "y": 1, "semantic": "landmark", "visualProfileId": "landmark_skull_sanctum" },
+      { "x": 10, "y": 8, "semantic": "landmark", "visualProfileId": "landmark_arcane_window" },
+      { "x": 6, "y": 4, "semantic": "major_wall", "visualProfileId": "major_structural_stone" }
+    ]
+  },
   "pickups": [
     {
       "id": "p_ammo_1",
