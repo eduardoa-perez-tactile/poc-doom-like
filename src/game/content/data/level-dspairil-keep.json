@@ -48,14 +48,14 @@
     "cells": [
       { "x": 3, "y": 2, "semantic": "landmark", "visualProfileId": "landmark_skull_sanctum" },
       { "x": 22, "y": 2, "semantic": "landmark", "visualProfileId": "landmark_arcane_window" },
-      { "x": 18, "y": 16, "semantic": "landmark", "visualProfileId": "landmark_skull_sanctum" }
+      { "x": 16, "y": 16, "semantic": "landmark", "visualProfileId": "landmark_skull_sanctum" }
     ]
   },
   "pickups": [
     {
       "id": "keep_yellow_key",
       "defId": "YELLOW_KEY",
-      "x": 13,
+      "x": 12,
       "y": 19
     },
     {
@@ -189,6 +189,15 @@
         "revealByDefault": false,
         "visualProfileId": "teleporter_stained_glass",
         "debugLabel": "Hidden Warp"
+      },
+      {
+        "id": "exit_marker",
+        "fromRegion": { "x": 18, "y": 1, "w": 5, "h": 4 },
+        "targetPos": { "x": 20, "y": 2 },
+        "enabled": false,
+        "revealByDefault": true,
+        "visualProfileId": "exit_arcane_orb",
+        "debugLabel": "Exit Marker"
       }
     ],
     "switches": [
@@ -215,7 +224,7 @@
           {
             "kind": "spawn_pickup",
             "pickupDefId": "QUARTZ_FLASK",
-            "spawnPos": { "x": 3, "y": 18 }
+            "spawnPos": { "x": 3, "y": 17 }
           }
         ],
         "once": true,

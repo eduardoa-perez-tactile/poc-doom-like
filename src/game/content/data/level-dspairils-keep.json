@@ -133,7 +133,7 @@
     {
       "id": "upper_shield_1",
       "defId": "ENCHANTED_SHIELD",
-      "x": 18,
+      "x": 14,
       "y": 2
     },
     {
@@ -478,6 +478,15 @@
         "revealByDefault": false,
         "visualProfileId": "teleporter_arcane_pad",
         "debugLabel": "Boss Ring East"
+      },
+      {
+        "id": "exit_marker",
+        "fromRegion": { "x": 15, "y": 1, "w": 7, "h": 4 },
+        "targetPos": { "x": 18, "y": 3 },
+        "enabled": false,
+        "revealByDefault": true,
+        "visualProfileId": "exit_arcane_orb",
+        "debugLabel": "Exit Marker"
       }
     ],
     "switches": [

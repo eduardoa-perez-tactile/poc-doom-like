@@ -263,6 +263,15 @@
         "revealByDefault": false,
         "visualProfileId": "teleporter_stained_glass",
         "debugLabel": "Center Keep Relay"
+      },
+      {
+        "id": "exit_marker",
+        "fromRegion": { "x": 8, "y": 1, "w": 12, "h": 3 },
+        "targetPos": { "x": 13, "y": 2 },
+        "enabled": false,
+        "revealByDefault": true,
+        "visualProfileId": "exit_arcane_orb",
+        "debugLabel": "Exit Marker"
       }
     ],
     "triggers": [

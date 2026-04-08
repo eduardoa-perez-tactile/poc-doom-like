@@ -63,6 +63,14 @@ interface DoorRenderState {
 interface TeleporterRenderState {
   profile: SurfaceVisualProfile;
   meshes: Mesh[];
+  exitParticles: {
+    mesh: Mesh;
+    angleOffset: number;
+    radius: number;
+    speed: number;
+    bobOffset: number;
+  }[];
+  particleCenter: Vector3 | null;
 }
 
 interface SwitchRenderState {
@@ -93,6 +101,7 @@ export class RetroRenderer {
   private readonly teleporterRenderStates = new Map<string, TeleporterRenderState>();
   private readonly switchRenderStates = new Map<string, SwitchRenderState>();
   private readonly floorRegionMeshes = new Map<string, Mesh[]>();
+  private teleporterVisualTime = 0;
 
   constructor(
     private readonly engine: Engine | WebGPUEngine,
@@ -164,6 +173,7 @@ export class RetroRenderer {
   }
 
   sync(state: GameSessionState, automapSnapshot: AutomapRenderSnapshot | null, dt: number): void {
+    this.teleporterVisualTime += dt;
     this.flatMaterials.update(dt);
     this.camera.position.x = state.player.x;
     this.camera.position.z = state.player.y;
@@ -464,6 +474,8 @@ export class RetroRenderer {
     const cellSize = this.content.level.cellSize;
     const profile = this.presentationResolver.resolveTeleporterProfile(teleporter);
     const meshes: Mesh[] = [];
+    const exitParticles: TeleporterRenderState["exitParticles"] = [];
+    const isExitSurface = profile.semantic === "exit";
 
     for (let dy = 0; dy < teleporter.fromRegion.h; dy += 1) {
       for (let dx = 0; dx < teleporter.fromRegion.w; dx += 1) {
@@ -492,37 +504,71 @@ export class RetroRenderer {
         pad.parent = this.root;
         meshes.push(pad);
 
-        const beaconX = this.createTexturedBox(
-          `teleporter-beacon-x-${teleporter.id}-${cellX}-${cellY}`,
-          {
-            width: cellSize * 0.16,
-            depth: cellSize * 0.6,
-            height: 1.1
-          },
-          frameTile,
-          this.getAtlasMaterial(profile.emissiveColor ?? "#6aa6ff"),
-          new Vector3(cellX * cellSize, 0.62, cellY * cellSize)
-        );
-        beaconX.parent = this.root;
-        meshes.push(beaconX);
+        if (!isExitSurface) {
+          const beaconX = this.createTexturedBox(
+            `teleporter-beacon-x-${teleporter.id}-${cellX}-${cellY}`,
+            {
+              width: cellSize * 0.16,
+              depth: cellSize * 0.6,
+              height: 1.1
+            },
+            frameTile,
+            this.getAtlasMaterial(profile.emissiveColor ?? "#6aa6ff"),
+            new Vector3(cellX * cellSize, 0.62, cellY * cellSize)
+          );
+          beaconX.parent = this.root;
+          meshes.push(beaconX);
 
-        const beaconZ = this.createTexturedBox(
-          `teleporter-beacon-z-${teleporter.id}-${cellX}-${cellY}`,
-          {
-            width: cellSize * 0.6,
-            depth: cellSize * 0.16,
-            height: 1.1
-          },
-          frameTile,
-          this.getAtlasMaterial(profile.emissiveColor ?? "#6aa6ff"),
-          new Vector3(cellX * cellSize, 0.62, cellY * cellSize)
-        );
-        beaconZ.parent = this.root;
-        meshes.push(beaconZ);
+          const beaconZ = this.createTexturedBox(
+            `teleporter-beacon-z-${teleporter.id}-${cellX}-${cellY}`,
+            {
+              width: cellSize * 0.6,
+              depth: cellSize * 0.16,
+              height: 1.1
+            },
+            frameTile,
+            this.getAtlasMaterial(profile.emissiveColor ?? "#6aa6ff"),
+            new Vector3(cellX * cellSize, 0.62, cellY * cellSize)
+          );
+          beaconZ.parent = this.root;
+          meshes.push(beaconZ);
+        }
       }
     }
 
-    this.teleporterRenderStates.set(teleporter.id, { profile, meshes });
+    const particleCenter = isExitSurface
+      ? new Vector3(
+          (teleporter.fromRegion.x + (teleporter.fromRegion.w - 1) * 0.5) * cellSize,
+          0.06,
+          (teleporter.fromRegion.y + (teleporter.fromRegion.h - 1) * 0.5) * cellSize
+        )
+      : null;
+    if (particleCenter) {
+      const particleCount = Math.max(10, teleporter.fromRegion.w * teleporter.fromRegion.h * 6);
+      const particleMaterial = this.getSolidMaterial(profile.emissiveColor ?? "#d39cff");
+      for (let index = 0; index < particleCount; index += 1) {
+        const mesh = MeshBuilder.CreateBox(
+          `teleporter-exit-particle-${teleporter.id}-${index}`,
+          {
+            width: cellSize * 0.045,
+            depth: cellSize * 0.045,
+            height: cellSize * 0.045
+          },
+          this.scene
+        );
+        mesh.material = particleMaterial;
+        mesh.parent = this.root;
+        exitParticles.push({
+          mesh,
+          angleOffset: (index / particleCount) * Math.PI * 2,
+          radius: cellSize * (0.24 + (index % 3) * 0.05),
+          speed: 0.8 + (index % 5) * 0.12,
+          bobOffset: index * 0.7
+        });
+      }
+    }
+
+    this.teleporterRenderStates.set(teleporter.id, { profile, meshes, exitParticles, particleCenter });
   }
 
   private buildSprites(): void {
@@ -747,11 +793,23 @@ export class RetroRenderer {
       const teleporterState = state.levelScript?.teleporters[teleporterId];
       const visible = teleporterState?.revealed ?? true;
       const active = teleporterState?.enabled ?? true;
+      const renderAsActive = renderState.profile.semantic === "exit" ? true : active;
       for (const mesh of renderState.meshes) {
         mesh.setEnabled(visible);
         if (mesh.material instanceof StandardMaterial) {
-          mesh.material = this.getAtlasMaterial(active ? renderState.profile.emissiveColor ?? "#76b7ff" : "#586575");
+          mesh.material = this.getAtlasMaterial(renderAsActive ? renderState.profile.emissiveColor ?? "#76b7ff" : "#586575");
         }
+      }
+
+      for (const particle of renderState.exitParticles) {
+        particle.mesh.setEnabled(visible);
+        if (!visible || !renderState.particleCenter) {
+          continue;
+        }
+        const angle = this.teleporterVisualTime * particle.speed + particle.angleOffset;
+        particle.mesh.position.x = renderState.particleCenter.x + Math.cos(angle) * particle.radius;
+        particle.mesh.position.z = renderState.particleCenter.z + Math.sin(angle) * particle.radius;
+        particle.mesh.position.y = renderState.particleCenter.y + Math.sin(this.teleporterVisualTime * 2.2 + particle.bobOffset) * 0.04;
       }
     }
   }

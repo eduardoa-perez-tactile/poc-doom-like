@@ -30,7 +30,7 @@
   },
   "wallSemantics": {
     "cells": [
-      { "x": 1, "y": 1, "semantic": "landmark", "visualProfileId": "landmark_skull_sanctum" },
+      { "x": 1, "y": 0, "semantic": "landmark", "visualProfileId": "landmark_skull_sanctum" },
       { "x": 10, "y": 8, "semantic": "landmark", "visualProfileId": "landmark_arcane_window" },
       { "x": 6, "y": 4, "semantic": "major_wall", "visualProfileId": "major_structural_stone" }
     ]
@@ -51,7 +51,7 @@
     {
       "id": "p_health_1",
       "defId": "CRYSTAL_VIAL",
-      "x": 9,
+      "x": 8,
       "y": 9
     }
   ],
@@ -102,6 +102,17 @@
         "id": "exit_seal",
         "rect": { "x": 9, "y": 8, "w": 2, "h": 2 },
         "debugLabel": "Exit Seal"
+      }
+    ],
+    "teleporters": [
+      {
+        "id": "exit_marker",
+        "fromRegion": { "x": 9, "y": 8, "w": 2, "h": 2 },
+        "targetPos": { "x": 9, "y": 9 },
+        "enabled": false,
+        "revealByDefault": true,
+        "visualProfileId": "exit_arcane_orb",
+        "debugLabel": "Exit Marker"
       }
     ],
     "triggers": [

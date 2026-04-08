@@ -48,7 +48,7 @@ export const NODE_TEMPLATES: readonly NodeTemplateDef[] = [
     clearCurrencies: { ash: 10 },
     tags: ["starter", "gauntlet"],
     extraEnemySpawns: [
-      { id: "catacomb_extra_thrall_1", type: "grave_thrall", x: 8, y: 3, facingDeg: 180, minDifficultyTier: 2 }
+      { id: "catacomb_extra_thrall_1", type: "grave_thrall", x: 7, y: 3, facingDeg: 180, minDifficultyTier: 2 }
     ]
   },
   {
@@ -81,8 +81,8 @@ export const NODE_TEMPLATES: readonly NodeTemplateDef[] = [
     clearCurrencies: { ash: 18 },
     tags: ["arena", "elite"],
     extraEnemySpawns: [
-      { id: "arena_extra_thrall_1", type: "grave_thrall", x: 5, y: 14, facingDeg: 90, minDifficultyTier: 2 },
-      { id: "arena_extra_nitro_1", type: "nitrogolem", x: 22, y: 15, facingDeg: 270, minDifficultyTier: 3 }
+      { id: "arena_extra_thrall_1", type: "grave_thrall", x: 6, y: 14, facingDeg: 90, minDifficultyTier: 2 },
+      { id: "arena_extra_nitro_1", type: "nitrogolem", x: 23, y: 15, facingDeg: 270, minDifficultyTier: 3 }
     ]
   },
   {

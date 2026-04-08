@@ -13,6 +13,16 @@ interface ValidationContext {
 }
 
 export function validateLevelScript(level: LevelDefinition, context: ValidationContext): void {
+  validateWalkableCell(level, level.playerStart.x, level.playerStart.y, "player start");
+
+  for (const enemy of level.enemies) {
+    validateWalkableCell(level, enemy.x, enemy.y, `enemy spawn '${enemy.id}'`);
+  }
+
+  for (const pickup of level.pickups) {
+    validateWalkableCell(level, pickup.x, pickup.y, `pickup spawn '${pickup.id}'`);
+  }
+
   const script = level.script;
   if (!script) {
     return;
@@ -224,10 +234,26 @@ function validateActions(
         if (action.enemyDefId && !context.enemies.has(action.enemyDefId)) {
           throw new Error(`Unknown enemy definition '${action.enemyDefId}' in scripted action.`);
         }
+        if (action.spawnPos) {
+          validateWalkableCell(
+            context.level,
+            action.spawnPos.x,
+            action.spawnPos.y,
+            `scripted enemy spawn '${action.enemyDefId ?? "unknown"}'`
+          );
+        }
         break;
       case "spawn_pickup":
         if (action.pickupDefId && !context.pickups.has(action.pickupDefId)) {
           throw new Error(`Unknown pickup definition '${action.pickupDefId}' in scripted action.`);
+        }
+        if (action.spawnPos) {
+          validateWalkableCell(
+            context.level,
+            action.spawnPos.x,
+            action.spawnPos.y,
+            `scripted pickup spawn '${action.pickupDefId ?? "unknown"}'`
+          );
         }
         break;
       default:
@@ -245,6 +271,13 @@ function assertReference(set: Set<string>, id: string, label: string): void {
 function validateCellBounds(level: LevelDefinition, x: number, y: number, label: string): void {
   if (x < 0 || y < 0 || x >= level.grid[0].length || y >= level.grid.length) {
     throw new Error(`${label} is out of bounds at (${x}, ${y}) in level '${level.id}'.`);
+  }
+}
+
+function validateWalkableCell(level: LevelDefinition, x: number, y: number, label: string): void {
+  validateCellBounds(level, x, y, label);
+  if (level.grid[y][x] !== ".") {
+    throw new Error(`${label} must target a walkable cell at (${x}, ${y}) in level '${level.id}'.`);
   }
 }
 
