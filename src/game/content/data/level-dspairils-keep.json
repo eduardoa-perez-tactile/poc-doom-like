@@ -57,10 +57,30 @@
   },
   "wallSemantics": {
     "cells": [
-      { "x": 14, "y": 5, "semantic": "landmark", "visualProfileId": "landmark_skull_sanctum" },
-      { "x": 22, "y": 5, "semantic": "landmark", "visualProfileId": "landmark_arcane_window" },
-      { "x": 5, "y": 25, "semantic": "landmark", "visualProfileId": "landmark_skull_sanctum" },
-      { "x": 31, "y": 23, "semantic": "landmark", "visualProfileId": "landmark_arcane_window" }
+      {
+        "x": 14,
+        "y": 5,
+        "semantic": "landmark",
+        "visualProfileId": "landmark_skull_sanctum"
+      },
+      {
+        "x": 22,
+        "y": 5,
+        "semantic": "landmark",
+        "visualProfileId": "landmark_arcane_window"
+      },
+      {
+        "x": 5,
+        "y": 25,
+        "semantic": "landmark",
+        "visualProfileId": "landmark_skull_sanctum"
+      },
+      {
+        "x": 31,
+        "y": 23,
+        "semantic": "landmark",
+        "visualProfileId": "landmark_arcane_window"
+      }
     ]
   },
   "pickups": [
@@ -181,32 +201,11 @@
   ],
   "enemies": [
     {
-      "id": "hub_thrall_1",
-      "type": "grave_thrall",
-      "x": 16,
-      "y": 19,
-      "facingDeg": 270
-    },
-    {
-      "id": "hub_thrall_2",
-      "type": "grave_thrall",
-      "x": 20,
-      "y": 19,
-      "facingDeg": 270
-    },
-    {
-      "id": "hub_golem_1",
-      "type": "golem",
-      "x": 18,
-      "y": 18,
-      "facingDeg": 270
-    },
-    {
       "id": "west_thrall_1",
       "type": "grave_thrall",
       "x": 7,
       "y": 26,
-      "facingDeg": 0
+      "facingDeg": 90
     },
     {
       "id": "west_thrall_2",
@@ -220,7 +219,7 @@
       "type": "nitrogolem",
       "x": 9,
       "y": 27,
-      "facingDeg": 0
+      "facingDeg": 45
     },
     {
       "id": "east_thrall_1",
@@ -241,70 +240,13 @@
       "type": "nitrogolem",
       "x": 30,
       "y": 28,
-      "facingDeg": 180
-    },
-    {
-      "id": "upper_thrall_west_1",
-      "type": "grave_thrall",
-      "x": 7,
-      "y": 8,
-      "facingDeg": 0
-    },
-    {
-      "id": "upper_golem_west_1",
-      "type": "golem",
-      "x": 10,
-      "y": 11,
-      "facingDeg": 0
-    },
-    {
-      "id": "upper_thrall_east_1",
-      "type": "grave_thrall",
-      "x": 29,
-      "y": 8,
-      "facingDeg": 180
-    },
-    {
-      "id": "upper_golem_east_1",
-      "type": "golem",
-      "x": 26,
-      "y": 11,
-      "facingDeg": 180
-    },
-    {
-      "id": "upper_nitro_north_1",
-      "type": "nitrogolem",
-      "x": 18,
-      "y": 3,
-      "facingDeg": 180
-    },
-    {
-      "id": "upper_thrall_ring_1",
-      "type": "grave_thrall",
-      "x": 14,
-      "y": 12,
-      "facingDeg": 180
-    },
-    {
-      "id": "upper_thrall_ring_2",
-      "type": "grave_thrall",
-      "x": 22,
-      "y": 12,
-      "facingDeg": 180
-    },
-    {
-      "id": "boss_dspairil",
-      "type": "dspairil",
-      "x": 18,
-      "y": 8,
-      "facingDeg": 180
+      "facingDeg": 225
     }
   ],
-  "briefing": "Break the lower seals, claim the yellow key, climb into the upper arena, and finish the keep before the exit seal gives way.",
+  "briefing": "Clear the lower keep and move to the marked exit.",
   "objectives": [
-    "Break the lower branch seals and recover the yellow key.",
-    "Climb through the upper arena into the inner keep.",
-    "Kill D'Spairil and reach the northern exit seal."
+    "Purge every enemy in the lower keep.",
+    "Reach the marked exit region."
   ],
   "map": {
     "doorKinds": {
@@ -315,7 +257,10 @@
       {
         "id": "hidden_secret_cache_reward",
         "kind": "pickup",
-        "cell": { "x": 4, "y": 21 },
+        "cell": {
+          "x": 4,
+          "y": 21
+        },
         "pickupDefId": "MYSTIC_URN",
         "visibleWhen": "discovered",
         "hideOnMapAlways": true
@@ -324,411 +269,79 @@
   },
   "script": {
     "id": "dspairils_keep_flow",
-    "flags": {
-      "hubGateOpened": false,
-      "yellowKeyCollected": false,
-      "upperArenaActivated": false,
-      "innerKeepUnlocked": false,
-      "bossPhaseStarted": false,
-      "bossDefeated": false,
-      "exitUnlocked": false
-    },
     "regions": [
       {
-        "id": "start_hub",
-        "rect": { "x": 13, "y": 24, "w": 12, "h": 8 },
-        "debugLabel": "Start Hub"
+        "id": "keep_floor",
+        "rect": {
+          "x": 1,
+          "y": 20,
+          "w": 35,
+          "h": 13
+        },
+        "debugLabel": "Lower Keep"
       },
       {
-        "id": "west_branch",
-        "rect": { "x": 2, "y": 20, "w": 12, "h": 12 },
-        "debugLabel": "West Branch"
-      },
-      {
-        "id": "east_branch",
-        "rect": { "x": 25, "y": 22, "w": 10, "h": 10 },
-        "debugLabel": "East Branch"
-      },
-      {
-        "id": "mid_stairs",
-        "rect": { "x": 16, "y": 15, "w": 5, "h": 8 },
-        "debugLabel": "Mid Stairs"
-      },
-      {
-        "id": "upper_arena",
-        "rect": { "x": 5, "y": 1, "w": 27, "h": 14 },
-        "debugLabel": "Upper Arena"
-      },
-      {
-        "id": "inner_keep",
-        "rect": { "x": 13, "y": 5, "w": 11, "h": 6 },
-        "debugLabel": "Inner Keep"
-      },
-      {
-        "id": "boss_ring",
-        "rect": { "x": 12, "y": 4, "w": 13, "h": 8 },
-        "debugLabel": "Boss Ring"
-      },
-      {
-        "id": "exit_path",
-        "rect": { "x": 15, "y": 1, "w": 7, "h": 5 },
+        "id": "exit_region",
+        "rect": {
+          "x": 16,
+          "y": 31,
+          "w": 5,
+          "h": 2
+        },
         "debugLabel": "Exit Path"
-      },
-      {
-        "id": "secret_west_region",
-        "rect": { "x": 2, "y": 20, "w": 3, "h": 3 },
-        "debugLabel": "Hidden West Cache"
-      }
-    ],
-    "doors": [
-      {
-        "id": "hub_north_gate",
-        "gridCells": [
-          { "x": 17, "y": 22 },
-          { "x": 18, "y": 22 },
-          { "x": 19, "y": 22 }
-        ],
-        "locked": true,
-        "startsOpen": false,
-        "visualProfileId": "door_occult_reinforced",
-        "debugLabel": "Hub North Gate"
-      },
-      {
-        "id": "yellow_branch_gate",
-        "gridCells": [
-          { "x": 17, "y": 17 },
-          { "x": 18, "y": 17 },
-          { "x": 19, "y": 17 }
-        ],
-        "requiredKeyId": "YELLOW_KEY",
-        "locked": true,
-        "startsOpen": false,
-        "visualProfileId": "door_locked_yellow",
-        "debugLabel": "Yellow Seal"
-      },
-      {
-        "id": "secret_west_door",
-        "gridCells": [
-          { "x": 5, "y": 21 },
-          { "x": 5, "y": 22 }
-        ],
-        "locked": true,
-        "startsOpen": false,
-        "visualProfileId": "door_secret_occult",
-        "debugLabel": "Secret West Door"
-      },
-      {
-        "id": "exit_seal_gate",
-        "gridCells": [
-          { "x": 18, "y": 5 }
-        ],
-        "locked": true,
-        "startsOpen": false,
-        "visualProfileId": "door_exit_seal",
-        "debugLabel": "Exit Seal"
       }
     ],
     "teleporters": [
       {
-        "id": "tele_lower_return",
-        "fromRegion": { "x": 33, "y": 31, "w": 1, "h": 1 },
-        "targetPos": { "x": 15, "y": 24 },
-        "targetFacingRadians": 4.71238898038469,
-        "enabled": false,
-        "revealByDefault": false,
-        "visualProfileId": "teleporter_arcane_pad",
-        "debugLabel": "Lower Return"
-      },
-      {
-        "id": "tele_upper_reveal",
-        "fromRegion": { "x": 8, "y": 12, "w": 1, "h": 1 },
-        "targetPos": { "x": 28, "y": 4 },
-        "targetFacingRadians": 0,
-        "enabled": false,
-        "revealByDefault": false,
-        "visualProfileId": "teleporter_stained_glass",
-        "debugLabel": "Upper Reveal"
-      },
-      {
-        "id": "tele_inner_keep",
-        "fromRegion": { "x": 18, "y": 11, "w": 1, "h": 1 },
-        "targetPos": { "x": 18, "y": 9 },
-        "targetFacingRadians": 4.71238898038469,
-        "enabled": false,
-        "revealByDefault": false,
-        "visualProfileId": "teleporter_stained_glass",
-        "debugLabel": "Inner Keep Access"
-      },
-      {
-        "id": "tele_boss_ring_a",
-        "fromRegion": { "x": 15, "y": 8, "w": 1, "h": 1 },
-        "targetPos": { "x": 7, "y": 8 },
-        "targetFacingRadians": 0,
-        "enabled": false,
-        "revealByDefault": false,
-        "visualProfileId": "teleporter_arcane_pad",
-        "debugLabel": "Boss Ring West"
-      },
-      {
-        "id": "tele_boss_ring_b",
-        "fromRegion": { "x": 21, "y": 8, "w": 1, "h": 1 },
-        "targetPos": { "x": 29, "y": 8 },
-        "targetFacingRadians": 3.141592653589793,
-        "enabled": false,
-        "revealByDefault": false,
-        "visualProfileId": "teleporter_arcane_pad",
-        "debugLabel": "Boss Ring East"
-      },
-      {
         "id": "exit_marker",
-        "fromRegion": { "x": 15, "y": 1, "w": 7, "h": 4 },
-        "targetPos": { "x": 18, "y": 3 },
+        "fromRegion": {
+          "x": 16,
+          "y": 31,
+          "w": 5,
+          "h": 2
+        },
+        "targetPos": {
+          "x": 18,
+          "y": 31
+        },
         "enabled": false,
         "revealByDefault": true,
         "visualProfileId": "exit_arcane_orb",
         "debugLabel": "Exit Marker"
       }
     ],
-    "switches": [
-      {
-        "id": "west_switch_01",
-        "cell": { "x": 7, "y": 28 },
-        "once": true,
-        "visualProfileId": "switch_skull_panel",
-        "actions": [
-          { "kind": "unlock_door", "doorId": "hub_north_gate" },
-          { "kind": "open_door", "doorId": "hub_north_gate" },
-          { "kind": "raise_floor", "floorRegionId": "mid_stair_lift", "deltaHeight": 1 },
-          { "kind": "set_flag", "flag": "hubGateOpened", "value": true },
-          {
-            "kind": "show_message",
-            "message": "Stone stairs grind into place above the hub."
-          }
-        ],
-        "debugLabel": "West Seal Switch"
-      },
-      {
-        "id": "east_switch_01",
-        "cell": { "x": 31, "y": 22 },
-        "once": true,
-        "visualProfileId": "switch_rune_panel",
-        "actions": [
-          { "kind": "enable_teleporter", "teleporterId": "tele_lower_return" },
-          {
-            "kind": "show_message",
-            "message": "A lower warp blooms open for a faster return."
-          }
-        ],
-        "debugLabel": "East Relay Switch"
-      },
-      {
-        "id": "upper_switch_01",
-        "cell": { "x": 27, "y": 12 },
-        "once": true,
-        "visualProfileId": "switch_rune_panel",
-        "conditions": [
-          { "kind": "flag_set", "flag": "upperArenaActivated" }
-        ],
-        "actions": [
-          { "kind": "set_flag", "flag": "innerKeepUnlocked", "value": true },
-          { "kind": "enable_teleporter", "teleporterId": "tele_inner_keep" },
-          {
-            "kind": "show_message",
-            "message": "The central keep answers. A warp sigil rises before it."
-          }
-        ],
-        "debugLabel": "Upper Keep Switch"
-      }
-    ],
-    "secrets": [
-      {
-        "id": "secret_west",
-        "region": { "x": 2, "y": 20, "w": 3, "h": 3 },
-        "message": "A hidden cache opens inside the west wall.",
-        "rewardActions": [
-          {
-            "kind": "spawn_pickup",
-            "pickupDefId": "HELLSTAFF",
-            "spawnPos": { "x": 3, "y": 21 }
-          },
-          {
-            "kind": "spawn_pickup",
-            "pickupDefId": "MYSTIC_URN",
-            "spawnPos": { "x": 4, "y": 21 }
-          }
-        ],
-        "once": true,
-        "hintCells": [
-          { "x": 6, "y": 20 },
-          { "x": 5, "y": 21 }
-        ],
-        "hintVisualProfileId": "secret_occult_hint",
-        "debugLabel": "West Secret Cache"
-      }
-    ],
-    "floorRegions": [
-      {
-        "id": "mid_stair_lift",
-        "blockingCells": [
-          { "x": 16, "y": 20 },
-          { "x": 17, "y": 20 },
-          { "x": 18, "y": 20 },
-          { "x": 19, "y": 20 },
-          { "x": 20, "y": 20 }
-        ],
-        "initialHeight": -1,
-        "passableWhenHeightAtLeast": 0,
-        "debugLabel": "Mid Stair Lift"
-      }
-    ],
     "triggers": [
       {
-        "id": "secret_west_press",
-        "kind": "use_line",
-        "cell": { "x": 6, "y": 20 },
+        "id": "keep_clear",
+        "kind": "all_enemies_dead_in_region",
+        "regionId": "keep_floor",
         "once": true,
-        "actions": [
-          { "kind": "unlock_door", "doorId": "secret_west_door" },
-          { "kind": "open_door", "doorId": "secret_west_door" },
-          {
-            "kind": "show_message",
-            "message": "A hidden seam parts in the western stones."
-          }
-        ],
-        "debugLabel": "Reveal West Secret"
-      },
-      {
-        "id": "yellow_key_pickup",
-        "kind": "pickup_item",
-        "itemId": "YELLOW_KEY",
-        "once": true,
-        "actions": [
-          { "kind": "set_flag", "flag": "yellowKeyCollected", "value": true },
-          {
-            "kind": "show_message",
-            "message": "The yellow seal stirs somewhere above."
-          }
-        ],
-        "debugLabel": "Yellow Key Pickup"
-      },
-      {
-        "id": "mid_stairs_entry",
-        "kind": "enter_region",
-        "regionId": "mid_stairs",
-        "once": true,
-        "conditions": [
-          { "kind": "flag_set", "flag": "hubGateOpened" }
-        ],
         "actions": [
           {
             "kind": "show_message",
-            "message": "The climb narrows. Ambushers close from the stairwell."
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "grave_thrall",
-            "spawnPos": { "x": 16, "y": 18 }
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "golem",
-            "spawnPos": { "x": 20, "y": 18 }
+            "message": "The lower keep is clear. Move to the marked exit."
           }
         ],
-        "debugLabel": "Mid Stair Ambush"
-      },
-      {
-        "id": "upper_arena_entry",
-        "kind": "enter_region",
-        "regionId": "upper_arena",
-        "once": true,
-        "actions": [
-          { "kind": "set_flag", "flag": "upperArenaActivated", "value": true },
-          { "kind": "enable_teleporter", "teleporterId": "tele_upper_reveal" },
-          {
-            "kind": "show_message",
-            "message": "The upper court awakens and the keep begins to howl."
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "grave_thrall",
-            "spawnPos": { "x": 10, "y": 12 }
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "grave_thrall",
-            "spawnPos": { "x": 26, "y": 12 }
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "nitrogolem",
-            "spawnPos": { "x": 13, "y": 4 }
-          }
-        ],
-        "debugLabel": "Upper Arena Entry"
-      },
-      {
-        "id": "inner_keep_entry",
-        "kind": "enter_region",
-        "regionId": "inner_keep",
-        "once": true,
-        "conditions": [
-          { "kind": "flag_set", "flag": "innerKeepUnlocked" }
-        ],
-        "actions": [
-          { "kind": "set_flag", "flag": "bossPhaseStarted", "value": true },
-          { "kind": "enable_teleporter", "teleporterId": "tele_boss_ring_a" },
-          { "kind": "enable_teleporter", "teleporterId": "tele_boss_ring_b" },
-          {
-            "kind": "show_message",
-            "message": "The inner keep seals behind you. D'Spairil rises in the dark."
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "golem",
-            "spawnPos": { "x": 15, "y": 9 }
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "grave_thrall",
-            "spawnPos": { "x": 21, "y": 9 }
-          }
-        ],
-        "debugLabel": "Inner Keep Entry"
-      },
-      {
-        "id": "boss_dspairil_dead",
-        "kind": "enemy_killed",
-        "enemyEntityId": "boss_dspairil",
-        "once": true,
-        "actions": [
-          { "kind": "set_flag", "flag": "bossDefeated", "value": true },
-          { "kind": "set_flag", "flag": "exitUnlocked", "value": true },
-          { "kind": "unlock_door", "doorId": "exit_seal_gate" },
-          { "kind": "open_door", "doorId": "exit_seal_gate" },
-          {
-            "kind": "show_message",
-            "message": "The northern seal breaks. The exit lies open."
-          }
-        ],
-        "debugLabel": "Boss Dead"
+        "debugLabel": "Keep Clear"
       },
       {
         "id": "finish_level",
         "kind": "enter_region",
-        "regionId": "exit_path",
+        "regionId": "exit_region",
         "once": true,
         "conditions": [
-          { "kind": "flag_set", "flag": "exitUnlocked" },
-          { "kind": "door_open", "doorId": "exit_seal_gate" }
+          {
+            "kind": "all_enemies_dead_in_region",
+            "regionId": "keep_floor"
+          }
         ],
         "actions": [
           {
             "kind": "complete_level",
-            "message": "D'Spairil's Keep falls silent."
+            "message": "Keep cleared."
           }
         ],
-        "debugLabel": "Exit Path"
+        "debugLabel": "Exit"
       }
     ]
   }

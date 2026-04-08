@@ -54,10 +54,30 @@
   },
   "wallSemantics": {
     "cells": [
-      { "x": 3, "y": 5, "semantic": "landmark", "visualProfileId": "landmark_skull_sanctum" },
-      { "x": 24, "y": 5, "semantic": "landmark", "visualProfileId": "landmark_arcane_window" },
-      { "x": 13, "y": 0, "semantic": "landmark", "visualProfileId": "landmark_arcane_window" },
-      { "x": 13, "y": 19, "semantic": "major_wall", "visualProfileId": "major_structural_stone" }
+      {
+        "x": 3,
+        "y": 5,
+        "semantic": "landmark",
+        "visualProfileId": "landmark_skull_sanctum"
+      },
+      {
+        "x": 24,
+        "y": 5,
+        "semantic": "landmark",
+        "visualProfileId": "landmark_arcane_window"
+      },
+      {
+        "x": 13,
+        "y": 0,
+        "semantic": "landmark",
+        "visualProfileId": "landmark_arcane_window"
+      },
+      {
+        "x": 13,
+        "y": 19,
+        "semantic": "major_wall",
+        "visualProfileId": "major_structural_stone"
+      }
     ]
   },
   "pickups": [
@@ -140,12 +160,68 @@
       "y": 17
     }
   ],
-  "enemies": [],
-  "briefing": "Push north through the south corridor, wake the arena, unlock the center keep, and break the final seal before escaping through the northern gate.",
+  "enemies": [
+    {
+      "id": "arena_thrall_west",
+      "type": "grave_thrall",
+      "x": 3,
+      "y": 12,
+      "facingDeg": 0
+    },
+    {
+      "id": "arena_thrall_east",
+      "type": "grave_thrall",
+      "x": 24,
+      "y": 12,
+      "facingDeg": 180
+    },
+    {
+      "id": "arena_golem_nw",
+      "type": "golem",
+      "x": 8,
+      "y": 6,
+      "facingDeg": 90
+    },
+    {
+      "id": "arena_golem_ne",
+      "type": "golem",
+      "x": 19,
+      "y": 6,
+      "facingDeg": 270
+    },
+    {
+      "id": "arena_nitro_sw",
+      "type": "nitrogolem",
+      "x": 4,
+      "y": 20,
+      "facingDeg": 45
+    },
+    {
+      "id": "arena_nitro_se",
+      "type": "nitrogolem",
+      "x": 23,
+      "y": 20,
+      "facingDeg": 225
+    },
+    {
+      "id": "arena_thrall_sw",
+      "type": "grave_thrall",
+      "x": 8,
+      "y": 23,
+      "facingDeg": 0
+    },
+    {
+      "id": "arena_thrall_se",
+      "type": "grave_thrall",
+      "x": 19,
+      "y": 23,
+      "facingDeg": 180
+    }
+  ],
+  "briefing": "Clear the arena and push through the northern exit path.",
   "objectives": [
-    "Wake the arena and survive the outer wave.",
-    "Unlock the center keep and break the final seal.",
-    "Escape through the northern exit gate."
+    "Purge every enemy in the arena floor.",
+    "Reach the northern exit path."
   ],
   "map": {
     "doorKinds": {
@@ -153,121 +229,42 @@
     }
   },
   "script": {
-    "id": "open_arena_flow",
-    "flags": {
-      "arenaActive": false,
-      "centerUnlocked": false,
-      "bossPhase": false,
-      "arenaComplete": false,
-      "exitUnlocked": false
-    },
+    "id": "arena_flow",
     "regions": [
       {
-        "id": "arena_entry",
-        "rect": { "x": 9, "y": 24, "w": 10, "h": 3 },
-        "debugLabel": "Arena Entry"
-      },
-      {
-        "id": "outer_ring",
-        "rect": { "x": 1, "y": 5, "w": 26, "h": 20 },
-        "debugLabel": "Outer Ring"
-      },
-      {
-        "id": "center_keep",
-        "rect": { "x": 9, "y": 11, "w": 10, "h": 8 },
-        "debugLabel": "Center Keep"
+        "id": "arena_floor",
+        "rect": {
+          "x": 1,
+          "y": 1,
+          "w": 26,
+          "h": 30
+        },
+        "debugLabel": "Arena Floor"
       },
       {
         "id": "exit_path",
-        "rect": { "x": 8, "y": 1, "w": 12, "h": 3 },
+        "rect": {
+          "x": 8,
+          "y": 1,
+          "w": 12,
+          "h": 3
+        },
         "debugLabel": "Exit Path"
-      }
-    ],
-    "doors": [
-      {
-        "id": "center_gate",
-        "gridCells": [
-          { "x": 11, "y": 11 },
-          { "x": 12, "y": 11 },
-          { "x": 13, "y": 11 },
-          { "x": 14, "y": 11 },
-          { "x": 11, "y": 18 },
-          { "x": 12, "y": 18 },
-          { "x": 13, "y": 18 },
-          { "x": 14, "y": 18 }
-        ],
-        "locked": true,
-        "startsOpen": false,
-        "visualProfileId": "door_occult_reinforced",
-        "debugLabel": "Center Keep Seals"
-      },
-      {
-        "id": "exit_gate",
-        "gridCells": [
-          { "x": 13, "y": 4 },
-          { "x": 14, "y": 4 }
-        ],
-        "locked": true,
-        "startsOpen": false,
-        "visualProfileId": "door_exit_seal",
-        "debugLabel": "Northern Exit Gate"
       }
     ],
     "teleporters": [
       {
-        "id": "tele_west",
-        "fromRegion": { "x": 3, "y": 17, "w": 1, "h": 1 },
-        "targetPos": { "x": 22, "y": 22 },
-        "targetFacingRadians": 3.141592653589793,
-        "enabled": false,
-        "revealByDefault": false,
-        "visualProfileId": "teleporter_arcane_pad",
-        "debugLabel": "West Ring Relay"
-      },
-      {
-        "id": "tele_east",
-        "fromRegion": { "x": 24, "y": 17, "w": 1, "h": 1 },
-        "targetPos": { "x": 5, "y": 22 },
-        "targetFacingRadians": 0,
-        "enabled": false,
-        "revealByDefault": false,
-        "visualProfileId": "teleporter_arcane_pad",
-        "debugLabel": "East Ring Relay"
-      },
-      {
-        "id": "tele_northwest",
-        "fromRegion": { "x": 8, "y": 6, "w": 1, "h": 1 },
-        "targetPos": { "x": 20, "y": 8 },
-        "targetFacingRadians": 3.141592653589793,
-        "enabled": false,
-        "revealByDefault": false,
-        "visualProfileId": "teleporter_stained_glass",
-        "debugLabel": "Northwest Relay"
-      },
-      {
-        "id": "tele_northeast",
-        "fromRegion": { "x": 19, "y": 6, "w": 1, "h": 1 },
-        "targetPos": { "x": 7, "y": 8 },
-        "targetFacingRadians": 0,
-        "enabled": false,
-        "revealByDefault": false,
-        "visualProfileId": "teleporter_stained_glass",
-        "debugLabel": "Northeast Relay"
-      },
-      {
-        "id": "tele_center",
-        "fromRegion": { "x": 13, "y": 17, "w": 2, "h": 1 },
-        "targetPos": { "x": 13, "y": 14 },
-        "targetFacingRadians": 4.71238898038469,
-        "enabled": false,
-        "revealByDefault": false,
-        "visualProfileId": "teleporter_stained_glass",
-        "debugLabel": "Center Keep Relay"
-      },
-      {
         "id": "exit_marker",
-        "fromRegion": { "x": 8, "y": 1, "w": 12, "h": 3 },
-        "targetPos": { "x": 13, "y": 2 },
+        "fromRegion": {
+          "x": 8,
+          "y": 1,
+          "w": 12,
+          "h": 3
+        },
+        "targetPos": {
+          "x": 13,
+          "y": 2
+        },
         "enabled": false,
         "revealByDefault": true,
         "visualProfileId": "exit_arcane_orb",
@@ -276,165 +273,28 @@
     ],
     "triggers": [
       {
-        "id": "arena_entry_trigger",
-        "kind": "enter_region",
-        "regionId": "arena_entry",
-        "once": true,
-        "actions": [
-          { "kind": "set_flag", "flag": "arenaActive", "value": true },
-          { "kind": "enable_teleporter", "teleporterId": "tele_west" },
-          { "kind": "enable_teleporter", "teleporterId": "tele_east" },
-          {
-            "kind": "show_message",
-            "message": "The arena wakes. Ring sigils flare and the outer wave spills in."
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "grave_thrall",
-            "spawnPos": { "x": 3, "y": 12 }
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "grave_thrall",
-            "spawnPos": { "x": 24, "y": 12 }
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "golem",
-            "spawnPos": { "x": 8, "y": 6 }
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "golem",
-            "spawnPos": { "x": 19, "y": 6 }
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "nitrogolem",
-            "spawnPos": { "x": 4, "y": 20 }
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "nitrogolem",
-            "spawnPos": { "x": 23, "y": 20 }
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "grave_thrall",
-            "spawnPos": { "x": 8, "y": 23 }
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "grave_thrall",
-            "spawnPos": { "x": 19, "y": 23 }
-          }
-        ],
-        "debugLabel": "Arena Activation"
-      },
-      {
-        "id": "outer_wave_clear",
+        "id": "arena_clear",
         "kind": "all_enemies_dead_in_region",
-        "regionId": "outer_ring",
+        "regionId": "arena_floor",
         "once": true,
-        "conditions": [
-          { "kind": "flag_set", "flag": "arenaActive" }
-        ],
         "actions": [
-          { "kind": "set_flag", "flag": "centerUnlocked", "value": true },
-          { "kind": "unlock_door", "doorId": "center_gate" },
-          { "kind": "open_door", "doorId": "center_gate" },
-          { "kind": "enable_teleporter", "teleporterId": "tele_center" },
           {
             "kind": "show_message",
-            "message": "The keep seals part. A central warp aligns with the inner chamber."
+            "message": "The arena falls silent. The northern path is clear."
           }
         ],
-        "debugLabel": "Outer Ring Clear"
+        "debugLabel": "Arena Clear"
       },
       {
-        "id": "center_entry_trigger",
-        "kind": "enter_region",
-        "regionId": "center_keep",
-        "once": true,
-        "conditions": [
-          { "kind": "flag_set", "flag": "centerUnlocked" },
-          { "kind": "flag_clear", "flag": "bossPhase" }
-        ],
-        "actions": [
-          { "kind": "set_flag", "flag": "bossPhase", "value": true },
-          { "kind": "enable_teleporter", "teleporterId": "tele_northwest" },
-          { "kind": "enable_teleporter", "teleporterId": "tele_northeast" },
-          {
-            "kind": "show_message",
-            "message": "The heart of the arena answers. D'Spairil descends with a final guard."
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "dspairil",
-            "spawnPos": { "x": 13, "y": 14 }
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "nitrogolem",
-            "spawnPos": { "x": 10, "y": 12 }
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "nitrogolem",
-            "spawnPos": { "x": 17, "y": 12 }
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "golem",
-            "spawnPos": { "x": 11, "y": 16 }
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "golem",
-            "spawnPos": { "x": 16, "y": 16 }
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "grave_thrall",
-            "spawnPos": { "x": 13, "y": 17 }
-          },
-          {
-            "kind": "spawn_enemy",
-            "enemyDefId": "grave_thrall",
-            "spawnPos": { "x": 14, "y": 17 }
-          }
-        ],
-        "debugLabel": "Center Keep Boss Phase"
-      },
-      {
-        "id": "final_clear_trigger",
-        "kind": "all_enemies_dead_in_region",
-        "regionId": "center_keep",
-        "once": true,
-        "conditions": [
-          { "kind": "flag_set", "flag": "bossPhase" },
-          { "kind": "flag_clear", "flag": "arenaComplete" }
-        ],
-        "actions": [
-          { "kind": "set_flag", "flag": "arenaComplete", "value": true },
-          { "kind": "set_flag", "flag": "exitUnlocked", "value": true },
-          { "kind": "unlock_door", "doorId": "exit_gate" },
-          { "kind": "open_door", "doorId": "exit_gate" },
-          {
-            "kind": "show_message",
-            "message": "The northern seal breaks. The exit path is open."
-          }
-        ],
-        "debugLabel": "Arena Completion"
-      },
-      {
-        "id": "exit_trigger",
+        "id": "arena_exit",
         "kind": "enter_region",
         "regionId": "exit_path",
         "once": true,
         "conditions": [
-          { "kind": "flag_set", "flag": "exitUnlocked" },
-          { "kind": "door_open", "doorId": "exit_gate" }
+          {
+            "kind": "all_enemies_dead_in_region",
+            "regionId": "arena_floor"
+          }
         ],
         "actions": [
           {
