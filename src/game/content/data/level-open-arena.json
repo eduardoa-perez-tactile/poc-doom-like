@@ -56,7 +56,7 @@
     "cells": [
       { "x": 3, "y": 5, "semantic": "landmark", "visualProfileId": "landmark_skull_sanctum" },
       { "x": 24, "y": 5, "semantic": "landmark", "visualProfileId": "landmark_arcane_window" },
-      { "x": 13, "y": 1, "semantic": "landmark", "visualProfileId": "landmark_arcane_window" },
+      { "x": 13, "y": 0, "semantic": "landmark", "visualProfileId": "landmark_arcane_window" },
       { "x": 13, "y": 19, "semantic": "major_wall", "visualProfileId": "major_structural_stone" }
     ]
   },

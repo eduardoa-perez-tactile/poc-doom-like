@@ -62,11 +62,7 @@ export const NODE_TEMPLATES: readonly NodeTemplateDef[] = [
     rewardTableId: "reward_table.combat",
     weight: 2,
     clearCurrencies: { ash: 12 },
-    tags: ["keep", "switches"],
-    extraEnemySpawns: [
-      { id: "keep_extra_thrall_1", type: "grave_thrall", x: 6, y: 6, facingDeg: 0, minDifficultyTier: 2 },
-      { id: "keep_extra_nitro_1", type: "nitrogolem", x: 20, y: 4, facingDeg: 180, minDifficultyTier: 3 }
-    ]
+    tags: ["keep", "switches"]
   },
   {
     id: "template.open_arena.elite",
