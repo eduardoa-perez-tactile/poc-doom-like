@@ -249,10 +249,6 @@
     "Reach the marked exit region."
   ],
   "map": {
-    "doorKinds": {
-      "secret_west_door": "secret",
-      "exit_seal_gate": "exit"
-    },
     "markers": [
       {
         "id": "hidden_secret_cache_reward",

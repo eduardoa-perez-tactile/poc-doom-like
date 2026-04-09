@@ -20,7 +20,7 @@ export interface ScriptActionContext {
   setFloorHeight(regionId: string, height: number): boolean;
   raiseFloor(regionId: string, delta: number): boolean;
   lowerFloor(regionId: string, delta: number): boolean;
-  spawnEnemy(enemyDefId: string, spawnPos: { x: number; y: number }): void;
+  spawnEnemy(enemyDefId: string, spawnPos: { x: number; y: number }, entityId?: string): void;
   spawnPickup(pickupDefId: string, spawnPos: { x: number; y: number }): void;
   pushMessage(message: string, ttl?: number): void;
   playSound(soundId: string): void;
@@ -110,7 +110,7 @@ export class ScriptActionExecutor {
           this.warnMissingTarget(action, context);
           break;
         }
-        context.spawnEnemy(action.enemyDefId, action.spawnPos);
+        context.spawnEnemy(action.enemyDefId, action.spawnPos, action.entityId);
         break;
       case "spawn_pickup":
         if (!action.pickupDefId || !action.spawnPos) {

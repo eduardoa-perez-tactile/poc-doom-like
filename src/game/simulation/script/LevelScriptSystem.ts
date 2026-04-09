@@ -22,7 +22,7 @@ export interface LevelScriptCallbacks {
   state: GameSessionState;
   pushMessage(message: string, ttl?: number): void;
   teleportPlayer(targetPos: Vec2, facingRadians?: number): void;
-  spawnEnemy(enemyDefId: string, spawnPos: Vec2): void;
+  spawnEnemy(enemyDefId: string, spawnPos: Vec2, entityId?: string): void;
   spawnPickup(pickupDefId: string, spawnPos: Vec2): void;
   completeLevel(message?: string): void;
   playSound(soundId: string): void;

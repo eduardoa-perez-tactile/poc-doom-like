@@ -78,6 +78,7 @@ export interface ScriptActionDef {
   targetHeight?: number;
   deltaHeight?: number;
   enemyDefId?: string;
+  entityId?: string;
   pickupDefId?: string;
   spawnPos?: Vec2;
   flag?: string;
@@ -165,6 +166,17 @@ export interface FloorRegionDef {
   debugLabel?: string;
 }
 
+export type ZoneEffectKind = "safe" | "regen" | "enemy_block";
+
+export interface ZoneEffectDef {
+  id: string;
+  region: Rect;
+  effect: ZoneEffectKind;
+  regenPerSecond?: number;
+  enemySpeedScale?: number;
+  debugLabel?: string;
+}
+
 export interface LevelScriptDef {
   id?: LevelScriptId;
   debug?: boolean;
@@ -175,6 +187,7 @@ export interface LevelScriptDef {
   switches?: SwitchDef[];
   secrets?: SecretDef[];
   floorRegions?: FloorRegionDef[];
+  zoneEffects?: ZoneEffectDef[];
   triggers?: TriggerDef[];
 }
 

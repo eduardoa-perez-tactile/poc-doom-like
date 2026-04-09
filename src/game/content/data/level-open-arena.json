@@ -223,11 +223,7 @@
     "Purge every enemy in the arena floor.",
     "Reach the northern exit path."
   ],
-  "map": {
-    "doorKinds": {
-      "exit_gate": "exit"
-    }
-  },
+  "map": {},
   "script": {
     "id": "arena_flow",
     "regions": [

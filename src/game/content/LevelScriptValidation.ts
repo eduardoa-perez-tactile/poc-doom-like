@@ -43,6 +43,7 @@ export function validateLevelScript(level: LevelDefinition, context: ValidationC
   const secretIds = new Set<string>();
   const floorRegionIds = new Set<string>();
   const triggerIds = new Set<string>();
+  const enemyEntityIds = new Set(level.enemies.map((enemy) => enemy.id));
 
   for (const region of script.regions ?? []) {
     registerId("region", region.id);
@@ -77,6 +78,16 @@ export function validateLevelScript(level: LevelDefinition, context: ValidationC
       validateCellBounds(level, cell.x, cell.y, `floor region '${floorRegion.id}' blocker`);
     }
   }
+  for (const zoneEffect of script.zoneEffects ?? []) {
+    registerId("zone effect", zoneEffect.id);
+    validateRectBounds(level, zoneEffect.region, `zone effect '${zoneEffect.id}'`);
+    if (zoneEffect.regenPerSecond !== undefined && zoneEffect.regenPerSecond < 0) {
+      throw new Error(`Zone effect '${zoneEffect.id}' has invalid regenPerSecond value.`);
+    }
+    if (zoneEffect.enemySpeedScale !== undefined && zoneEffect.enemySpeedScale < 0) {
+      throw new Error(`Zone effect '${zoneEffect.id}' has invalid enemySpeedScale value.`);
+    }
+  }
   for (const trigger of script.triggers ?? []) {
     registerId("trigger", trigger.id);
     triggerIds.add(trigger.id);
@@ -101,6 +112,7 @@ export function validateLevelScript(level: LevelDefinition, context: ValidationC
       switchIds,
       floorRegionIds,
       triggerIds,
+      enemyEntityIds,
       context
     );
   }
@@ -115,6 +127,7 @@ export function validateLevelScript(level: LevelDefinition, context: ValidationC
       switchIds,
       floorRegionIds,
       triggerIds,
+      enemyEntityIds,
       context
     );
   }
@@ -137,6 +150,7 @@ export function validateLevelScript(level: LevelDefinition, context: ValidationC
       switchIds,
       floorRegionIds,
       triggerIds,
+      enemyEntityIds,
       context
     );
   }
@@ -194,6 +208,7 @@ function validateActions(
   _switchIds: Set<string>,
   floorRegionIds: Set<string>,
   triggerIds: Set<string>,
+  enemyEntityIds: Set<string>,
   context: ValidationContext
 ): void {
   for (const action of actions) {
@@ -233,6 +248,12 @@ function validateActions(
       case "spawn_enemy":
         if (action.enemyDefId && !context.enemies.has(action.enemyDefId)) {
           throw new Error(`Unknown enemy definition '${action.enemyDefId}' in scripted action.`);
+        }
+        if (action.entityId) {
+          if (enemyEntityIds.has(action.entityId)) {
+            throw new Error(`Duplicate enemy entity id '${action.entityId}' in scripted action.`);
+          }
+          enemyEntityIds.add(action.entityId);
         }
         if (action.spawnPos) {
           validateWalkableCell(
