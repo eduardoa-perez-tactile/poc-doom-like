@@ -139,6 +139,15 @@
     "Use the sanctuary to stabilize under pressure.",
     "Defeat the trial boss and break the northern gate."
   ],
+  "render": {
+    "openSky": true,
+    "skyDome": {
+      "topColor": "#5a7fa8",
+      "horizonColor": "#be7b4b",
+      "bottomColor": "#28170f",
+      "radius": 180
+    }
+  },
   "map": {
     "doorKinds": {
       "exit_gate": "exit"

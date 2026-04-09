@@ -1,6 +1,7 @@
 import {
   Color3,
   Color4,
+  DynamicTexture,
   Engine,
   HemisphericLight,
   Mesh,
@@ -109,7 +110,8 @@ export class RetroRenderer {
     automapCanvas: HTMLCanvasElement
   ) {
     this.scene = new Scene(engine);
-    this.scene.clearColor = Color4.FromHexString(`${content.level.skyColor}ff`);
+    const clearColorHex = content.level.render?.skyDome?.topColor ?? content.level.skyColor;
+    this.scene.clearColor = Color4.FromHexString(`${clearColorHex}ff`);
     this.scene.fogMode = Scene.FOGMODE_EXP2;
     this.scene.fogDensity = 0.032;
     this.scene.fogColor = Color3.FromHexString(content.level.fogColor);
@@ -241,17 +243,21 @@ export class RetroRenderer {
     ground.material = this.flatMaterials.getFlatMaterial(getLevelFloorFlat(this.content.level));
     ground.parent = this.root;
 
-    const ceiling = MeshBuilder.CreateGround(
-      "ceiling",
-      { width: width * cellSize, height: height * cellSize },
-      this.scene
-    );
-    ceiling.position.x = ground.position.x;
-    ceiling.position.z = ground.position.z;
-    ceiling.position.y = WALL_HEIGHT;
-    ceiling.rotation.x = Math.PI;
-    ceiling.material = this.flatMaterials.getFlatMaterial(getLevelCeilingFlat(this.content.level));
-    ceiling.parent = this.root;
+    if (this.content.level.render?.openSky) {
+      this.buildSkyDome(ground.position.x, ground.position.z, width, height, cellSize);
+    } else {
+      const ceiling = MeshBuilder.CreateGround(
+        "ceiling",
+        { width: width * cellSize, height: height * cellSize },
+        this.scene
+      );
+      ceiling.position.x = ground.position.x;
+      ceiling.position.z = ground.position.z;
+      ceiling.position.y = WALL_HEIGHT;
+      ceiling.rotation.x = Math.PI;
+      ceiling.material = this.flatMaterials.getFlatMaterial(getLevelCeilingFlat(this.content.level));
+      ceiling.parent = this.root;
+    }
 
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
@@ -323,6 +329,57 @@ export class RetroRenderer {
       }
       this.floorRegionMeshes.set(floorRegion.id, meshes);
     }
+  }
+
+  private buildSkyDome(
+    centerX: number,
+    centerZ: number,
+    width: number,
+    height: number,
+    cellSize: number
+  ): void {
+    const skyDome = this.content.level.render?.skyDome;
+    const topColor = skyDome?.topColor ?? this.content.level.skyColor;
+    const horizonColor = skyDome?.horizonColor ?? this.content.level.fogColor;
+    const bottomColor = skyDome?.bottomColor ?? this.content.level.fogColor;
+    const defaultRadius = Math.max(140, Math.max(width, height) * cellSize * 3);
+    const radius = Math.max(40, skyDome?.radius ?? defaultRadius);
+
+    const dome = MeshBuilder.CreateSphere(
+      "sky-dome",
+      { diameter: radius * 2, segments: 24, sideOrientation: Mesh.BACKSIDE },
+      this.scene
+    );
+    dome.position.set(centerX, WALL_HEIGHT * 0.3, centerZ);
+    dome.infiniteDistance = true;
+    dome.isPickable = false;
+
+    const textureSize = 1024;
+    const texture = new DynamicTexture(
+      "sky-dome-gradient",
+      { width: textureSize, height: textureSize },
+      this.scene,
+      false
+    );
+    const context = texture.getContext() as CanvasRenderingContext2D;
+    const gradient = context.createLinearGradient(0, 0, 0, textureSize);
+    gradient.addColorStop(0, topColor);
+    gradient.addColorStop(0.45, horizonColor);
+    gradient.addColorStop(1, bottomColor);
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, textureSize, textureSize);
+    texture.update(false);
+
+    const material = new StandardMaterial("sky-dome-material", this.scene);
+    material.diffuseTexture = texture;
+    material.emissiveTexture = texture;
+    material.specularColor = Color3.Black();
+    material.disableLighting = true;
+    material.backFaceCulling = false;
+    material.fogEnabled = false;
+
+    dome.material = material;
+    dome.parent = this.root;
   }
 
   private buildDoorPresentation(door: NonNullable<NonNullable<LevelDefinition["script"]>["doors"]>[number]): void {

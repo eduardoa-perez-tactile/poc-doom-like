@@ -264,6 +264,18 @@ export interface EnemySpawn extends GridPoint {
   facingDeg?: number;
 }
 
+export interface LevelSkyDomeDef {
+  topColor?: string;
+  horizonColor?: string;
+  bottomColor?: string;
+  radius?: number;
+}
+
+export interface LevelRenderDef {
+  openSky?: boolean;
+  skyDome?: LevelSkyDomeDef;
+}
+
 export interface LevelDefinition {
   id: string;
   name: string;
@@ -281,6 +293,7 @@ export interface LevelDefinition {
   enemies: EnemySpawn[];
   briefing: string;
   objectives?: string[];
+  render?: LevelRenderDef;
   script?: LevelScriptDef;
   map?: LevelAutomapMetadataDef;
 }
