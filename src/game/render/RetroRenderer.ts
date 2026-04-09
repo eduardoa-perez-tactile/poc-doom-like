@@ -8,6 +8,7 @@ import {
   MeshBuilder,
   Scene,
   StandardMaterial,
+  Texture,
   TransformNode,
   UniversalCamera,
   Vector3,
@@ -50,6 +51,7 @@ import { WallTextureAtlas } from "./WallTextureAtlas";
 const PLAYER_EYE_HEIGHT = 1.2;
 const FLOOR_REGION_MESH_HEIGHT = 0.44;
 const WALL_HEIGHT = 2.6;
+const OPEN_SKY_TEXTURE_URL = "/sky/heretic-open-sky.png";
 
 type DoorAxis = "horizontal" | "vertical";
 
@@ -120,7 +122,12 @@ export class RetroRenderer {
     this.camera = new UniversalCamera("player-camera", new Vector3(0, PLAYER_EYE_HEIGHT, 0), this.scene);
     this.camera.fov = 1.14;
     this.camera.minZ = 0.05;
-    this.camera.maxZ = 60;
+    if (content.level.render?.openSky) {
+      const requestedSkyRadius = content.level.render.skyDome?.radius ?? 120;
+      this.camera.maxZ = Math.max(90, Math.min(512, requestedSkyRadius * 1.3));
+    } else {
+      this.camera.maxZ = 60;
+    }
     this.camera.inputs.clear();
 
     new HemisphericLight("key-light", new Vector3(0.2, 1, 0.1), this.scene).intensity = 0.6;
@@ -343,7 +350,8 @@ export class RetroRenderer {
     const horizonColor = skyDome?.horizonColor ?? this.content.level.fogColor;
     const bottomColor = skyDome?.bottomColor ?? this.content.level.fogColor;
     const defaultRadius = Math.max(140, Math.max(width, height) * cellSize * 3);
-    const radius = Math.max(40, skyDome?.radius ?? defaultRadius);
+    const requestedRadius = Math.max(40, skyDome?.radius ?? defaultRadius);
+    const radius = Math.min(requestedRadius, this.camera.maxZ * 0.92);
 
     const dome = MeshBuilder.CreateSphere(
       "sky-dome",
@@ -354,6 +362,45 @@ export class RetroRenderer {
     dome.infiniteDistance = true;
     dome.isPickable = false;
 
+    const material = new StandardMaterial("sky-dome-material", this.scene);
+    material.specularColor = Color3.Black();
+    material.disableLighting = true;
+    material.backFaceCulling = false;
+    material.fogEnabled = false;
+
+    const fallbackTexture = this.createSkyGradientTexture(topColor, horizonColor, bottomColor);
+    const skyTexture = new Texture(
+      OPEN_SKY_TEXTURE_URL,
+      this.scene,
+      false,
+      false,
+      Texture.NEAREST_SAMPLINGMODE,
+      () => {
+        skyTexture.wrapU = Texture.WRAP_ADDRESSMODE;
+        skyTexture.wrapV = Texture.CLAMP_ADDRESSMODE;
+        skyTexture.uScale = skyDome?.textureRepeatX ?? 4;
+        skyTexture.vScale = skyDome?.textureRepeatY ?? 1;
+        skyTexture.vOffset = skyDome?.textureOffsetY ?? 0;
+        material.diffuseTexture = skyTexture;
+        material.emissiveTexture = skyTexture;
+      },
+      () => {
+        material.diffuseTexture = fallbackTexture;
+        material.emissiveTexture = fallbackTexture;
+      }
+    );
+    material.diffuseTexture = fallbackTexture;
+    material.emissiveTexture = fallbackTexture;
+
+    dome.material = material;
+    dome.parent = this.root;
+  }
+
+  private createSkyGradientTexture(
+    topColor: string,
+    horizonColor: string,
+    bottomColor: string
+  ): DynamicTexture {
     const textureSize = 1024;
     const texture = new DynamicTexture(
       "sky-dome-gradient",
@@ -369,17 +416,7 @@ export class RetroRenderer {
     context.fillStyle = gradient;
     context.fillRect(0, 0, textureSize, textureSize);
     texture.update(false);
-
-    const material = new StandardMaterial("sky-dome-material", this.scene);
-    material.diffuseTexture = texture;
-    material.emissiveTexture = texture;
-    material.specularColor = Color3.Black();
-    material.disableLighting = true;
-    material.backFaceCulling = false;
-    material.fogEnabled = false;
-
-    dome.material = material;
-    dome.parent = this.root;
+    return texture;
   }
 
   private buildDoorPresentation(door: NonNullable<NonNullable<LevelDefinition["script"]>["doors"]>[number]): void {

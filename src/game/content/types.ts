@@ -269,6 +269,9 @@ export interface LevelSkyDomeDef {
   horizonColor?: string;
   bottomColor?: string;
   radius?: number;
+  textureRepeatX?: number;
+  textureRepeatY?: number;
+  textureOffsetY?: number;
 }
 
 export interface LevelRenderDef {
