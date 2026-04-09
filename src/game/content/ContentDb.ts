@@ -9,6 +9,7 @@ import { getRegisteredLevel } from "./LevelRegistry";
 import { validateLevelScript } from "./LevelScriptValidation";
 import { pickupDefs, pickupVisuals } from "./pickups";
 import { spriteManifest } from "./spriteManifest";
+import { validateLevelWallPresentation } from "./walls";
 import weaponDefs from "./data/weapons.json";
 import type {
   ContentRuntimeTuning,
@@ -70,6 +71,7 @@ export function createContentDb(levelId?: string, runtimeTuning?: ContentRuntime
     pickups: pickupMap,
     enemies: enemyMap
   });
+  validateLevelWallPresentation(level);
 
   return {
     weapons: new Map(

@@ -14,20 +14,29 @@ export type AmmoType =
 export type WeaponAmmoType = "none" | AmmoType;
 export type EnemyAttackType = "melee" | "projectile";
 export type EnemyAttackVisualKey = string;
-export type WallTextureTypeName =
-  | "Stone"
-  | "Brick"
-  | "Wood"
-  | "Metal"
-  | "Decorative"
-  | "Door"
-  | "Portal"
-  | "Lava"
-  | "Water"
-  | "Moss"
-  | "Arcane"
-  | "StainedGlass"
-  | "Bars";
+export type WallSemanticKind =
+  | "wall"
+  | "major_wall"
+  | "door"
+  | "locked_door"
+  | "secret_wall"
+  | "teleporter"
+  | "exit"
+  | "switch_panel"
+  | "gate"
+  | "landmark"
+  | "hazard";
+
+export type WallVisualProfileId = string;
+
+export interface WallSemanticCellOverride extends GridPoint {
+  semantic: WallSemanticKind;
+  visualProfileId?: WallVisualProfileId;
+}
+
+export interface LevelWallSemanticOverrides {
+  cells: WallSemanticCellOverride[];
+}
 export type SpriteAnimationStateName =
   | "idle"
   | "move"
@@ -255,6 +264,21 @@ export interface EnemySpawn extends GridPoint {
   facingDeg?: number;
 }
 
+export interface LevelSkyDomeDef {
+  topColor?: string;
+  horizonColor?: string;
+  bottomColor?: string;
+  radius?: number;
+  textureRepeatX?: number;
+  textureRepeatY?: number;
+  textureOffsetY?: number;
+}
+
+export interface LevelRenderDef {
+  openSky?: boolean;
+  skyDome?: LevelSkyDomeDef;
+}
+
 export interface LevelDefinition {
   id: string;
   name: string;
@@ -266,11 +290,13 @@ export interface LevelDefinition {
   ceilingFlat?: FlatDefId;
   playerStart: PlayerStart;
   grid: string[];
-  wallTypes?: Record<string, WallTextureTypeName>;
+  wallTypes?: Record<string, WallVisualProfileId>;
+  wallSemantics?: LevelWallSemanticOverrides;
   pickups: PickupSpawn[];
   enemies: EnemySpawn[];
   briefing: string;
   objectives?: string[];
+  render?: LevelRenderDef;
   script?: LevelScriptDef;
   map?: LevelAutomapMetadataDef;
 }

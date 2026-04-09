@@ -47,12 +47,19 @@ import {
 } from "./player/PlayerStatSystem";
 import { createInitialLevelScriptRuntime } from "./script/LevelScriptRuntime";
 import { LevelScriptSystem, type LevelScriptCallbacks } from "./script/LevelScriptSystem";
-import type { LevelScriptRuntimeState, ScriptFrameEvents, Vec2 } from "./script/LevelScriptTypes";
+import type {
+  LevelScriptRuntimeState,
+  Rect,
+  ScriptFrameEvents,
+  Vec2,
+  ZoneEffectDef
+} from "./script/LevelScriptTypes";
 import type {
   AutomapPickupState,
   AutomapRenderSnapshot,
   LevelMapBuildResult
 } from "./map/AutomapTypes";
+import { rectContainsCell } from "./script/LevelScriptUtils";
 import {
   hasAmmoForResolvedWeapon,
   resolveWeaponContext,
@@ -64,6 +71,13 @@ const ALERT_TIME = 0.12;
 const ATTACK_RESOLVE_TIME = 0.1;
 const WEAPON_ATTACK_ANIM_TIME = 0.14;
 const PLAYER_PROJECTILE_OFFSET = 0.58;
+const SCRIPT_SPAWN_MIN_PLAYER_DISTANCE = 2.25;
+
+interface ZoneEffectSnapshot {
+  playerSafe: boolean;
+  playerRegenPerSecond: number;
+  enemySpeedScale: number;
+}
 
 export class GameSimulation {
   private readonly initialState: GameSessionState;
@@ -81,6 +95,13 @@ export class GameSimulation {
   private spawnedEnemyId = 1;
   private spawnedPickupId = 1;
   private currentScriptEvents: ScriptFrameEvents | null = null;
+  private readonly scriptedZoneEffects: ZoneEffectDef[];
+  private readonly enemyBlockZones: Rect[];
+  private zoneEffects: ZoneEffectSnapshot = {
+    playerSafe: false,
+    playerRegenPerSecond: 0,
+    enemySpeedScale: 1
+  };
   state: GameSessionState;
 
   constructor(
@@ -89,6 +110,10 @@ export class GameSimulation {
   ) {
     this.automapBuild = new AutomapBuilder().build(content);
     this.scriptSystem = content.level.script ? new LevelScriptSystem(content.level.script) : null;
+    this.scriptedZoneEffects = content.level.script?.zoneEffects ?? [];
+    this.enemyBlockZones = this.scriptedZoneEffects
+      .filter((zoneEffect) => zoneEffect.effect === "enemy_block")
+      .map((zoneEffect) => zoneEffect.region);
     this.automapRenderSnapshot = {
       definition: this.automapBuild.definition,
       runtime: this.automapStateSystem.createInitialState(),
@@ -113,6 +138,7 @@ export class GameSimulation {
     this.spawnedEnemyId = 1;
     this.spawnedPickupId = 1;
     this.currentScriptEvents = null;
+    this.zoneEffects = { playerSafe: false, playerRegenPerSecond: 0, enemySpeedScale: 1 };
     for (const key of Object.keys(this.automapPickupStates)) {
       delete this.automapPickupStates[key];
     }
@@ -124,6 +150,7 @@ export class GameSimulation {
       delete this.automapPickupStates[key];
     }
     this.state = structuredClone(state);
+    this.zoneEffects = { playerSafe: false, playerRegenPerSecond: 0, enemySpeedScale: 1 };
     recomputePlayerDerivedState(this.state.player);
   }
 
@@ -197,6 +224,7 @@ export class GameSimulation {
       movementLockedByAutomap ? 0 : input.moveX,
       movementLockedByAutomap ? 0 : input.moveY
     );
+    this.updateZoneEffects(dt);
     this.updateWeaponCooldown(dt);
 
     if (input.fireDown) {
@@ -822,6 +850,10 @@ export class GameSimulation {
     distanceToPlayer: number,
     events: SimulationEvents
   ): void {
+    if (this.zoneEffects.playerSafe) {
+      return;
+    }
+
     if (attackProfile.type === "projectile") {
       const canFireFromMemory = !(attackProfile.requiresLineOfSight ?? true) && enemy.memoryTime > 0;
       const canResolveProjectile = hasLineOfSight || canFireFromMemory;
@@ -956,7 +988,9 @@ export class GameSimulation {
       const toPlayerX = this.state.player.x - enemy.x;
       const toPlayerY = this.state.player.y - enemy.y;
       const distanceToPlayer = Math.hypot(toPlayerX, toPlayerY);
+      const playerSafe = this.zoneEffects.playerSafe;
       const hasLos =
+        !playerSafe &&
         distanceToPlayer <= definition.aggroRange &&
         this.hasLineOfSight(enemy.x, enemy.y, this.state.player.x, this.state.player.y);
       enemy.hasLineOfSight = hasLos;
@@ -972,6 +1006,7 @@ export class GameSimulation {
       if (distanceToPlayer > 0.001) {
         enemy.facingAngle = Math.atan2(toPlayerY, toPlayerX);
       }
+      const chaseSpeed = definition.moveSpeed * this.zoneEffects.enemySpeedScale;
 
       switch (enemy.fsmState) {
         case "idle":
@@ -997,9 +1032,9 @@ export class GameSimulation {
           ) {
             enemy.facingAngle = Math.atan2(toPlayerY, toPlayerX);
           } else if (hasLos || enemy.memoryTime > 0) {
-            this.moveEnemyToward(enemy, enemy.lastKnownPlayerX, enemy.lastKnownPlayerY, definition.moveSpeed, dt);
+            this.moveEnemyToward(enemy, enemy.lastKnownPlayerX, enemy.lastKnownPlayerY, chaseSpeed, dt);
           } else if (distance2(enemy.x, enemy.y, enemy.spawnX, enemy.spawnY) > 0.2) {
-            this.moveEnemyToward(enemy, enemy.spawnX, enemy.spawnY, definition.moveSpeed * 0.8, dt);
+            this.moveEnemyToward(enemy, enemy.spawnX, enemy.spawnY, chaseSpeed * 0.8, dt);
           } else {
             this.transitionEnemy(enemy, "idle");
           }
@@ -1061,6 +1096,14 @@ export class GameSimulation {
     const stepY = (dy / distance) * speed * dt;
     const radius = this.requireEnemyDefinition(enemy.typeId).radius * 0.8;
     const resolved = this.resolveMotion(enemy.x, enemy.y, enemy.x + stepX, enemy.y + stepY, radius);
+    const startCell = this.worldToCell(enemy.x, enemy.y);
+    const targetCell = this.worldToCell(resolved.x, resolved.y);
+    if (
+      !this.isEnemyBlockedCell(startCell.x, startCell.y) &&
+      this.isEnemyBlockedCell(targetCell.x, targetCell.y)
+    ) {
+      return;
+    }
     enemy.x = resolved.x;
     enemy.y = resolved.y;
   }
@@ -1100,7 +1143,7 @@ export class GameSimulation {
           distance2(projectile.x, projectile.y, this.state.player.x, this.state.player.y) <=
             this.state.player.derived.radius + projectile.radius
         ) {
-          if (projectile.damage > 0) {
+          if (!this.zoneEffects.playerSafe && projectile.damage > 0) {
             this.damagePlayer(projectile.damage, events);
           }
           this.resolveProjectileImpact(projectile, projectile.x, projectile.y);
@@ -1148,6 +1191,7 @@ export class GameSimulation {
   private applyHazardDamage(hazard: HazardState): void {
     if (hazard.source === "enemy") {
       if (
+        !this.zoneEffects.playerSafe &&
         this.state.player.alive &&
         distance2(hazard.x, hazard.y, this.state.player.x, this.state.player.y) <=
           hazard.radius + this.state.player.derived.radius
@@ -1217,6 +1261,59 @@ export class GameSimulation {
         this.state.effects.splice(index, 1);
       }
     }
+  }
+
+  private updateZoneEffects(dt: number): void {
+    if (this.scriptedZoneEffects.length === 0) {
+      this.zoneEffects.playerSafe = false;
+      this.zoneEffects.playerRegenPerSecond = 0;
+      this.zoneEffects.enemySpeedScale = 1;
+      return;
+    }
+
+    const playerCell = this.worldToCell(this.state.player.x, this.state.player.y);
+    let playerSafe = false;
+    let playerRegenPerSecond = 0;
+    let enemySpeedScale = 1;
+
+    for (const zoneEffect of this.scriptedZoneEffects) {
+      if (!rectContainsCell(zoneEffect.region, playerCell)) {
+        continue;
+      }
+
+      switch (zoneEffect.effect) {
+        case "safe":
+          playerSafe = true;
+          break;
+        case "regen":
+          playerRegenPerSecond += zoneEffect.regenPerSecond ?? 4;
+          break;
+        case "enemy_block":
+          enemySpeedScale = Math.min(enemySpeedScale, zoneEffect.enemySpeedScale ?? 1);
+          break;
+      }
+    }
+
+    this.zoneEffects.playerSafe = playerSafe;
+    this.zoneEffects.playerRegenPerSecond = playerRegenPerSecond;
+    this.zoneEffects.enemySpeedScale = enemySpeedScale;
+
+    if (playerRegenPerSecond > 0) {
+      healPlayer(this.state.player, playerRegenPerSecond * dt);
+    }
+  }
+
+  private isEnemyBlockedCell(cellX: number, cellY: number): boolean {
+    if (this.enemyBlockZones.length === 0) {
+      return false;
+    }
+    const cell = { x: cellX, y: cellY };
+    for (const zone of this.enemyBlockZones) {
+      if (rectContainsCell(zone, cell)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private applySplashDamage(
@@ -1296,7 +1393,7 @@ export class GameSimulation {
   private applyProjectileHoming(projectile: ProjectileState, turnFactor: number): void {
     const target =
       projectile.source === "enemy"
-        ? { x: this.state.player.x, y: this.state.player.y }
+        ? (this.zoneEffects.playerSafe ? null : { x: this.state.player.x, y: this.state.player.y })
         : this.findNearestEnemy(projectile.x, projectile.y, 8);
     if (!target) {
       return;
@@ -1633,6 +1730,47 @@ export class GameSimulation {
     return best;
   }
 
+  private resolveScriptedEnemySpawnCenter(spawnPos: Vec2): { x: number; y: number } {
+    const preferredCenter = this.cellCenter(spawnPos.x, spawnPos.y);
+    const minDistance = this.state.level.cellSize * SCRIPT_SPAWN_MIN_PLAYER_DISTANCE;
+    const distanceToPlayer = Math.hypot(
+      preferredCenter.x - this.state.player.x,
+      preferredCenter.y - this.state.player.y
+    );
+    if (distanceToPlayer >= minDistance && !this.isEnemyBlockedCell(spawnPos.x, spawnPos.y)) {
+      return preferredCenter;
+    }
+
+    let bestCenter = preferredCenter;
+    let bestDistance = distanceToPlayer;
+    for (let radius = 1; radius <= 4; radius += 1) {
+      for (let offsetY = -radius; offsetY <= radius; offsetY += 1) {
+        for (let offsetX = -radius; offsetX <= radius; offsetX += 1) {
+          if (Math.abs(offsetX) !== radius && Math.abs(offsetY) !== radius) {
+            continue;
+          }
+          const testX = spawnPos.x + offsetX;
+          const testY = spawnPos.y + offsetY;
+          if (this.isCellSolid(testX, testY) || this.isEnemyBlockedCell(testX, testY)) {
+            continue;
+          }
+
+          const center = this.cellCenter(testX, testY);
+          const distance = Math.hypot(center.x - this.state.player.x, center.y - this.state.player.y);
+          if (distance > bestDistance) {
+            bestCenter = center;
+            bestDistance = distance;
+          }
+        }
+      }
+      if (bestDistance >= minDistance) {
+        break;
+      }
+    }
+
+    return bestCenter;
+  }
+
   private tryCollectPickup(definition: PickupDef, _pickup?: unknown): boolean {
     if (
       !canPickupBeCollected(definition, {
@@ -1887,11 +2025,14 @@ export class GameSimulation {
           this.state.player.angle = facingRadians;
         }
       },
-      spawnEnemy: (enemyDefId, spawnPos) => {
-        const center = this.cellCenter(spawnPos.x, spawnPos.y);
+      spawnEnemy: (enemyDefId, spawnPos, entityId) => {
+        const center = this.resolveScriptedEnemySpawnCenter(spawnPos);
+        const resolvedEnemyId = entityId && entityId.length > 0
+          ? entityId
+          : `script_enemy_${this.spawnedEnemyId++}`;
         this.state.enemies.push(
           this.instantiateEnemyState(
-            `script_enemy_${this.spawnedEnemyId++}`,
+            resolvedEnemyId,
             enemyDefId,
             center.x,
             center.y,

@@ -1,0 +1,879 @@
+{
+  "id": "level-open-arena-survival",
+  "name": "Arena of Trials",
+  "cellSize": 2,
+  "skyColor": "#1f140e",
+  "fogColor": "#100908",
+  "ambientColor": "#5a3521",
+  "floorFlat": "STONE_BRICK_GRAY",
+  "ceilingFlat": "STONE_WORN_GRAY",
+  "playerStart": {
+    "x": 14,
+    "y": 27,
+    "angleDeg": 270
+  },
+  "grid": [
+    "#############################",
+    "############.....############",
+    "##########.........##########",
+    "########.............########",
+    "######.....###D###.....######",
+    "#####...................#####",
+    "####.....................####",
+    "####.....................####",
+    "####.....................####",
+    "####.....................####",
+    "####.....................####",
+    "####.......#######.......####",
+    "####.......##...##.......####",
+    "####.......##...##.......####",
+    "####.......##...##.......####",
+    "####.......##...##.......####",
+    "####.......##...##.......####",
+    "####.......##...##.......####",
+    "####.......###D###.......####",
+    "####.RRRRRR..............####",
+    "####.R....R..............####",
+    "####.R....R..............####",
+    "####.R...................####",
+    "#####..RRRRRR...........#####",
+    "########.............########",
+    "##########.........##########",
+    "############.....############",
+    "#############...#############",
+    "#############################"
+  ],
+  "wallTypes": {
+    "#": "major_structural_stone",
+    "D": "reinforced_panel_wall",
+    "R": "structural_brick_wall"
+  },
+  "wallSemantics": {
+    "cells": [
+      {
+        "x": 14,
+        "y": 11,
+        "semantic": "landmark",
+        "visualProfileId": "landmark_arcane_window"
+      },
+      {
+        "x": 7,
+        "y": 19,
+        "semantic": "landmark",
+        "visualProfileId": "landmark_skull_sanctum"
+      },
+      {
+        "x": 14,
+        "y": 4,
+        "semantic": "exit",
+        "visualProfileId": "major_structural_stone"
+      }
+    ]
+  },
+  "pickups": [
+    {
+      "id": "trials_entry_crossbow",
+      "defId": "ETHEREAL_CROSSBOW",
+      "x": 14,
+      "y": 27
+    },
+    {
+      "id": "trials_entry_arrows",
+      "defId": "ETHEREAL_ARROWS",
+      "x": 14,
+      "y": 26
+    },
+    {
+      "id": "trials_rest_vial_1",
+      "defId": "CRYSTAL_VIAL",
+      "x": 7,
+      "y": 21
+    },
+    {
+      "id": "trials_rest_vial_2",
+      "defId": "CRYSTAL_VIAL",
+      "x": 8,
+      "y": 21
+    },
+    {
+      "id": "trials_rest_flask",
+      "defId": "QUARTZ_FLASK",
+      "x": 8,
+      "y": 22
+    },
+    {
+      "id": "trials_ring_ammo_west",
+      "defId": "WAND_CRYSTAL",
+      "x": 6,
+      "y": 14
+    },
+    {
+      "id": "trials_ring_ammo_east",
+      "defId": "ETHEREAL_ARROWS",
+      "x": 22,
+      "y": 14
+    },
+    {
+      "id": "trials_ring_shield",
+      "defId": "SILVER_SHIELD",
+      "x": 14,
+      "y": 23
+    },
+    {
+      "id": "trials_ring_hold",
+      "defId": "BAG_OF_HOLDING",
+      "x": 14,
+      "y": 24
+    },
+    {
+      "id": "trials_ring_claw",
+      "defId": "DRAGON_CLAW",
+      "x": 14,
+      "y": 8
+    }
+  ],
+  "enemies": [],
+  "briefing": "Enter the arena, survive escalating waves, and finish the trial by slaying the boss.",
+  "objectives": [
+    "Activate the arena and survive escalating waves.",
+    "Use the sanctuary to stabilize under pressure.",
+    "Defeat the trial boss and break the northern gate."
+  ],
+  "render": {
+    "openSky": true,
+    "skyDome": {
+      "topColor": "#5a7fa8",
+      "horizonColor": "#be7b4b",
+      "bottomColor": "#28170f",
+      "radius": 180,
+      "textureRepeatX": 3,
+      "textureRepeatY": 0.58,
+      "textureOffsetY": 0.22
+    }
+  },
+  "map": {
+    "doorKinds": {
+      "exit_gate": "exit"
+    }
+  },
+  "script": {
+    "id": "arena_trials_flow",
+    "flags": {
+      "arenaActive": false,
+      "bossPhase": false,
+      "arenaComplete": false,
+      "exitUnlocked": false
+    },
+    "regions": [
+      {
+        "id": "arena_entry",
+        "rect": {
+          "x": 10,
+          "y": 23,
+          "w": 9,
+          "h": 2
+        },
+        "debugLabel": "Arena Entry"
+      },
+      {
+        "id": "arena_main",
+        "rect": {
+          "x": 4,
+          "y": 6,
+          "w": 21,
+          "h": 18
+        },
+        "debugLabel": "Arena Main"
+      },
+      {
+        "id": "rest_zone",
+        "rect": {
+          "x": 6,
+          "y": 20,
+          "w": 4,
+          "h": 3
+        },
+        "debugLabel": "Sanctuary"
+      },
+      {
+        "id": "center_structure",
+        "rect": {
+          "x": 13,
+          "y": 12,
+          "w": 3,
+          "h": 6
+        },
+        "debugLabel": "Core Dais"
+      },
+      {
+        "id": "exit_region",
+        "rect": {
+          "x": 13,
+          "y": 1,
+          "w": 3,
+          "h": 3
+        },
+        "debugLabel": "North Exit"
+      }
+    ],
+    "doors": [
+      {
+        "id": "exit_gate",
+        "gridCells": [
+          {
+            "x": 14,
+            "y": 4
+          }
+        ],
+        "locked": true,
+        "debugLabel": "Exit Gate"
+      },
+      {
+        "id": "center_gate",
+        "gridCells": [
+          {
+            "x": 14,
+            "y": 18
+          }
+        ],
+        "locked": true,
+        "debugLabel": "Core Gate"
+      }
+    ],
+    "teleporters": [
+      {
+        "id": "flank_west",
+        "fromRegion": {
+          "x": 4,
+          "y": 13,
+          "w": 2,
+          "h": 2
+        },
+        "targetPos": {
+          "x": 23,
+          "y": 13
+        },
+        "enabled": true,
+        "revealByDefault": true,
+        "visualProfileId": "teleporter_stained_glass",
+        "debugLabel": "West Flank"
+      },
+      {
+        "id": "flank_east",
+        "fromRegion": {
+          "x": 23,
+          "y": 13,
+          "w": 2,
+          "h": 2
+        },
+        "targetPos": {
+          "x": 5,
+          "y": 13
+        },
+        "enabled": false,
+        "revealByDefault": true,
+        "visualProfileId": "teleporter_stained_glass",
+        "debugLabel": "East Flank"
+      },
+      {
+        "id": "north_shunt",
+        "fromRegion": {
+          "x": 13,
+          "y": 6,
+          "w": 3,
+          "h": 2
+        },
+        "targetPos": {
+          "x": 14,
+          "y": 22
+        },
+        "enabled": false,
+        "revealByDefault": true,
+        "visualProfileId": "teleporter_arcane_pad",
+        "debugLabel": "North Shunt"
+      },
+      {
+        "id": "south_shunt",
+        "fromRegion": {
+          "x": 13,
+          "y": 22,
+          "w": 3,
+          "h": 2
+        },
+        "targetPos": {
+          "x": 14,
+          "y": 7
+        },
+        "enabled": false,
+        "revealByDefault": true,
+        "visualProfileId": "teleporter_arcane_pad",
+        "debugLabel": "South Shunt"
+      }
+    ],
+    "zoneEffects": [
+      {
+        "id": "sanctuary_safe",
+        "region": {
+          "x": 6,
+          "y": 20,
+          "w": 4,
+          "h": 3
+        },
+        "effect": "safe",
+        "debugLabel": "Sanctuary Safe"
+      },
+      {
+        "id": "sanctuary_regen",
+        "region": {
+          "x": 6,
+          "y": 20,
+          "w": 4,
+          "h": 3
+        },
+        "effect": "regen",
+        "regenPerSecond": 8,
+        "debugLabel": "Sanctuary Regen"
+      },
+      {
+        "id": "sanctuary_block",
+        "region": {
+          "x": 5,
+          "y": 19,
+          "w": 6,
+          "h": 5
+        },
+        "effect": "enemy_block",
+        "enemySpeedScale": 0.72,
+        "debugLabel": "Sanctuary Boundary"
+      }
+    ],
+    "triggers": [
+      {
+        "id": "arena_activate",
+        "kind": "enter_region",
+        "regionId": "arena_entry",
+        "once": true,
+        "actions": [
+          {
+            "kind": "set_flag",
+            "flag": "arenaActive",
+            "value": true
+          },
+          {
+            "kind": "show_message",
+            "message": "Arena of Trials awakens. Survive the waves."
+          },
+          {
+            "kind": "activate_trigger",
+            "triggerId": "wave_1_spawn"
+          }
+        ],
+        "debugLabel": "Arena Activation"
+      },
+      {
+        "id": "wave_1_spawn",
+        "kind": "manual",
+        "once": true,
+        "actions": [
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "grave_thrall",
+            "spawnPos": {
+              "x": 7,
+              "y": 8
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "grave_thrall",
+            "spawnPos": {
+              "x": 21,
+              "y": 8
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "golem",
+            "spawnPos": {
+              "x": 6,
+              "y": 14
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "golem",
+            "spawnPos": {
+              "x": 22,
+              "y": 14
+            }
+          }
+        ],
+        "debugLabel": "Wave 1"
+      },
+      {
+        "id": "wave_1_clear",
+        "kind": "all_enemies_dead_in_region",
+        "regionId": "arena_main",
+        "once": true,
+        "conditions": [
+          {
+            "kind": "trigger_fired",
+            "triggerId": "wave_1_spawn"
+          },
+          {
+            "kind": "flag_set",
+            "flag": "arenaActive"
+          },
+          {
+            "kind": "flag_clear",
+            "flag": "bossPhase"
+          }
+        ],
+        "actions": [
+          {
+            "kind": "show_message",
+            "message": "Wave one broken."
+          },
+          {
+            "kind": "activate_trigger",
+            "triggerId": "wave_2_spawn"
+          }
+        ],
+        "debugLabel": "Wave 1 Clear"
+      },
+      {
+        "id": "wave_2_spawn",
+        "kind": "manual",
+        "once": true,
+        "actions": [
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "golem",
+            "spawnPos": {
+              "x": 6,
+              "y": 10
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "golem",
+            "spawnPos": {
+              "x": 22,
+              "y": 10
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "grave_thrall",
+            "spawnPos": {
+              "x": 14,
+              "y": 7
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "nitrogolem",
+            "spawnPos": {
+              "x": 12,
+              "y": 22
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "nitrogolem",
+            "spawnPos": {
+              "x": 16,
+              "y": 22
+            }
+          }
+        ],
+        "debugLabel": "Wave 2"
+      },
+      {
+        "id": "wave_2_clear",
+        "kind": "all_enemies_dead_in_region",
+        "regionId": "arena_main",
+        "once": true,
+        "conditions": [
+          {
+            "kind": "trigger_fired",
+            "triggerId": "wave_2_spawn"
+          },
+          {
+            "kind": "flag_set",
+            "flag": "arenaActive"
+          },
+          {
+            "kind": "flag_clear",
+            "flag": "bossPhase"
+          }
+        ],
+        "actions": [
+          {
+            "kind": "show_message",
+            "message": "Wave two breaks against the ring."
+          },
+          {
+            "kind": "activate_trigger",
+            "triggerId": "wave_3_spawn"
+          }
+        ],
+        "debugLabel": "Wave 2 Clear"
+      },
+      {
+        "id": "wave_3_spawn",
+        "kind": "manual",
+        "once": true,
+        "actions": [
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "grave_thrall",
+            "spawnPos": {
+              "x": 7,
+              "y": 22
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "grave_thrall",
+            "spawnPos": {
+              "x": 21,
+              "y": 22
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "nitrogolem",
+            "spawnPos": {
+              "x": 23,
+              "y": 14
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "nitrogolem",
+            "spawnPos": {
+              "x": 5,
+              "y": 14
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "golem",
+            "spawnPos": {
+              "x": 14,
+              "y": 23
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "golem",
+            "spawnPos": {
+              "x": 14,
+              "y": 6
+            }
+          }
+        ],
+        "debugLabel": "Wave 3"
+      },
+      {
+        "id": "wave_3_clear",
+        "kind": "all_enemies_dead_in_region",
+        "regionId": "arena_main",
+        "once": true,
+        "conditions": [
+          {
+            "kind": "trigger_fired",
+            "triggerId": "wave_3_spawn"
+          },
+          {
+            "kind": "flag_set",
+            "flag": "arenaActive"
+          },
+          {
+            "kind": "flag_clear",
+            "flag": "bossPhase"
+          }
+        ],
+        "actions": [
+          {
+            "kind": "show_message",
+            "message": "Wave three is down."
+          },
+          {
+            "kind": "activate_trigger",
+            "triggerId": "wave_4_spawn"
+          }
+        ],
+        "debugLabel": "Wave 3 Clear"
+      },
+      {
+        "id": "wave_4_spawn",
+        "kind": "manual",
+        "once": true,
+        "actions": [
+          {
+            "kind": "show_message",
+            "message": "Final wave before the champion."
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "nitrogolem",
+            "spawnPos": {
+              "x": 6,
+              "y": 8
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "nitrogolem",
+            "spawnPos": {
+              "x": 22,
+              "y": 8
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "nitrogolem",
+            "spawnPos": {
+              "x": 6,
+              "y": 20
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "nitrogolem",
+            "spawnPos": {
+              "x": 22,
+              "y": 20
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "golem",
+            "spawnPos": {
+              "x": 12,
+              "y": 6
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "golem",
+            "spawnPos": {
+              "x": 16,
+              "y": 6
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "grave_thrall",
+            "spawnPos": {
+              "x": 14,
+              "y": 23
+            }
+          }
+        ],
+        "debugLabel": "Wave 4"
+      },
+      {
+        "id": "wave_4_clear",
+        "kind": "all_enemies_dead_in_region",
+        "regionId": "arena_main",
+        "once": true,
+        "conditions": [
+          {
+            "kind": "trigger_fired",
+            "triggerId": "wave_4_spawn"
+          },
+          {
+            "kind": "flag_set",
+            "flag": "arenaActive"
+          },
+          {
+            "kind": "flag_clear",
+            "flag": "bossPhase"
+          }
+        ],
+        "actions": [
+          {
+            "kind": "activate_trigger",
+            "triggerId": "boss_phase_start"
+          }
+        ],
+        "debugLabel": "Wave 4 Clear"
+      },
+      {
+        "id": "boss_phase_start",
+        "kind": "manual",
+        "once": true,
+        "actions": [
+          {
+            "kind": "set_flag",
+            "flag": "bossPhase",
+            "value": true
+          },
+          {
+            "kind": "show_message",
+            "message": "The core gate breaks. The trial champion emerges."
+          },
+          {
+            "kind": "unlock_door",
+            "doorId": "center_gate"
+          },
+          {
+            "kind": "open_door",
+            "doorId": "center_gate"
+          },
+          {
+            "kind": "enable_teleporter",
+            "teleporterId": "flank_east"
+          },
+          {
+            "kind": "enable_teleporter",
+            "teleporterId": "north_shunt"
+          },
+          {
+            "kind": "enable_teleporter",
+            "teleporterId": "south_shunt"
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "dspairil",
+            "entityId": "arena_trial_boss",
+            "spawnPos": {
+              "x": 14,
+              "y": 14
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "nitrogolem",
+            "spawnPos": {
+              "x": 8,
+              "y": 10
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "nitrogolem",
+            "spawnPos": {
+              "x": 20,
+              "y": 10
+            }
+          },
+          {
+            "kind": "activate_trigger",
+            "triggerId": "boss_support_loop"
+          }
+        ],
+        "debugLabel": "Boss Phase Start"
+      },
+      {
+        "id": "boss_support_loop",
+        "kind": "timer",
+        "enabled": false,
+        "delaySeconds": 9,
+        "cooldownSeconds": 14,
+        "conditions": [
+          {
+            "kind": "flag_set",
+            "flag": "bossPhase"
+          },
+          {
+            "kind": "flag_clear",
+            "flag": "arenaComplete"
+          }
+        ],
+        "actions": [
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "golem",
+            "spawnPos": {
+              "x": 6,
+              "y": 14
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "golem",
+            "spawnPos": {
+              "x": 22,
+              "y": 14
+            }
+          },
+          {
+            "kind": "spawn_enemy",
+            "enemyDefId": "grave_thrall",
+            "spawnPos": {
+              "x": 14,
+              "y": 23
+            }
+          }
+        ],
+        "debugLabel": "Boss Support Loop"
+      },
+      {
+        "id": "boss_defeated",
+        "kind": "enemy_killed",
+        "enemyEntityId": "arena_trial_boss",
+        "once": true,
+        "actions": [
+          {
+            "kind": "set_flag",
+            "flag": "arenaComplete",
+            "value": true
+          },
+          {
+            "kind": "set_flag",
+            "flag": "exitUnlocked",
+            "value": true
+          },
+          {
+            "kind": "clear_flag",
+            "flag": "bossPhase"
+          },
+          {
+            "kind": "deactivate_trigger",
+            "triggerId": "boss_support_loop"
+          },
+          {
+            "kind": "unlock_door",
+            "doorId": "exit_gate"
+          },
+          {
+            "kind": "open_door",
+            "doorId": "exit_gate"
+          },
+          {
+            "kind": "show_message",
+            "message": "Champion slain. Northern gate unlocked."
+          }
+        ],
+        "debugLabel": "Boss Defeated"
+      },
+      {
+        "id": "arena_exit",
+        "kind": "enter_region",
+        "regionId": "exit_region",
+        "once": true,
+        "conditions": [
+          {
+            "kind": "flag_set",
+            "flag": "arenaComplete"
+          },
+          {
+            "kind": "door_open",
+            "doorId": "exit_gate"
+          }
+        ],
+        "actions": [
+          {
+            "kind": "complete_level",
+            "message": "Arena of Trials conquered."
+          }
+        ],
+        "debugLabel": "Arena Exit"
+      }
+    ]
+  }
+}

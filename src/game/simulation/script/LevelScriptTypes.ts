@@ -78,6 +78,7 @@ export interface ScriptActionDef {
   targetHeight?: number;
   deltaHeight?: number;
   enemyDefId?: string;
+  entityId?: string;
   pickupDefId?: string;
   spawnPos?: Vec2;
   flag?: string;
@@ -119,6 +120,7 @@ export interface DoorDef {
   locked?: boolean;
   oneWay?: boolean;
   openOffset?: number;
+  visualProfileId?: string;
   debugLabel?: string;
 }
 
@@ -129,6 +131,7 @@ export interface TeleporterDef {
   targetFacingRadians?: number;
   enabled?: boolean;
   revealByDefault?: boolean;
+  visualProfileId?: string;
   debugLabel?: string;
 }
 
@@ -139,6 +142,7 @@ export interface SwitchDef {
   startsEnabled?: boolean;
   actions?: ScriptActionDef[];
   conditions?: ConditionDef[];
+  visualProfileId?: string;
   debugLabel?: string;
 }
 
@@ -148,6 +152,8 @@ export interface SecretDef {
   message?: string;
   rewardActions?: ScriptActionDef[];
   once?: boolean;
+  hintCells?: Vec2[];
+  hintVisualProfileId?: string;
   debugLabel?: string;
 }
 
@@ -157,6 +163,17 @@ export interface FloorRegionDef {
   blockingCells?: Vec2[];
   initialHeight?: number;
   passableWhenHeightAtLeast?: number;
+  debugLabel?: string;
+}
+
+export type ZoneEffectKind = "safe" | "regen" | "enemy_block";
+
+export interface ZoneEffectDef {
+  id: string;
+  region: Rect;
+  effect: ZoneEffectKind;
+  regenPerSecond?: number;
+  enemySpeedScale?: number;
   debugLabel?: string;
 }
 
@@ -170,6 +187,7 @@ export interface LevelScriptDef {
   switches?: SwitchDef[];
   secrets?: SecretDef[];
   floorRegions?: FloorRegionDef[];
+  zoneEffects?: ZoneEffectDef[];
   triggers?: TriggerDef[];
 }
 

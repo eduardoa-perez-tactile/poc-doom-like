@@ -3,7 +3,7 @@ import {
   Scene,
   Texture
 } from "@babylonjs/core";
-import type { WallAtlasSourceTile } from "./WallTextureRegistry";
+import type { WallAtlasSourceTile } from "../content/walls";
 
 export interface WallTileUv {
   u0: number;

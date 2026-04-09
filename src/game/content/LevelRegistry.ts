@@ -2,6 +2,7 @@ import levelAshenCatacomb from "./data/level-ashen-catacomb.json";
 import levelDspairilKeepTest from "./data/level-dspairil-keep.json";
 import levelDspairilsKeep from "./data/level-dspairils-keep.json";
 import levelOpenArena from "./data/level-open-arena.json";
+import levelOpenArenaSurvival from "./data/level-open-arena-survival.json";
 import type { LevelDefinition } from "./types";
 
 export const DEFAULT_LEVEL_ID = "level-dspairils-keep";
@@ -10,7 +11,8 @@ const REGISTERED_LEVELS = [
   levelAshenCatacomb as LevelDefinition,
   levelDspairilKeepTest as LevelDefinition,
   levelDspairilsKeep as LevelDefinition,
-  levelOpenArena as LevelDefinition
+  levelOpenArena as LevelDefinition,
+  levelOpenArenaSurvival as LevelDefinition
 ] as const;
 
 const LEVELS_BY_ID = new Map(REGISTERED_LEVELS.map((level) => [level.id, level] as const));

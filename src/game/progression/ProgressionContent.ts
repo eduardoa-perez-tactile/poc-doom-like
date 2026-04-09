@@ -46,10 +46,7 @@ export const NODE_TEMPLATES: readonly NodeTemplateDef[] = [
     rewardTableId: "reward_table.combat",
     weight: 3,
     clearCurrencies: { ash: 10 },
-    tags: ["starter", "gauntlet"],
-    extraEnemySpawns: [
-      { id: "catacomb_extra_thrall_1", type: "grave_thrall", x: 8, y: 3, facingDeg: 180, minDifficultyTier: 2 }
-    ]
+    tags: ["starter", "gauntlet"]
   },
   {
     id: "template.keep_test.combat",
@@ -62,11 +59,7 @@ export const NODE_TEMPLATES: readonly NodeTemplateDef[] = [
     rewardTableId: "reward_table.combat",
     weight: 2,
     clearCurrencies: { ash: 12 },
-    tags: ["keep", "switches"],
-    extraEnemySpawns: [
-      { id: "keep_extra_thrall_1", type: "grave_thrall", x: 6, y: 6, facingDeg: 0, minDifficultyTier: 2 },
-      { id: "keep_extra_nitro_1", type: "nitrogolem", x: 20, y: 4, facingDeg: 180, minDifficultyTier: 3 }
-    ]
+    tags: ["keep", "switches"]
   },
   {
     id: "template.open_arena.elite",
@@ -79,11 +72,7 @@ export const NODE_TEMPLATES: readonly NodeTemplateDef[] = [
     rewardTableId: "reward_table.elite",
     weight: 1,
     clearCurrencies: { ash: 18 },
-    tags: ["arena", "elite"],
-    extraEnemySpawns: [
-      { id: "arena_extra_thrall_1", type: "grave_thrall", x: 5, y: 14, facingDeg: 90, minDifficultyTier: 2 },
-      { id: "arena_extra_nitro_1", type: "nitrogolem", x: 22, y: 15, facingDeg: 270, minDifficultyTier: 3 }
-    ]
+    tags: ["arena", "elite"]
   },
   {
     id: "template.shrine.embers",
