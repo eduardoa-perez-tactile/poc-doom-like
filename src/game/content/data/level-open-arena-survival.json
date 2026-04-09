@@ -146,9 +146,9 @@
       "horizonColor": "#be7b4b",
       "bottomColor": "#28170f",
       "radius": 180,
-      "textureRepeatX": 4,
-      "textureRepeatY": 1,
-      "textureOffsetY": 0.06
+      "textureRepeatX": 3,
+      "textureRepeatY": 0.58,
+      "textureOffsetY": 0.22
     }
   },
   "map": {

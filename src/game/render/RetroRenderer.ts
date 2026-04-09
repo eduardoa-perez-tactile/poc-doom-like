@@ -52,6 +52,9 @@ const PLAYER_EYE_HEIGHT = 1.2;
 const FLOOR_REGION_MESH_HEIGHT = 0.44;
 const WALL_HEIGHT = 2.6;
 const OPEN_SKY_TEXTURE_URL = "/sky/heretic-open-sky.png";
+const OPEN_SKY_DEFAULT_REPEAT_X = 3;
+const OPEN_SKY_DEFAULT_REPEAT_Y = 0.58;
+const OPEN_SKY_DEFAULT_OFFSET_Y = 0.22;
 
 type DoorAxis = "horizontal" | "vertical";
 
@@ -378,9 +381,9 @@ export class RetroRenderer {
       () => {
         skyTexture.wrapU = Texture.WRAP_ADDRESSMODE;
         skyTexture.wrapV = Texture.CLAMP_ADDRESSMODE;
-        skyTexture.uScale = skyDome?.textureRepeatX ?? 4;
-        skyTexture.vScale = skyDome?.textureRepeatY ?? 1;
-        skyTexture.vOffset = skyDome?.textureOffsetY ?? 0;
+        skyTexture.uScale = skyDome?.textureRepeatX ?? OPEN_SKY_DEFAULT_REPEAT_X;
+        skyTexture.vScale = skyDome?.textureRepeatY ?? OPEN_SKY_DEFAULT_REPEAT_Y;
+        skyTexture.vOffset = skyDome?.textureOffsetY ?? OPEN_SKY_DEFAULT_OFFSET_Y;
         material.diffuseTexture = skyTexture;
         material.emissiveTexture = skyTexture;
       },
